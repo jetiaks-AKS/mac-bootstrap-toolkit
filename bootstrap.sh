@@ -16,6 +16,7 @@ source modules/core/terminal/terminal.sh
 
 source modules/apps/brew-packages.sh
 source modules/apps/brew-casks.sh
+source modules/apps/appstore.sh
 
 # ==========================================
 # Режим работы Toolkit
@@ -54,6 +55,9 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "Homebrew Casks"
     install_brew_casks
+
+    section "App Store"
+    install_appstore_apps
 
 fi
 run_module "SSH" check_ssh
