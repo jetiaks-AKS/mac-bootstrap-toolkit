@@ -5,4 +5,6 @@ source modules/core/homebrew/homebrew.sh
 
 info "Mac Bootstrap Toolkit"
 
-check_homebrew
+run_module "Homebrew" check_homebrew
+
+show_summary
