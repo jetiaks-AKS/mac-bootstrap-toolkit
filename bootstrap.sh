@@ -15,6 +15,7 @@ source modules/core/terminal/terminal.sh
 # ==========================================
 
 source modules/apps/brew-packages.sh
+source modules/apps/brew-casks.sh
 
 # ==========================================
 # Режим работы Toolkit
@@ -49,8 +50,10 @@ fi
 if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "Homebrew Packages"
-
     install_brew_packages
+
+    section "Homebrew Casks"
+    install_brew_casks
 
 fi
 run_module "SSH" check_ssh
