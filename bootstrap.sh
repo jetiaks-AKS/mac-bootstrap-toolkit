@@ -30,6 +30,7 @@ source modules/vscode/settings.sh
 # ==========================================
 
 source modules/settings/macos/finder.sh
+source modules/settings/macos/dock.sh
 
 # ==========================================
 # Режим работы Toolkit
@@ -65,6 +66,7 @@ run_module "Git" check_git
 run_module "SSH" check_ssh
 run_module "Terminal" check_terminal
 run_module "Finder" check_finder
+run_module "Dock" check_dock
 
 # ==========================================
 # Настройка системы
@@ -91,6 +93,9 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "Finder"
     apply_finder_settings
+
+    section "Dock"
+    apply_dock_settings
 
 fi
 
