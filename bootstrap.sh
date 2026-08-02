@@ -26,6 +26,12 @@ source modules/vscode/extensions.sh
 source modules/vscode/settings.sh
 
 # ==========================================
+# MacOS Settings
+# ==========================================
+
+source modules/settings/macos/finder.sh
+
+# ==========================================
 # Режим работы Toolkit
 # ==========================================
 
@@ -50,12 +56,23 @@ esac
 
 info "Mac Bootstrap Toolkit"
 
+# ==========================================
+# Проверка системы
+# ==========================================
+
 run_module "Homebrew" check_homebrew
 run_module "Git" check_git
+run_module "SSH" check_ssh
+run_module "Terminal" check_terminal
+run_module "Finder" check_finder
+
+# ==========================================
+# Настройка системы
+# ==========================================
+
 if [[ "$MODE" == "--bootstrap" ]]; then
+
     configure_git
-fi
-if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "Homebrew Packages"
     install_brew_packages
@@ -72,8 +89,9 @@ if [[ "$MODE" == "--bootstrap" ]]; then
     section "VS Code Settings"
     apply_vscode_settings
 
+    section "Finder"
+    apply_finder_settings
+
 fi
-run_module "SSH" check_ssh
-run_module "Terminal" check_terminal
 
 show_summary
