@@ -1,0 +1,23 @@
+{
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.startupEditor": "none",
+    "explorer.compactFolders": false,
+    "workbench.colorTheme": "Dark+",
+    "editor.fontSize": 15,
+    "editor.lineHeight": 26,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+
+    "cSpell.enabledLanguageIds": [
+        "javascript",
+        "typescript",
+        "json",
+        "yaml",
+        "shellscript",
+        "python"
+    ],
+    "git.confirmSync": false,
+    "git.autofetch": true,
+    "gitlens.ai.model": "vscode",
+    "gitlens.ai.vscode.model": "copilot:gpt-4o-mini"
+}

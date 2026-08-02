@@ -23,6 +23,7 @@ source modules/apps/appstore.sh
 # ==========================================
 
 source modules/vscode/extensions.sh
+source modules/vscode/settings.sh
 
 # ==========================================
 # Режим работы Toolkit
@@ -67,6 +68,9 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "VS Code Extensions"
     install_vscode_extensions
+
+    section "VS Code Settings"
+    apply_vscode_settings
 
 fi
 run_module "SSH" check_ssh
