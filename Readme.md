@@ -41,22 +41,47 @@ Mac Bootstrap Toolkit предназначен для автоматическо
 
 ## План развития
 
-- [x] Структура проекта
-- [ ] Homebrew
-- [ ] Git
-- [ ] SSH
-- [ ] Terminal
-- [ ] macOS
-- [ ] VS Code
-- [ ] Приложения
-- [ ] Проверка системы
-- [ ] Тестирование
+## Реализовано
+
+### Core
+
+- [x] Homebrew
+- [x] Git
+- [x] SSH
+- [x] Terminal
+
+### Applications
+
+- [x] Homebrew Packages
+- [x] Homebrew Casks
+- [x] App Store
+
+### VS Code
+
+- [x] Extensions
+- [x] Settings
+
+### macOS
+
+- [x] Finder
+- [x] Dock
+- [x] Keyboard
+- [x] Trackpad
+- [x] Screenshots
+
+### CLI
+
+- [x] `--check`
+- [x] `--bootstrap`
+- [x] `--help`
+- [x] `--version`
 
 | Параметр | Значение |
 |----------|----------|
-| Статус | 🚧 В разработке |
+| Статус | 🚧 Feature Complete (v0.9.0) |
 | Платформа | macOS |
 | Язык | Bash |
+| Архитектура | Modular |
 | Лицензия | TBD |
 
 ---

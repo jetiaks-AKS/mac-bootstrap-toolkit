@@ -107,6 +107,25 @@ EOF
 
 esac
 
+echo
+echo "=========================================="
+echo " Mac Bootstrap Toolkit"
+echo "=========================================="
+echo
+echo "Version : $TOOLKIT_VERSION"
+
+if [[ "$MODE" == "--check" ]]; then
+
+    echo "Mode    : Check"
+
+else
+
+    echo "Mode    : Bootstrap"
+
+fi
+
+echo
+
 # ==========================================
 # Проверка системы
 # ==========================================
