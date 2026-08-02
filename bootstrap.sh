@@ -26,11 +26,10 @@ source modules/vscode/extensions.sh
 source modules/vscode/settings.sh
 
 # ==========================================
-# MacOS Settings
+# macOS Settings
 # ==========================================
 
-source modules/settings/macos/finder.sh
-source modules/settings/macos/dock.sh
+source modules/settings/macos/macos.sh
 
 # ==========================================
 # Режим работы Toolkit
@@ -65,8 +64,7 @@ run_module "Homebrew" check_homebrew
 run_module "Git" check_git
 run_module "SSH" check_ssh
 run_module "Terminal" check_terminal
-run_module "Finder" check_finder
-run_module "Dock" check_dock
+check_macos_settings
 
 # ==========================================
 # Настройка системы
@@ -91,11 +89,7 @@ if [[ "$MODE" == "--bootstrap" ]]; then
     section "VS Code Settings"
     apply_vscode_settings
 
-    section "Finder"
-    apply_finder_settings
-
-    section "Dock"
-    apply_dock_settings
+    apply_macos_settings
 
 fi
 
