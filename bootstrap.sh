@@ -19,6 +19,12 @@ source modules/apps/brew-casks.sh
 source modules/apps/appstore.sh
 
 # ==========================================
+# VS Code
+# ==========================================
+
+source modules/vscode/extensions.sh
+
+# ==========================================
 # Режим работы Toolkit
 # ==========================================
 
@@ -58,6 +64,9 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     section "App Store"
     install_appstore_apps
+
+    section "VS Code Extensions"
+    install_vscode_extensions
 
 fi
 run_module "SSH" check_ssh
