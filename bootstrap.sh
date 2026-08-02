@@ -32,6 +32,12 @@ source modules/vscode/settings.sh
 source modules/settings/macos/macos.sh
 
 # ==========================================
+# Toolkit Version
+# ==========================================
+
+TOOLKIT_VERSION="1.0.0-dev"
+
+# ==========================================
 # Режим работы Toolkit
 # ==========================================
 
@@ -40,21 +46,66 @@ MODE="${1:---check}"
 case "$MODE" in
 
     --check)
+
         info "Режим: Проверка"
+
         ;;
 
     --bootstrap)
+
         info "Режим: Bootstrap"
+
+        ;;
+
+    --version)
+
+        echo "Mac Bootstrap Toolkit"
+        echo "Version $TOOLKIT_VERSION"
+        exit 0
+
+        ;;
+
+    --help)
+
+        cat << EOF
+
+==========================================
+ Mac Bootstrap Toolkit
+==========================================
+
+Использование:
+
+  ./bootstrap.sh --check
+      Проверить систему
+
+  ./bootstrap.sh --bootstrap
+      Выполнить настройку Mac
+
+  ./bootstrap.sh --version
+      Показать версию Toolkit
+
+  ./bootstrap.sh --help
+      Показать эту справку
+
+EOF
+
+        exit 0
+
         ;;
 
     *)
+
         error "Неизвестный режим: $MODE"
+
+        echo
+        echo "Используйте:"
+        echo "  ./bootstrap.sh --help"
+
         exit 1
+
         ;;
 
 esac
-
-info "Mac Bootstrap Toolkit"
 
 # ==========================================
 # Проверка системы
