@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Настройка VS Code
+# Apply VS Code Settings
 # ==========================================
 
 apply_vscode_settings() {
@@ -12,7 +12,7 @@ apply_vscode_settings() {
 
     if [[ ! -f "$source_file" ]]; then
 
-        warning "Файл settings/vscode/settings.json не найден"
+        warning "Configuration file settings/vscode/settings.json not found"
         return 1
 
     fi
@@ -23,12 +23,12 @@ apply_vscode_settings() {
 
     if cmp -s "$source_file" "$target_file"; then
 
-        info "Настройки VS Code уже актуальны"
+        info "VS Code Settings are already up to date"
         return 0
 
     fi
 
-      info "Создаю резервную копию текущих настроек VS Code..."
+      info "Creating backup of current VS Code Settings..."
 
       cp "$target_file" "$target_file.bootstrap.bak"
 
@@ -36,6 +36,6 @@ fi
 
       cp "$source_file" "$target_file"
 
-      success "Настройки VS Code применены"
+      success "VS Code Settings applied successfully"
 
 }

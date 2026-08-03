@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Установка Homebrew Packages
+# Homebrew Packages
 # ==========================================
 
 install_brew_packages() {
@@ -9,11 +9,11 @@ install_brew_packages() {
     local config_file="config/brew-packages.conf"
 
     if [[ ! -f "$config_file" ]]; then
-        error "Файл $config_file не найден"
+        error "Configuration file $config_file not found"
         return 2
     fi
 
-    info "Устанавливаю Homebrew Packages..."
+    info "Installing Homebrew Packages..."
 
     while IFS= read -r package || [[ -n "$package" ]]; do
 
@@ -21,15 +21,15 @@ install_brew_packages() {
         [[ "$package" =~ ^# ]] && continue
 
         if brew list "$package" >/dev/null 2>&1; then
-            info "$package уже установлен"
+            info "$package is already installed"
         else
-            info "Устанавливаю $package..."
+            info "Installing $package..."
             brew install "$package"
         fi
 
     done < "$config_file"
 
-    success "Homebrew Packages готовы"
+    success "Homebrew Packages are ready"
 
     return 0
 

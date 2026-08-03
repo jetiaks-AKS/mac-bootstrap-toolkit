@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка VS Code CLI
+# Check VS Code CLI
 # ==========================================
 
 is_code_installed() {
@@ -11,7 +11,7 @@ is_code_installed() {
 }
 
 # ==========================================
-# Установка одного расширения
+# Install VS Code Extension
 # ==========================================
 
 install_vscode_extension() {
@@ -20,20 +20,20 @@ install_vscode_extension() {
 
     if grep -Fxq "$extension" <<< "$VSCODE_EXTENSIONS"; then
 
-        info "$extension уже установлено"
+        info "$extension is already installed"
         return 0
 
     fi
 
-    info "Устанавливаю $extension..."
+    info "Installing $extension..."
 
     if code --install-extension "$extension" >/dev/null 2>&1; then
 
-        success "$extension установлено"
+        success "$extension installed successfully"
 
     else
 
-        error "Не удалось установить $extension"
+        error "Failed to install $extension"
 
     fi
 
@@ -42,7 +42,7 @@ install_vscode_extension() {
 }
 
 # ==========================================
-# Установка расширений VS Code
+# Install VS Code Extensions
 # ==========================================
 
 install_vscode_extensions() {
@@ -52,19 +52,19 @@ install_vscode_extensions() {
 
     if [[ ! -f "$config_file" ]]; then
 
-        error "Файл $config_file не найден"
+        error "Configuration file $config_file not found"
         return 2
 
     fi
 
     if ! is_code_installed; then
 
-        warning "Команда 'code' недоступна"
+        warning "The 'code' command is not available"
         return 1
 
     fi
 
-    info "Устанавливаю расширения VS Code..."
+    info "Installing VS Code Extensions..."
 
     VSCODE_EXTENSIONS="$(code --list-extensions)"
 
@@ -77,6 +77,6 @@ install_vscode_extensions() {
 
     done < "$config_file"
 
-    success "Расширения VS Code готовы"
+    success "VS Code Extensions are ready"
 
 }

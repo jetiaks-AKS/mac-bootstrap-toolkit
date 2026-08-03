@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Установка Homebrew Casks
+# Homebrew Casks
 # ==========================================
 
 install_brew_casks() {
@@ -9,11 +9,11 @@ install_brew_casks() {
     local config_file="config/brew-casks.conf"
 
     if [[ ! -f "$config_file" ]]; then
-        error "Файл $config_file не найден"
+        error "Configuration file $config_file not found"
         return 2
     fi
 
-    info "Устанавливаю Homebrew Casks..."
+    info "Installing Homebrew Casks..."
 
     while IFS= read -r cask || [[ -n "$cask" ]]; do
 
@@ -24,17 +24,17 @@ install_brew_casks() {
 
     if brew list --cask "$cask" >/dev/null 2>&1; then
 
-    info "$cask уже установлен"
+    info "$cask is already installed"
 
 else
 
-    info "Устанавливаю $cask..."
+    info "Installing $cask..."
     brew install --cask --adopt "$cask"
 
 fi
     done < "$config_file"
 
-    success "Homebrew Casks готовы"
+    success "Homebrew Casks are ready"
 
     return 0
 

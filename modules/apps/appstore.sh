@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Установка одного приложения App Store
+# Install App Store Application
 # ==========================================
 
 install_appstore_app() {
@@ -11,18 +11,18 @@ install_appstore_app() {
 
     if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
 
-        info "$app_name уже установлен"
+        info "$app_name is already installed"
         return 0
 
     fi
 
-    info "Устанавливаю $app_name..."
+    info "Installing $app_name..."
 
     if mas install "$app_id"; then
-        success "$app_name установлен"
+        success "$app_name installed successfully"
 
     else
-        error "Не удалось установить $app_name"
+        error "Failed to install $app_name"
 
     fi
 
@@ -30,14 +30,14 @@ install_appstore_app() {
 }
 
 # ==========================================
-# Установка приложений App Store
+# Install App Store Applications
 # ==========================================
 
 install_appstore_apps() {
 
     if ! command -v mas >/dev/null 2>&1; then
 
-        warning "mas не установлен"
+        warning "mas is not installed"
         return 1
 
     fi
@@ -45,15 +45,15 @@ install_appstore_apps() {
     local config_file="config/appstore.conf"
 
     if [[ ! -f "$config_file" ]]; then
-        error "Файл $config_file не найден"
+        error "Configuration file $config_file not found"
         return 2
     fi
 
-    info "Проверяю установленные приложения..."
+    info "Checking installed App Store applications..."
 
     MAS_INSTALLED_APPS="$(mas list)"
 
-    info "Устанавливаю приложения App Store..."
+    info "Installing App Store applications..."
 
     while IFS='|' read -r app_id app_name || [[ -n "$app_id" ]]; do
 
@@ -64,6 +64,6 @@ install_appstore_apps() {
 
     done < "$config_file"
 
-    success "Приложения App Store готовы"
+    success "App Store applications are ready"
 
 }
