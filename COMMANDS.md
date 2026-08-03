@@ -12,6 +12,11 @@
 ./bootstrap.sh --check
 ```
 
+## Проверка системы (Verbose)
+
+```bash
+./bootstrap.sh --check --verbose
+
 ---
 
 ## Bootstrap
@@ -35,6 +40,20 @@
 - настройку Keyboard;
 - настройку Trackpad;
 - настройку Screenshots.
+
+## Bootstrap (Verbose)
+
+Полностью подготовить новый Mac с подробным выводом.
+
+```bash
+./bootstrap.sh --bootstrap --verbose
+
+Показывает:
+
+- проверку каждого компонента;
+- уже установленные пакеты;
+- уже установленные приложения;
+- уже установленные расширения VS Code.
 
 ---
 
