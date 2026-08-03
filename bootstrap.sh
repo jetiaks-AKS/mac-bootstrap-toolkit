@@ -9,6 +9,7 @@ source modules/core/homebrew/homebrew.sh
 source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
 source modules/core/terminal/terminal.sh
+source modules/core/preflight/preflight.sh
 
 # ==========================================
 # Applications
@@ -121,6 +122,19 @@ else
 fi
 
 echo
+
+# ==========================================
+# Предварительные проверки
+# ==========================================
+
+section "Preflight"
+
+check_internet
+
+if [[ $? -ne 0 ]]; then
+    show_summary
+    exit 1
+fi
 
 # ==========================================
 # Проверка системы
