@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Screenshots
+# Check Screenshots
 # ==========================================
 
 check_screenshots() {
 
-    info "Проверяю Screenshots..."
+    info "Checking Screenshots..."
 
     local configured=true
     local location
@@ -16,20 +16,20 @@ check_screenshots() {
     [[ "$location" == "~/Screenshots" || "$location" == "$HOME/Screenshots" ]] || configured=false
 
     if $configured; then
-        success "Screenshots уже настроены"
+        success "Screenshots are already configured"
     else
-        warning "Screenshots требуют настройки"
+        warning "Screenshots require configuration"
     fi
 
 }
 
 # ==========================================
-# Настройка Screenshots
+# Apply Screenshot Settings
 # ==========================================
 
 apply_screenshots_settings() {
 
-    info "Настраиваю Screenshots..."
+    info "Configuring Screenshots..."
 
     mkdir -p "$HOME/Screenshots"
 
@@ -37,6 +37,6 @@ apply_screenshots_settings() {
 
     killall SystemUIServer >/dev/null 2>&1
 
-    success "Screenshots настроены"
+    success "Screenshots configured successfully"
 
 }

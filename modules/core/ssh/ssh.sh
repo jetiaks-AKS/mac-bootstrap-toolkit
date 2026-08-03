@@ -1,29 +1,29 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка каталога SSH
+# Check SSH
 # ==========================================
 
 check_ssh() {
 
-    info "Проверяю SSH..."
+    info "Checking SSH..."
 
     if [[ ! -d "$HOME/.ssh" ]]; then
-        error "Каталог ~/.ssh не найден"
+        error "~/.ssh directory not found"
         return 2
     fi
 
     if ! ls "$HOME/.ssh"/id_* >/dev/null 2>&1; then
-        warning "SSH-ключи не найдены"
+        warning "SSH keys not found"
         return 1
     fi
 
     if [[ ! -f "$HOME/.ssh/config" ]]; then
-        warning "Файл config отсутствует"
+        warning "SSH config not found"
         return 1
     fi
 
-    success "SSH настроен"
+    success "SSH is configured"
 
     return 0
 

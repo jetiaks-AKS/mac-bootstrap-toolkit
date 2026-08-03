@@ -11,7 +11,7 @@ source modules/settings/macos/trackpad.sh
 source modules/settings/macos/screenshots.sh
 
 # ==========================================
-# Проверка macOS
+# Check macOS Settings
 # ==========================================
 
 check_macos_settings() {
@@ -25,7 +25,7 @@ check_macos_settings() {
 }
 
 # ==========================================
-# Настройка macOS
+# Apply macOS Settings
 # ==========================================
 
 apply_macos_settings() {

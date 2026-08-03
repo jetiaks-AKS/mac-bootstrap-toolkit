@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Dock
+# Check Dock
 # ==========================================
 
 check_dock() {
 
-    info "Проверяю Dock..."
+    info "Checking Dock..."
 
     local configured=true
 
@@ -18,20 +18,20 @@ check_dock() {
     [[ "$(defaults read com.apple.dock show-recents 2>/dev/null)" == "0" ]] || configured=false
 
     if $configured; then
-        success "Dock уже настроен"
+        success "Dock is already configured"
     else
-        warning "Dock требует настройки"
+        warning "Dock requires configuration"
     fi
 
 }
 
 # ==========================================
-# Настройка Dock
+# Apply Dock Settings
 # ==========================================
 
 apply_dock_settings() {
 
-    info "Настраиваю Dock..."
+    info "Configuring Dock..."
 
     defaults write com.apple.dock autohide -bool true
     defaults write com.apple.dock tilesize -int 59
@@ -42,6 +42,6 @@ apply_dock_settings() {
 
     killall Dock >/dev/null 2>&1
 
-    success "Dock настроен"
+    success "Dock configured successfully"
 
 }

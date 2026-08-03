@@ -1,21 +1,35 @@
 #!/bin/bash
 
 # ==========================================
+# Preflight Runner
+# ==========================================
+
+run_preflight() {
+
+    local check_function="$1"
+
+    $check_function
+
+    return $?
+
+}
+
+# ==========================================
 # Internet
 # ==========================================
 
 check_internet() {
 
-    info "Проверяю подключение к Интернету..."
+    info "Checking Internet connection..."
 
     if ping -c 1 1.1.1.1 >/dev/null 2>&1; then
 
-        success "Интернет доступен"
+        success "Internet connection available"
         return 0
 
     fi
 
-    error "Нет подключения к Интернету"
+    error "Internet connection unavailable"
     return 2
 
 }

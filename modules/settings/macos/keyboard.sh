@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Keyboard
+# Check Keyboard
 # ==========================================
 
 check_keyboard() {
 
-    info "Проверяю Keyboard..."
+    info "Checking Keyboard..."
 
     local configured=true
 
@@ -14,24 +14,24 @@ check_keyboard() {
     [[ "$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)" == "15" ]] || configured=false
 
     if $configured; then
-        success "Keyboard уже настроена"
+        success "Keyboard is already configured"
     else
-        warning "Keyboard требует настройки"
+        warning "Keyboard requires configuration"
     fi
 
 }
 
 # ==========================================
-# Настройка Keyboard
+# Apply Keyboard Settings
 # ==========================================
 
 apply_keyboard_settings() {
 
-    info "Настраиваю Keyboard..."
+    info "Configuring Keyboard..."
 
     defaults write NSGlobalDomain KeyRepeat -int 5
     defaults write NSGlobalDomain InitialKeyRepeat -int 15
 
-    success "Keyboard настроена"
+    success "Keyboard configured successfully"
 
 }

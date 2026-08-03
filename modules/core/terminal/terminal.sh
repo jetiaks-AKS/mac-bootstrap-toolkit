@@ -1,24 +1,24 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Terminal
+# Check Terminal
 # ==========================================
 
 check_terminal() {
 
-    info "Проверяю Terminal..."
+    info "Checking Terminal..."
 
     if [[ "$SHELL" != */zsh ]]; then
-        warning "Используется не zsh"
+        warning "Shell is not zsh"
         return 1
     fi
 
     if [[ ! -f "$HOME/.zshrc" ]]; then
-        warning "Файл .zshrc отсутствует"
+        warning ".zshrc not found"
         return 1
     fi
 
-    success "Terminal готов к работе"
+    success "Terminal is ready"
 
     return 0
 

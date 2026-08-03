@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Finder
+# Check Finder
 # ==========================================
 
 check_finder() {
 
-    info "Проверяю Finder..."
+    info "Checking Finder..."
 
     local configured=true
 
@@ -20,20 +20,20 @@ check_finder() {
     [[ "$(defaults read com.apple.finder FXRemoveOldTrashItems 2>/dev/null)" == "1" ]] || configured=false
 
     if $configured; then
-        success "Finder уже настроен"
+        success "Finder is already configured"
     else
-        warning "Finder требует настройки"
+        warning "Finder requires configuration"
     fi
 
 }
 
 # ==========================================
-# Настройка Finder
+# Apply Finder Settings
 # ==========================================
 
 apply_finder_settings() {
 
-    info "Настраиваю Finder..."
+    info "Configuring Finder..."
 
     defaults write NSGlobalDomain AppleShowAllExtensions -bool true
     defaults write com.apple.finder ShowPathbar -bool true
@@ -47,6 +47,6 @@ apply_finder_settings() {
 
     killall Finder >/dev/null 2>&1
 
-    success "Finder настроен"
+    success "Finder configured successfully"
 
 }

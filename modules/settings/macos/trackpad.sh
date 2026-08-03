@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Trackpad
+# Check Trackpad
 # ==========================================
 
 check_trackpad() {
 
-    info "Проверяю Trackpad..."
+    info "Checking Trackpad..."
 
     local configured=true
 
@@ -15,25 +15,25 @@ check_trackpad() {
     [[ "$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)" == "1" ]] || configured=false
 
     if $configured; then
-        success "Trackpad уже настроен"
+        success "Trackpad is already configured"
     else
-        warning "Trackpad требует настройки"
+        warning "Trackpad requires configuration"
     fi
 
 }
 
 # ==========================================
-# Настройка Trackpad
+# Apply Trackpad Settings
 # ==========================================
 
 apply_trackpad_settings() {
 
-    info "Настраиваю Trackpad..."
+    info "Configuring Trackpad..."
 
     defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
     defaults write NSGlobalDomain com.apple.trackpad.scaling -int 1
     defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
 
-    success "Trackpad настроен"
+    success "Trackpad configured successfully"
 
 }

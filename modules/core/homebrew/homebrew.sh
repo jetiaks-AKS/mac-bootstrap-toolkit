@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Homebrew
+# Check Homebrew
 # ==========================================
 
 is_homebrew_installed() {
@@ -11,47 +11,47 @@ is_homebrew_installed() {
 }
 
 # ==========================================
-# Установка Homebrew
+# Install Homebrew
 # ==========================================
 
 install_homebrew() {
 
-    info "Устанавливаю Homebrew..."
+    info "Installing Homebrew..."
 
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 }
 
 # ==========================================
-# Проверка модуля
+# Module Check
 # ==========================================
 
 check_homebrew() {
 
-    info "Проверяю Homebrew..."
+    info "Checking Homebrew..."
 
     if is_homebrew_installed; then
-        success "Homebrew уже установлен"
+        success "Homebrew is already installed"
         return 0
     fi
 
-    warning "Homebrew не найден"
+    warning "Homebrew is not installed"
 
-    read -p "Установить Homebrew? (y/n): " answer
+    read -p "Install Homebrew? (y/n): " answer
 
     if [[ "$answer" != "y" ]]; then
-        warning "Установка отменена пользователем"
+        warning "Installation cancelled by user"
         return 1
     fi
 
     install_homebrew
 
     if is_homebrew_installed; then
-        success "Homebrew успешно установлен"
+        success "Homebrew installed successfully"
         return 0
     fi
 
-    error "Не удалось установить Homebrew"
+    error "Failed to install Homebrew"
     return 2
 
 }

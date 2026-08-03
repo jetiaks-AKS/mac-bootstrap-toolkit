@@ -39,7 +39,7 @@ source modules/settings/macos/macos.sh
 source config/toolkit.conf
 
 # ==========================================
-# Режим работы Toolkit
+# Toolkit Mode
 # ==========================================
 
 MODE="${1:---check}"
@@ -48,13 +48,13 @@ case "$MODE" in
 
     --check)
 
-        info "Режим: Проверка"
+        info "Mode: Check"
 
         ;;
 
     --bootstrap)
 
-        info "Режим: Bootstrap"
+        info "Mode: Bootstrap"
 
         ;;
 
@@ -74,19 +74,19 @@ case "$MODE" in
  Mac Bootstrap Toolkit
 ==========================================
 
-Использование:
+Usage:
 
   ./bootstrap.sh --check
-      Проверить систему
+      Check system configuration
 
   ./bootstrap.sh --bootstrap
-      Выполнить настройку Mac
+      Bootstrap this Mac
 
   ./bootstrap.sh --version
-      Показать версию Toolkit
+      Show Toolkit version
 
   ./bootstrap.sh --help
-      Показать эту справку
+      Show this help
 
 EOF
 
@@ -96,10 +96,10 @@ EOF
 
     *)
 
-        error "Неизвестный режим: $MODE"
+        error "Unknown mode: $MODE"
 
         echo
-        echo "Используйте:"
+        echo "Use:"
         echo "  ./bootstrap.sh --help"
 
         exit 1
@@ -124,12 +124,12 @@ fi
 echo
 
 # ==========================================
-# Предварительные проверки
+# Preflight Checks
 # ==========================================
 
 section "Preflight"
 
-check_internet
+run_preflight check_internet
 
 if [[ $? -ne 0 ]]; then
     show_summary
@@ -137,7 +137,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # ==========================================
-# Проверка системы
+# System Check
 # ==========================================
 
 run_module "Homebrew" check_homebrew
@@ -147,7 +147,7 @@ run_module "Terminal" check_terminal
 check_macos_settings
 
 # ==========================================
-# Настройка системы
+# Bootstrap
 # ==========================================
 
 if [[ "$MODE" == "--bootstrap" ]]; then

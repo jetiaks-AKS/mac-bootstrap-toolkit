@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# Проверка Git
+# Check Git
 # ==========================================
 
 is_git_installed() {
@@ -11,38 +11,38 @@ is_git_installed() {
 }
 
 # ==========================================
-# Проверка модуля
+# Module Check
 # ==========================================
 
 check_git() {
 
-    info "Проверяю Git..."
+    info "Checking Git..."
 
     if is_git_installed; then
-        success "Git уже установлен"
+        success "Git is already installed"
         return 0
     fi
 
-    error "Git не найден"
+    error "Git is not installed"
 
     return 2
 
 }
 
 # ==========================================
-# Настройка Git
+# Configure Git
 # ==========================================
 
 configure_git() {
 
     if [[ ! -f "config/git.conf" ]]; then
-        error "Файл config/git.conf не найден"
+        error "config/git.conf not found"
         return 2
     fi
 
     source config/git.conf
 
-    info "Настраиваю Git..."
+    info "Configuring Git..."
 
     git config --global user.name "$GIT_USER_NAME"
     git config --global user.email "$GIT_USER_EMAIL"
@@ -50,7 +50,7 @@ configure_git() {
     git config --global pull.rebase "$GIT_PULL_REBASE"
     git config --global core.editor "$GIT_EDITOR"
 
-    success "Git успешно настроен"
+    success "Git configured successfully"
 
     return 0
 
