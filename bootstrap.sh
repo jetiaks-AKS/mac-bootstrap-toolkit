@@ -32,10 +32,10 @@ source modules/vscode/settings.sh
 source modules/settings/macos/macos.sh
 
 # ==========================================
-# Toolkit Version
+# Toolkit Configuration
 # ==========================================
 
-TOOLKIT_VERSION="0.1.0-dev"
+source config/toolkit.conf
 
 # ==========================================
 # Режим работы Toolkit
@@ -59,7 +59,7 @@ case "$MODE" in
 
     --version)
 
-        echo "Mac Bootstrap Toolkit"
+        echo "$TOOLKIT_NAME"
         echo "Version $TOOLKIT_VERSION"
         exit 0
 
@@ -109,19 +109,15 @@ esac
 
 echo
 echo "=========================================="
-echo " Mac Bootstrap Toolkit"
+echo " $TOOLKIT_NAME"
 echo "=========================================="
 echo
 echo "Version : $TOOLKIT_VERSION"
 
 if [[ "$MODE" == "--check" ]]; then
-
     echo "Mode    : Check"
-
 else
-
     echo "Mode    : Bootstrap"
-
 fi
 
 echo
