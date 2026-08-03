@@ -15,15 +15,18 @@ check_finder() {
     [[ "$(defaults read com.apple.finder ShowStatusBar 2>/dev/null)" == "1" ]] || configured=false
     [[ "$(defaults read com.apple.finder FXPreferredViewStyle 2>/dev/null)" == "Nlsv" ]] || configured=false
     [[ "$(defaults read com.apple.finder FXDefaultSearchScope 2>/dev/null)" == "SCcf" ]] || configured=false
-
     [[ "$(defaults read com.apple.finder _FXSortFoldersFirst 2>/dev/null)" == "1" ]] || configured=false
     [[ "$(defaults read com.apple.finder FXRemoveOldTrashItems 2>/dev/null)" == "1" ]] || configured=false
 
     if $configured; then
+
         success "Finder is already configured"
-    else
-        warning "Finder requires configuration"
+        return 0
+
     fi
+
+    warning "Finder requires configuration"
+    return 1
 
 }
 

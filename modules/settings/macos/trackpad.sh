@@ -15,10 +15,14 @@ check_trackpad() {
     [[ "$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)" == "1" ]] || configured=false
 
     if $configured; then
-        success "Trackpad is already configured"
-    else
-        warning "Trackpad requires configuration"
+
+    success "Trackpad is already configured"
+    return 0
+
     fi
+
+    warning "Trackpad requires configuration"
+    return 1
 
 }
 

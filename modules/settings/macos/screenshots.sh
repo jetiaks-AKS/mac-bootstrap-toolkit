@@ -16,10 +16,14 @@ check_screenshots() {
     [[ "$location" == "~/Screenshots" || "$location" == "$HOME/Screenshots" ]] || configured=false
 
     if $configured; then
-        success "Screenshots are already configured"
-    else
-        warning "Screenshots require configuration"
+
+    success "Screenshots are already configured"
+    return 0
+
     fi
+
+    warning "Screenshots require configuration"
+    return 1
 
 }
 

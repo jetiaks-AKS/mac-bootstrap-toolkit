@@ -14,10 +14,14 @@ check_keyboard() {
     [[ "$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)" == "15" ]] || configured=false
 
     if $configured; then
-        success "Keyboard is already configured"
-    else
-        warning "Keyboard requires configuration"
+
+    success "Keyboard is already configured"
+    return 0
+
     fi
+
+    warning "Keyboard requires configuration"
+    return 1
 
 }
 

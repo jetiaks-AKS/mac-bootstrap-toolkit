@@ -84,6 +84,58 @@ run_module() {
 
     esac
 
+}
+
+# ==========================================
+# Run Configuration
+# ==========================================
+
+run_configuration() {
+
+    local module_name="$1"
+    local check_function="$2"
+    local apply_function="$3"
+
+    section "$module_name"
+
+    $check_function
+
+    local result=$?
+
+    case $result in
+
+        0)
+
+            ((SUCCESS_COUNT++))
+            return 0
+            ;;
+
+        1)
+
+            $apply_function
+
+            $check_function
+
+            if [[ $? -eq 0 ]]; then
+                ((SUCCESS_COUNT++))
+                return 0
+            fi
+
+            error "$module_name configuration failed"
+            ((ERROR_COUNT++))
+            return 2
+            ;;
+
+        2)
+
+            ((ERROR_COUNT++))
+            return 2
+            ;;
+
+    esac
+
+}
+
 # ==========================================
 # Toolkit Summary
 # ==========================================
@@ -95,7 +147,5 @@ show_summary() {
     echo "Success : $SUCCESS_COUNT"
     echo "Warnings: $WARNING_COUNT"
     echo "Errors  : $ERROR_COUNT"
-
-}
 
 }

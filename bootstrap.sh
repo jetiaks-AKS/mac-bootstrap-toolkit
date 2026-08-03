@@ -127,14 +127,12 @@ echo
 # Preflight Checks
 # ==========================================
 
-section "Preflight"
+section "Preflight Checks"
 
-run_preflight check_internet
-
-if [[ $? -ne 0 ]]; then
-    show_summary
-    exit 1
-fi
+require_preflight check_internet
+require_preflight check_xcode
+require_preflight check_macos
+require_preflight check_admin
 
 # ==========================================
 # System Check

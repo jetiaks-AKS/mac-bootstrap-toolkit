@@ -18,10 +18,14 @@ check_dock() {
     [[ "$(defaults read com.apple.dock show-recents 2>/dev/null)" == "0" ]] || configured=false
 
     if $configured; then
-        success "Dock is already configured"
-    else
-        warning "Dock requires configuration"
+
+    success "Dock is already configured"
+    return 0
+
     fi
+
+    warning "Dock requires configuration"
+    return 1
 
 }
 

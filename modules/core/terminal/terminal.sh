@@ -18,7 +18,7 @@ check_terminal() {
         return 1
     fi
 
-    success "Terminal is ready"
+    success "Terminal is configured"
 
     return 0
 
