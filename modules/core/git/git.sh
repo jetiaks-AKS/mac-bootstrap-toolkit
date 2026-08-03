@@ -11,6 +11,39 @@ is_git_installed() {
 }
 
 # ==========================================
+# Check Git Configuration
+# ==========================================
+
+check_git_configuration() {
+
+    source config/git.conf
+
+    if [[ "$(git config --global user.name)" != "$GIT_USER_NAME" ]]; then
+        return 1
+    fi
+
+    if [[ "$(git config --global user.email)" != "$GIT_USER_EMAIL" ]]; then
+        return 1
+    fi
+
+    if [[ "$(git config --global init.defaultBranch)" != "$GIT_DEFAULT_BRANCH" ]]; then
+        return 1
+    fi
+
+    if [[ "$(git config --global pull.rebase)" != "$GIT_PULL_REBASE" ]]; then
+        return 1
+    fi
+
+    if [[ "$(git config --global core.editor)" != "$GIT_EDITOR" ]]; then
+        return 1
+    fi
+
+    success "Git is already configured"
+    return 0
+
+}
+
+# ==========================================
 # Module Check
 # ==========================================
 
@@ -41,6 +74,10 @@ configure_git() {
     fi
 
     source config/git.conf
+
+    if check_git_configuration; then
+    return 0
+    fi
 
     info "Configuring Git..."
 
