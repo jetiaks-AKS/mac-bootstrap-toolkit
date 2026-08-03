@@ -144,8 +144,20 @@ show_summary() {
 
     section "Summary"
 
-    echo "Success : $SUCCESS_COUNT"
-    echo "Warnings: $WARNING_COUNT"
-    echo "Errors  : $ERROR_COUNT"
+    if [[ $ERROR_COUNT -eq 0 ]]; then
+
+        success "Bootstrap completed successfully"
+        echo
+
+    else
+
+        error "Bootstrap completed with errors"
+        echo
+
+    fi
+
+    echo "Modules  : $SUCCESS_COUNT"
+    echo "Warnings : $WARNING_COUNT"
+    echo "Errors   : $ERROR_COUNT"
 
 }

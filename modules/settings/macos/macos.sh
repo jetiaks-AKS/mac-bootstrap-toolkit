@@ -30,10 +30,29 @@ check_macos_settings() {
 
 apply_macos_settings() {
 
-    run_configuration "Finder" check_finder apply_finder_settings
-    run_configuration "Dock" check_dock apply_dock_settings
-    run_configuration "Keyboard" check_keyboard apply_keyboard_settings
-    run_configuration "Trackpad" check_trackpad apply_trackpad_settings
-    run_configuration "Screenshots" check_screenshots apply_screenshots_settings
+    run_configuration \
+        "Finder" \
+        check_finder \
+        apply_finder_settings
+
+    run_configuration \
+        "Dock" \
+        check_dock \
+        apply_dock_settings
+
+    run_configuration \
+        "Keyboard" \
+        check_keyboard \
+        apply_keyboard_settings
+
+    run_configuration \
+        "Trackpad" \
+        check_trackpad \
+        apply_trackpad_settings
+
+    run_configuration \
+        "Screenshots" \
+        check_screenshots \
+        apply_screenshots_settings
 
 }

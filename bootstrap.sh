@@ -142,7 +142,7 @@ run_module "Homebrew" check_homebrew
 run_module "Git" check_git
 run_module "SSH" check_ssh
 run_module "Terminal" check_terminal
-check_macos_settings
+
 
 # ==========================================
 # Bootstrap

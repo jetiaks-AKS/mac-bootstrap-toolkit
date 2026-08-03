@@ -1,19 +1,28 @@
 #!/bin/bash
 
 # ==========================================
-# Homebrew Packages
+# Install Homebrew Packages
 # ==========================================
 
 install_brew_packages() {
 
+    if ! command -v brew >/dev/null 2>&1; then
+
+        error "Homebrew is not installed"
+        return 2
+
+    fi
+
     local config_file="config/brew-packages.conf"
 
     if [[ ! -f "$config_file" ]]; then
+
         error "Configuration file $config_file not found"
         return 2
+
     fi
 
-    info "Installing Homebrew Packages..."
+    local missing_packages=0
 
     while IFS= read -r package || [[ -n "$package" ]]; do
 
@@ -21,16 +30,35 @@ install_brew_packages() {
         [[ "$package" =~ ^# ]] && continue
 
         if brew list "$package" >/dev/null 2>&1; then
-            info "$package is already installed"
-        else
-            info "Installing $package..."
-            brew install "$package"
+            continue
+        fi
+
+        ((missing_packages++))
+
+        if [[ $missing_packages -eq 1 ]]; then
+            info "Installing Homebrew Packages..."
+            echo
+        fi
+
+        info "Installing $package..."
+
+        if ! brew install "$package"; then
+
+            error "Failed to install $package"
+            return 2
+
         fi
 
     done < "$config_file"
 
-    success "Homebrew Packages are ready"
+    if [[ $missing_packages -eq 0 ]]; then
 
-    return 0
+        success "All Homebrew packages are installed."
+        return 0
+
+    fi
+
+    echo
+    success "Homebrew Packages are ready"
 
 }

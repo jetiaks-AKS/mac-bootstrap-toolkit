@@ -6,8 +6,6 @@
 
 check_dock() {
 
-    info "Checking Dock..."
-
     local configured=true
 
     [[ "$(defaults read com.apple.dock autohide 2>/dev/null)" == "1" ]] || configured=false

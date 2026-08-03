@@ -6,8 +6,6 @@
 
 check_keyboard() {
 
-    info "Checking Keyboard..."
-
     local configured=true
 
     [[ "$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null)" == "5" ]] || configured=false

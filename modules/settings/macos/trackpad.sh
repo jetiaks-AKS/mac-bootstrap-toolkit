@@ -6,8 +6,6 @@
 
 check_trackpad() {
 
-    info "Checking Trackpad..."
-
     local configured=true
 
     [[ "$(defaults read com.apple.AppleMultitouchTrackpad Clicking 2>/dev/null)" == "1" ]] || configured=false

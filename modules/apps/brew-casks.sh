@@ -1,41 +1,83 @@
 #!/bin/bash
 
 # ==========================================
-# Homebrew Casks
+# Install Homebrew Cask
+# ==========================================
+
+install_brew_cask() {
+
+    local cask="$1"
+
+    info "Installing $cask..."
+
+    if brew install --cask "$cask"; then
+
+        success "$cask installed successfully"
+        return 0
+
+    fi
+
+    error "Failed to install $cask"
+    return 2
+
+}
+
+# ==========================================
+# Install Homebrew Casks
 # ==========================================
 
 install_brew_casks() {
 
+    if ! command -v brew >/dev/null 2>&1; then
+
+        error "Homebrew is not installed"
+        return 2
+
+    fi
+
     local config_file="config/brew-casks.conf"
 
     if [[ ! -f "$config_file" ]]; then
+
         error "Configuration file $config_file not found"
         return 2
+
     fi
 
-    info "Installing Homebrew Casks..."
+    local missing_casks=0
 
     while IFS= read -r cask || [[ -n "$cask" ]]; do
 
         [[ -z "$cask" ]] && continue
         [[ "$cask" =~ ^# ]] && continue
 
-        app_name="$cask"
+        if brew list --cask "$cask" >/dev/null 2>&1; then
+            continue
+        fi
 
-    if brew list --cask "$cask" >/dev/null 2>&1; then
+        ((missing_casks++))
 
-    info "$cask is already installed"
+        if [[ $missing_casks -eq 1 ]]; then
+            info "Installing Homebrew Casks..."
+            echo
+        fi
 
-else
+        install_brew_cask "$cask"
 
-    info "Installing $cask..."
-    brew install --cask --adopt "$cask"
+        if [[ $? -ne 0 ]]; then
+            return 2
+        fi
 
-fi
     done < "$config_file"
 
-    success "Homebrew Casks are ready"
+    if [[ $missing_casks -eq 0 ]]; then
 
-    return 0
+        success "All Homebrew casks are installed."
+        return 0
+
+    fi
+
+    echo
+    success "Homebrew Casks are ready"
 
 }
