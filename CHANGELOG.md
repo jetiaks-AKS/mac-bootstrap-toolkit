@@ -121,6 +121,6 @@
 
 ---
 
-## [0.1.0] - Initial Development
+## [1.0.0] - 03.08.2026
 
 Первая рабочая версия Bootstrap Toolkit.
