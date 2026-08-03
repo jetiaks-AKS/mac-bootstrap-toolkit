@@ -35,7 +35,7 @@ source modules/settings/macos/macos.sh
 # Toolkit Version
 # ==========================================
 
-TOOLKIT_VERSION="1.0.0-dev"
+TOOLKIT_VERSION="0.1.0-dev"
 
 # ==========================================
 # Режим работы Toolkit
