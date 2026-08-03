@@ -42,33 +42,38 @@ source config/toolkit.conf
 # Toolkit Mode
 # ==========================================
 
-MODE="${1:---check}"
+MODE="--check"
+VERBOSE=false
 
-case "$MODE" in
+for arg in "$@"; do
 
-    --check)
+    case "$arg" in
 
-        info "Mode: Check"
+        --check)
 
-        ;;
+            MODE="--check"
+            ;;
 
-    --bootstrap)
+        --bootstrap)
 
-        info "Mode: Bootstrap"
+            MODE="--bootstrap"
+            ;;
 
-        ;;
+        -v|--verbose)
 
-    --version)
+            VERBOSE=true
+            ;;
 
-        echo "$TOOLKIT_NAME"
-        echo "Version $TOOLKIT_VERSION"
-        exit 0
+        --version)
 
-        ;;
+            echo "$TOOLKIT_NAME"
+            echo "Version $TOOLKIT_VERSION"
+            exit 0
+            ;;
 
-    --help)
+        --help)
 
-        cat << EOF
+            cat << EOF
 
 ==========================================
  Mac Bootstrap Toolkit
@@ -82,6 +87,11 @@ Usage:
   ./bootstrap.sh --bootstrap
       Bootstrap this Mac
 
+Options:
+
+  -v, --verbose
+      Show detailed output
+
   ./bootstrap.sh --version
       Show Toolkit version
 
@@ -90,23 +100,33 @@ Usage:
 
 EOF
 
-        exit 0
+            exit 0
+            ;;
 
-        ;;
+        *)
 
-    *)
+            error "Unknown option: $arg"
 
-        error "Unknown mode: $MODE"
+            echo
+            echo "Use:"
+            echo "  ./bootstrap.sh --help"
 
-        echo
-        echo "Use:"
-        echo "  ./bootstrap.sh --help"
+            exit 1
+            ;;
 
-        exit 1
+    esac
 
-        ;;
+done
 
-esac
+if [[ "$MODE" == "--check" ]]; then
+    info "Mode: Check"
+else
+    info "Mode: Bootstrap"
+fi
+
+if [[ "$VERBOSE" == true ]]; then
+    info "Output: Verbose"
+fi
 
 echo
 echo "=========================================="

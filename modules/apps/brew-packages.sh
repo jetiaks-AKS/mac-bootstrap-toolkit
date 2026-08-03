@@ -30,7 +30,10 @@ install_brew_packages() {
         [[ "$package" =~ ^# ]] && continue
 
         if brew list "$package" >/dev/null 2>&1; then
+
+            detail "$package is already installed"
             continue
+
         fi
 
         ((missing_packages++))
@@ -42,12 +45,14 @@ install_brew_packages() {
 
         info "Installing $package..."
 
-        if ! brew install "$package"; then
+        if ! HOMEBREW_NO_ENV_HINTS=1 brew install "$package"; then
 
             error "Failed to install $package"
             return 2
 
         fi
+
+        success "$package installed successfully"
 
     done < "$config_file"
 

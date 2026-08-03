@@ -11,7 +11,7 @@ install_appstore_app() {
 
     info "Installing $app_name..."
 
-    if MAS_NO_AUTO_INDEX=1 mas install "$app_id" 2>/dev/null; then
+    if MAS_NO_AUTO_INDEX=1 mas install "$app_id" >/dev/null 2>&1; then
 
         success "$app_name installed successfully"
         return 0
@@ -45,7 +45,7 @@ install_appstore_apps() {
 
     fi
 
-    MAS_INSTALLED_APPS="$(MAS_NO_AUTO_INDEX=1 mas list 2>/dev/null)"
+    MAS_INSTALLED_APPS="$(MAS_NO_AUTO_INDEX=1 mas list >/dev/null 2>&1 && MAS_NO_AUTO_INDEX=1 mas list)"
 
     local missing_apps=0
 
@@ -55,14 +55,19 @@ install_appstore_apps() {
         [[ "$app_id" =~ ^# ]] && continue
 
         if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
+
+            detail "$app_name is already installed"
             continue
+
         fi
 
         ((missing_apps++))
 
         if [[ $missing_apps -eq 1 ]]; then
+
             info "Installing App Store applications..."
             echo
+
         fi
 
         install_appstore_app "$app_id" "$app_name"

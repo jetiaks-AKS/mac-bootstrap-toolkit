@@ -10,7 +10,7 @@ install_brew_cask() {
 
     info "Installing $cask..."
 
-    if brew install --cask "$cask"; then
+    if HOMEBREW_NO_ENV_HINTS=1 brew install --cask "$cask"; then
 
         success "$cask installed successfully"
         return 0
@@ -52,7 +52,10 @@ install_brew_casks() {
         [[ "$cask" =~ ^# ]] && continue
 
         if brew list --cask "$cask" >/dev/null 2>&1; then
+
+            detail "$cask is already installed"
             continue
+
         fi
 
         ((missing_casks++))

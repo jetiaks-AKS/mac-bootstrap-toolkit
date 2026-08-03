@@ -65,14 +65,19 @@ install_vscode_extensions() {
         [[ "$extension" =~ ^# ]] && continue
 
         if grep -Fxq "$extension" <<< "$installed_extensions"; then
+
+            detail "$extension is already installed"
             continue
+
         fi
 
         ((missing_extensions++))
 
         if [[ $missing_extensions -eq 1 ]]; then
+
             info "Installing VS Code Extensions..."
             echo
+
         fi
 
         install_vscode_extension "$extension"
