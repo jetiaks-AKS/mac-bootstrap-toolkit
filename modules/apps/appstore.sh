@@ -11,15 +11,25 @@ install_appstore_app() {
 
     action "Installing $app_name..."
 
-    if MAS_NO_AUTO_INDEX=1 mas install "$app_id" >/dev/null 2>&1; then
+    if [[ "$VERBOSE" == true ]]; then
 
-        success "$app_name installed successfully"
-        return 0
+    MAS_NO_AUTO_INDEX=1 mas install "$app_id"
 
-    fi
+else
 
-    error "Failed to install $app_name"
-    return 2
+    MAS_NO_AUTO_INDEX=1 mas install "$app_id" >/dev/null 2>&1
+
+fi
+
+if [[ $? -eq 0 ]]; then
+
+    success "$app_name installed successfully"
+    return 0
+
+fi
+
+error "Failed to install $app_name"
+return 2
 
 }
 
@@ -62,6 +72,8 @@ install_appstore_apps() {
         fi
 
         ((missing_apps++))
+
+        MODULE_CHANGED=true
 
         if [[ $missing_apps -eq 1 ]]; then
 

@@ -4,21 +4,80 @@
 # Install Homebrew Cask
 # ==========================================
 
+# ==========================================
+# Check Homebrew Cask
+# ==========================================
+
+is_cask_installed() {
+
+    local cask="$1"
+    local output
+    local app_path
+
+    output="$(brew list --cask "$cask" 2>&1)"
+    app_path="$(
+    brew info --json=v2 --cask "$cask" |
+    jq -r '.casks[0].artifacts[]? | select(.target != null) | .target' |
+    head -n1
+)"
+
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
+
+    if [[ -n "$app_path" && ! -e "$app_path" ]]; then
+    return 1
+    fi
+
+    return 0
+
+}
+
 install_brew_cask() {
 
     local cask="$1"
 
     action "Installing $cask..."
 
-    if HOMEBREW_NO_ENV_HINTS=1 brew install --cask "$cask"; then
+    local install_command="install"
 
-        success "$cask installed successfully"
-        return 0
+if ! is_cask_installed "$cask"; then
+
+    local app_path
+
+    app_path="$(
+        brew info --json=v2 --cask "$cask" |
+        jq -r '.casks[0].artifacts[]? | select(.target != null) | .target' |
+        head -n1
+    )"
+
+    if [[ -n "$app_path" && ! -e "$app_path" ]]; then
+
+        install_command="reinstall"
 
     fi
 
-    error "Failed to install $cask"
-    return 2
+fi
+
+    if [[ "$VERBOSE" == true ]]; then
+
+    HOMEBREW_NO_ENV_HINTS=1 brew "$install_command" --cask "$cask"
+
+else
+
+    HOMEBREW_NO_ENV_HINTS=1 brew "$install_command" --cask "$cask" >/dev/null 2>&1
+
+fi
+
+if is_cask_installed "$cask"; then
+
+    success "$cask installed successfully"
+    return 0
+
+fi
+
+error "Failed to install $cask"
+return 2
 
 }
 
@@ -51,7 +110,7 @@ install_brew_casks() {
         [[ -z "$cask" ]] && continue
         [[ "$cask" =~ ^# ]] && continue
 
-        if brew list --cask "$cask" >/dev/null 2>&1; then
+        if is_cask_installed "$cask"; then
 
             detail "$cask is already installed"
             continue
@@ -59,6 +118,8 @@ install_brew_casks() {
         fi
 
         ((missing_casks++))
+
+        MODULE_CHANGED=true
 
         if [[ $missing_casks -eq 1 ]]; then
             action "Installing Homebrew Casks..."

@@ -25,15 +25,25 @@ install_vscode_extension() {
 
     action "Installing $extension..."
 
-    if code --install-extension "$extension" >/dev/null 2>&1; then
+    if [[ "$VERBOSE" == true ]]; then
 
-        success "$extension installed successfully"
-        return 0
+    code --install-extension "$extension"
 
-    fi
+else
 
-    error "Failed to install $extension"
-    return 2
+    code --install-extension "$extension" >/dev/null 2>&1
+
+fi
+
+if [[ $? -eq 0 ]]; then
+
+    success "$extension installed successfully"
+    return 0
+
+fi
+
+error "Failed to install $extension"
+return 2
 
 }
 
@@ -72,6 +82,8 @@ install_vscode_extensions() {
         fi
 
         ((missing_extensions++))
+
+        MODULE_CHANGED=true
 
         if [[ $missing_extensions -eq 1 ]]; then
 

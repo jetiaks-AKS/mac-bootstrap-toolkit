@@ -38,6 +38,8 @@ install_brew_packages() {
 
         ((missing_packages++))
 
+        MODULE_CHANGED=true
+
         if [[ $missing_packages -eq 1 ]]; then
             action "Installing Homebrew Packages..."
             echo
@@ -45,7 +47,17 @@ install_brew_packages() {
 
         action "Installing $package..."
 
-        if ! HOMEBREW_NO_ENV_HINTS=1 brew install "$package"; then
+        if [[ "$VERBOSE" == true ]]; then
+
+            HOMEBREW_NO_ENV_HINTS=1 brew install "$package"
+
+        else
+
+            HOMEBREW_NO_ENV_HINTS=1 brew install "$package" >/dev/null 2>&1
+
+        fi
+
+        if [[ $? -ne 0 ]]; then
 
             error "Failed to install $package"
             return 2
@@ -63,7 +75,6 @@ install_brew_packages() {
 
     fi
 
-    MODULE_CHANGED=true
 
     echo
     success "Homebrew Packages are ready"
