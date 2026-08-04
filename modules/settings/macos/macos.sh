@@ -16,11 +16,23 @@ source modules/settings/macos/screenshots.sh
 
 check_macos_settings() {
 
-    run_module "Finder" check_finder
-    run_module "Dock" check_dock
-    run_module "Keyboard" check_keyboard
-    run_module "Trackpad" check_trackpad
-    run_module "Screenshots" check_screenshots
+    local configured=true
+
+    check_finder >/dev/null 2>&1 || configured=false
+    check_dock >/dev/null 2>&1 || configured=false
+    check_keyboard >/dev/null 2>&1 || configured=false
+    check_trackpad >/dev/null 2>&1 || configured=false
+    check_screenshots >/dev/null 2>&1 || configured=false
+
+    if $configured; then
+
+        success "macOS Settings are already configured"
+        return 0
+
+    fi
+
+    warning "macOS Settings require configuration"
+    return 1
 
 }
 
@@ -31,28 +43,36 @@ check_macos_settings() {
 apply_macos_settings() {
 
     run_configuration \
-        "Finder" \
-        check_finder \
+        "macOS Settings" \
+        check_macos_settings \
+        apply_macos_components
+
+}
+
+# ==========================================
+# Apply macOS Components
+# ==========================================
+
+apply_macos_components() {
+
+    if ! check_finder >/dev/null 2>&1; then
         apply_finder_settings
+    fi
 
-    run_configuration \
-        "Dock" \
-        check_dock \
+    if ! check_dock >/dev/null 2>&1; then
         apply_dock_settings
+    fi
 
-    run_configuration \
-        "Keyboard" \
-        check_keyboard \
+    if ! check_keyboard >/dev/null 2>&1; then
         apply_keyboard_settings
+    fi
 
-    run_configuration \
-        "Trackpad" \
-        check_trackpad \
+    if ! check_trackpad >/dev/null 2>&1; then
         apply_trackpad_settings
+    fi
 
-    run_configuration \
-        "Screenshots" \
-        check_screenshots \
+    if ! check_screenshots >/dev/null 2>&1; then
         apply_screenshots_settings
+    fi
 
 }

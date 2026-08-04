@@ -63,6 +63,8 @@ install_brew_packages() {
 
     fi
 
+    MODULE_CHANGED=true
+
     echo
     success "Homebrew Packages are ready"
 

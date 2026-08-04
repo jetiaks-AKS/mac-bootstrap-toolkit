@@ -4,9 +4,17 @@
 # Toolkit Statistics
 # ==========================================
 
-SUCCESS_COUNT=0
+MODULES_CHECKED=0
+INSTALLED_COUNT=0
+SKIPPED_COUNT=0
 WARNING_COUNT=0
 ERROR_COUNT=0
+
+# ==========================================
+# Module State
+# ==========================================
+
+MODULE_CHANGED=false
 
 # ==========================================
 # Information Message
@@ -98,15 +106,21 @@ run_module() {
 
     section "$module_name"
 
+    ((MODULES_CHECKED++))
+
+    MODULE_CHANGED=false
+
     $module_function
 
     local result=$?
 
-    case $result in
+    if [[ "$MODULE_CHANGED" == true ]]; then
+        ((INSTALLED_COUNT++))
+    else
+        ((SKIPPED_COUNT++))
+    fi
 
-        0)
-            ((SUCCESS_COUNT++))
-            ;;
+    case $result in
 
         1)
             ((WARNING_COUNT++))
@@ -132,6 +146,10 @@ run_configuration() {
 
     section "$module_name"
 
+    ((MODULES_CHECKED++))
+
+    MODULE_CHANGED=false
+
     $check_function
 
     local result=$?
@@ -140,22 +158,27 @@ run_configuration() {
 
         0)
 
-            ((SUCCESS_COUNT++))
+            ((SKIPPED_COUNT++))
             return 0
             ;;
 
         1)
 
-            $apply_function
+            if $apply_function; then
+                MODULE_CHANGED=true
+            fi
 
             $check_function
 
             if [[ $? -eq 0 ]]; then
-                ((SUCCESS_COUNT++))
+
+                ((INSTALLED_COUNT++))
                 return 0
+
             fi
 
             error "$module_name configuration failed"
+
             ((ERROR_COUNT++))
             return 2
             ;;
@@ -181,23 +204,42 @@ show_summary() {
     if [[ $ERROR_COUNT -eq 0 ]]; then
 
         success "Bootstrap completed successfully"
-        echo
-        log ""
 
     else
 
         error "Bootstrap completed with errors"
-        echo
-        log ""
 
     fi
 
-    echo "Modules  : $SUCCESS_COUNT"
-    echo "Warnings : $WARNING_COUNT"
-    echo "Errors   : $ERROR_COUNT"
+    echo
+    log ""
 
-    log "Modules  : $SUCCESS_COUNT"
-    log "Warnings : $WARNING_COUNT"
-    log "Errors   : $ERROR_COUNT"
+    echo "Modules Checked : $MODULES_CHECKED"
+    echo "Installed       : $INSTALLED_COUNT"
+    echo "Skipped         : $SKIPPED_COUNT"
+    echo "Warnings        : $WARNING_COUNT"
+    echo "Errors          : $ERROR_COUNT"
+
+    log "Modules Checked : $MODULES_CHECKED"
+    log "Installed       : $INSTALLED_COUNT"
+    log "Skipped         : $SKIPPED_COUNT"
+    log "Warnings        : $WARNING_COUNT"
+    log "Errors          : $ERROR_COUNT"
+
+    if [[ -n "$START_TIME" ]]; then
+
+        local end_time
+        local duration
+
+        end_time=$(date +%s)
+        duration=$((end_time - START_TIME))
+
+        echo
+        echo "Duration        : ${duration}s"
+
+        log ""
+        log "Duration        : ${duration}s"
+
+    fi
 
 }

@@ -179,20 +179,15 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     configure_git
 
-    section "Homebrew Packages"
-    install_brew_packages
+    run_module "Homebrew Packages" install_brew_packages
 
-    section "Homebrew Casks"
-    install_brew_casks
+    run_module "Homebrew Casks" install_brew_casks
 
-    section "App Store"
-    install_appstore_apps
+    run_module "App Store" install_appstore_apps
 
-    section "VS Code Extensions"
-    install_vscode_extensions
+    run_module "VS Code Extensions" install_vscode_extensions
 
-    section "VS Code Settings"
-    apply_vscode_settings
+    run_module "VS Code Settings" apply_vscode_settings
 
     apply_macos_settings
 
