@@ -5,6 +5,7 @@
 # ==========================================
 
 source modules/core/common/common.sh
+source modules/core/logger/logger.sh
 source modules/core/homebrew/homebrew.sh
 source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
@@ -144,6 +145,12 @@ fi
 echo
 
 # ==========================================
+# Initialize Logger
+# ==========================================
+
+init_logger
+
+# ==========================================
 # Preflight Checks
 # ==========================================
 
@@ -192,3 +199,5 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 fi
 
 show_summary
+
+close_logger

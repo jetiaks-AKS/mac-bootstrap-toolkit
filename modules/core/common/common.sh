@@ -13,7 +13,10 @@ ERROR_COUNT=0
 # ==========================================
 
 info() {
+
     echo "[INFO] $1"
+    log "[INFO] $1"
+
 }
 
 # ==========================================
@@ -22,9 +25,14 @@ info() {
 
 detail() {
 
+    # Always write detailed information to the log
+    log "[INFO] $1"
+
+    # Skip terminal output in Compact Mode
     [[ "$VERBOSE" == true ]] || return 0
 
-    info "$1"
+    # Show detailed information in Verbose Mode
+    echo "[INFO] $1"
 
 }
 
@@ -33,7 +41,10 @@ detail() {
 # ==========================================
 
 success() {
+
     echo "[ OK ] $1"
+    log "[ OK ] $1"
+
 }
 
 # ==========================================
@@ -41,7 +52,10 @@ success() {
 # ==========================================
 
 warning() {
+
     echo "[WARN] $1"
+    log "[WARN] $1"
+
 }
 
 # ==========================================
@@ -49,7 +63,10 @@ warning() {
 # ==========================================
 
 error() {
+
     echo "[ERROR] $1"
+    log "[ERROR] $1"
+
 }
 
 # ==========================================
@@ -62,6 +79,11 @@ section() {
     echo "=========================================="
     echo " $1"
     echo "=========================================="
+
+    log ""
+    log "=========================================="
+    log " $1"
+    log "=========================================="
 
 }
 
@@ -160,16 +182,22 @@ show_summary() {
 
         success "Bootstrap completed successfully"
         echo
+        log ""
 
     else
 
         error "Bootstrap completed with errors"
         echo
+        log ""
 
     fi
 
     echo "Modules  : $SUCCESS_COUNT"
     echo "Warnings : $WARNING_COUNT"
     echo "Errors   : $ERROR_COUNT"
+
+    log "Modules  : $SUCCESS_COUNT"
+    log "Warnings : $WARNING_COUNT"
+    log "Errors   : $ERROR_COUNT"
 
 }
