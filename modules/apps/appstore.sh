@@ -9,23 +9,27 @@ install_appstore_app() {
     local app_id="$1"
     local app_name="$2"
 
-    if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
+    action "Installing $app_name..."
 
-        info "$app_name is already installed"
-        return 0
+    if [[ "$VERBOSE" == true ]]; then
 
-    fi
+    MAS_NO_AUTO_INDEX=1 mas install "$app_id"
 
-    info "Installing $app_name..."
+else
 
-    if mas install "$app_id"; then
-        success "$app_name installed successfully"
+    MAS_NO_AUTO_INDEX=1 mas install "$app_id" >/dev/null 2>&1
 
-    else
-        error "Failed to install $app_name"
+fi
 
-    fi
+if [[ $? -eq 0 ]]; then
 
+    success "$app_name installed successfully"
+    return 0
+
+fi
+
+error "Failed to install $app_name"
+return 2
 
 }
 
@@ -45,25 +49,55 @@ install_appstore_apps() {
     local config_file="config/appstore.conf"
 
     if [[ ! -f "$config_file" ]]; then
+
         error "Configuration file $config_file not found"
         return 2
+
     fi
 
-    info "Checking installed App Store applications..."
+    MAS_INSTALLED_APPS="$(MAS_NO_AUTO_INDEX=1 mas list >/dev/null 2>&1 && MAS_NO_AUTO_INDEX=1 mas list)"
 
-    MAS_INSTALLED_APPS="$(mas list)"
-
-    info "Installing App Store applications..."
+    local missing_apps=0
 
     while IFS='|' read -r app_id app_name || [[ -n "$app_id" ]]; do
 
         [[ -z "$app_id" ]] && continue
         [[ "$app_id" =~ ^# ]] && continue
 
+        if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
+
+            detail "$app_name is already installed"
+            continue
+
+        fi
+
+        ((missing_apps++))
+
+        MODULE_CHANGED=true
+
+        if [[ $missing_apps -eq 1 ]]; then
+
+            action "Installing App Store Applications..."
+            echo
+
+        fi
+
         install_appstore_app "$app_id" "$app_name"
+
+        if [[ $? -ne 0 ]]; then
+            return 2
+        fi
 
     done < "$config_file"
 
+    if [[ $missing_apps -eq 0 ]]; then
+
+        success "All App Store applications are installed."
+        return 0
+
+    fi
+
+    echo
     success "App Store applications are ready"
 
 }

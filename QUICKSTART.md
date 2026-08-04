@@ -12,6 +12,8 @@ git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
 cd mac-bootstrap-toolkit
 ```
 
+---
+
 ## 3. Проверить систему
 
 Перед выполнением Bootstrap рекомендуется проверить текущее состояние системы.
@@ -20,56 +22,107 @@ cd mac-bootstrap-toolkit
 ./bootstrap.sh --check
 ```
 
+Для получения подробной информации используйте:
+
+```bash
+./bootstrap.sh --check --verbose
+```
+
 Toolkit проверит:
 
 - Homebrew
 - Git
 - SSH
 - Terminal
-- Finder
-- Dock
-- Keyboard
-- Trackpad
-- Screenshots
+- Homebrew Packages
+- Homebrew Casks
+- App Store Applications
+- VS Code Extensions
+- VS Code Settings
+- macOS Settings
+
+---
 
 ## 4. Выполнить Bootstrap
 
-Если всё готово:
+Стандартный режим:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
+Подробный режим:
+
+```bash
+./bootstrap.sh --bootstrap --verbose
+```
+
 Toolkit автоматически:
 
+- установит и настроит Homebrew;
 - настроит Git;
+- проверит SSH;
+- настроит Terminal;
 - установит Homebrew Packages;
 - установит Homebrew Casks;
+- восстановит отсутствующие Homebrew Casks при необходимости;
 - установит приложения App Store;
 - установит расширения VS Code;
 - применит настройки VS Code;
+- создаст резервную копию текущих настроек VS Code;
 - настроит Finder;
 - настроит Dock;
 - настроит Keyboard;
 - настроит Trackpad;
 - настроит Screenshots.
 
+После завершения Toolkit покажет итоговый Summary с количеством проверенных, изменённых и пропущенных модулей.
+
+---
+
 ## Дополнительные команды
 
-Показать справку:
+### Проверка системы
 
 ```bash
-./bootstrap.sh --help
+./bootstrap.sh --check
 ```
 
-Показать версию Toolkit:
+### Проверка системы (Verbose)
+
+```bash
+./bootstrap.sh --check --verbose
+```
+
+### Bootstrap
+
+```bash
+./bootstrap.sh --bootstrap
+```
+
+### Bootstrap (Verbose)
+
+```bash
+./bootstrap.sh --bootstrap --verbose
+```
+
+### Версия Toolkit
 
 ```bash
 ./bootstrap.sh --version
 ```
 
+### Справка
+
+```bash
+./bootstrap.sh --help
+```
+
+---
+
 ## Требования
 
 - macOS Tahoe 26 или новее
+- Xcode Command Line Tools
 - Подключение к Интернету
 - Учётная запись администратора

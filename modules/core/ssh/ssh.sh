@@ -6,8 +6,6 @@
 
 check_ssh() {
 
-    info "Checking SSH..."
-
     if [[ ! -d "$HOME/.ssh" ]]; then
         error "~/.ssh directory not found"
         return 2
@@ -23,7 +21,7 @@ check_ssh() {
         return 1
     fi
 
-    success "SSH is configured"
+    success "SSH already configured"
 
     return 0
 

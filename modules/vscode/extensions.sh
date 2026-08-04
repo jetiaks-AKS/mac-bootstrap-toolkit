@@ -4,9 +4,14 @@
 # Check VS Code CLI
 # ==========================================
 
-is_code_installed() {
+check_vscode_cli() {
 
-    command -v code >/dev/null 2>&1
+    if command -v code >/dev/null 2>&1; then
+        return 0
+    fi
+
+    warning "The 'code' command is not available"
+    return 1
 
 }
 
@@ -18,26 +23,27 @@ install_vscode_extension() {
 
     local extension="$1"
 
-    if grep -Fxq "$extension" <<< "$VSCODE_EXTENSIONS"; then
+    action "Installing $extension..."
 
-        info "$extension is already installed"
-        return 0
+    if [[ "$VERBOSE" == true ]]; then
 
-    fi
+    code --install-extension "$extension"
 
-    info "Installing $extension..."
+else
 
-    if code --install-extension "$extension" >/dev/null 2>&1; then
+    code --install-extension "$extension" >/dev/null 2>&1
 
-        success "$extension installed successfully"
+fi
 
-    else
+if [[ $? -eq 0 ]]; then
 
-        error "Failed to install $extension"
+    success "$extension installed successfully"
+    return 0
 
-    fi
+fi
 
-    VSCODE_EXTENSIONS="$(code --list-extensions)"
+error "Failed to install $extension"
+return 2
 
 }
 
@@ -47,8 +53,9 @@ install_vscode_extension() {
 
 install_vscode_extensions() {
 
+    check_vscode_cli || return 1
+
     local config_file="config/vscode-extensions.conf"
-    local VSCODE_EXTENSIONS
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -57,26 +64,50 @@ install_vscode_extensions() {
 
     fi
 
-    if ! is_code_installed; then
+    local installed_extensions
+    installed_extensions="$(code --list-extensions)"
 
-        warning "The 'code' command is not available"
-        return 1
-
-    fi
-
-    info "Installing VS Code Extensions..."
-
-    VSCODE_EXTENSIONS="$(code --list-extensions)"
+    local missing_extensions=0
 
     while IFS= read -r extension || [[ -n "$extension" ]]; do
 
         [[ -z "$extension" ]] && continue
         [[ "$extension" =~ ^# ]] && continue
 
+        if grep -Fxq "$extension" <<< "$installed_extensions"; then
+
+            detail "$extension is already installed"
+            continue
+
+        fi
+
+        ((missing_extensions++))
+
+        MODULE_CHANGED=true
+
+        if [[ $missing_extensions -eq 1 ]]; then
+
+            action "Installing VS Code Extensions..."
+            echo
+
+        fi
+
         install_vscode_extension "$extension"
+
+        if [[ $? -ne 0 ]]; then
+            return 2
+        fi
 
     done < "$config_file"
 
+    if [[ $missing_extensions -eq 0 ]]; then
+
+        success "All VS Code extensions are installed."
+        return 0
+
+    fi
+
+    echo
     success "VS Code Extensions are ready"
 
 }

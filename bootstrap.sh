@@ -5,6 +5,7 @@
 # ==========================================
 
 source modules/core/common/common.sh
+source modules/core/logger/logger.sh
 source modules/core/homebrew/homebrew.sh
 source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
@@ -42,33 +43,38 @@ source config/toolkit.conf
 # Toolkit Mode
 # ==========================================
 
-MODE="${1:---check}"
+MODE="--check"
+VERBOSE=false
 
-case "$MODE" in
+for arg in "$@"; do
 
-    --check)
+    case "$arg" in
 
-        info "Mode: Check"
+        --check)
 
-        ;;
+            MODE="--check"
+            ;;
 
-    --bootstrap)
+        --bootstrap)
 
-        info "Mode: Bootstrap"
+            MODE="--bootstrap"
+            ;;
 
-        ;;
+        -v|--verbose)
 
-    --version)
+            VERBOSE=true
+            ;;
 
-        echo "$TOOLKIT_NAME"
-        echo "Version $TOOLKIT_VERSION"
-        exit 0
+        --version)
 
-        ;;
+            echo "$TOOLKIT_NAME"
+            echo "Version $TOOLKIT_VERSION"
+            exit 0
+            ;;
 
-    --help)
+        --help)
 
-        cat << EOF
+            cat << EOF
 
 ==========================================
  Mac Bootstrap Toolkit
@@ -82,6 +88,11 @@ Usage:
   ./bootstrap.sh --bootstrap
       Bootstrap this Mac
 
+Options:
+
+  -v, --verbose
+      Show detailed output
+
   ./bootstrap.sh --version
       Show Toolkit version
 
@@ -90,23 +101,33 @@ Usage:
 
 EOF
 
-        exit 0
+            exit 0
+            ;;
 
-        ;;
+        *)
 
-    *)
+            error "Unknown option: $arg"
 
-        error "Unknown mode: $MODE"
+            echo
+            echo "Use:"
+            echo "  ./bootstrap.sh --help"
 
-        echo
-        echo "Use:"
-        echo "  ./bootstrap.sh --help"
+            exit 1
+            ;;
 
-        exit 1
+    esac
 
-        ;;
+done
 
-esac
+if [[ "$MODE" == "--check" ]]; then
+    info "Mode: Check"
+else
+    info "Mode: Bootstrap"
+fi
+
+if [[ "$VERBOSE" == true ]]; then
+    info "Output: Verbose"
+fi
 
 echo
 echo "=========================================="
@@ -124,15 +145,24 @@ fi
 echo
 
 # ==========================================
+# Initialize Logger
+# ==========================================
+
+init_logger
+
+# ==========================================
 # Preflight Checks
 # ==========================================
 
-section "Preflight Checks"
+run_preflight_checks
 
-require_preflight check_internet
-require_preflight check_xcode
-require_preflight check_macos
-require_preflight check_admin
+if [[ $? -ne 0 ]]; then
+
+    show_summary
+    close_logger
+    exit 1
+
+fi
 
 # ==========================================
 # System Check
@@ -142,7 +172,7 @@ run_module "Homebrew" check_homebrew
 run_module "Git" check_git
 run_module "SSH" check_ssh
 run_module "Terminal" check_terminal
-check_macos_settings
+
 
 # ==========================================
 # Bootstrap
@@ -152,23 +182,20 @@ if [[ "$MODE" == "--bootstrap" ]]; then
 
     configure_git
 
-    section "Homebrew Packages"
-    install_brew_packages
+    run_module "Homebrew Packages" install_brew_packages
 
-    section "Homebrew Casks"
-    install_brew_casks
+    run_module "Homebrew Casks" install_brew_casks
 
-    section "App Store"
-    install_appstore_apps
+    run_module "App Store" install_appstore_apps
 
-    section "VS Code Extensions"
-    install_vscode_extensions
+    run_module "VS Code Extensions" install_vscode_extensions
 
-    section "VS Code Settings"
-    apply_vscode_settings
+    run_module "VS Code Settings" apply_vscode_settings
 
     apply_macos_settings
 
 fi
 
 show_summary
+
+close_logger

@@ -6,8 +6,6 @@
 
 check_screenshots() {
 
-    info "Checking Screenshots..."
-
     local configured=true
     local location
 

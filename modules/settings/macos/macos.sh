@@ -16,11 +16,13 @@ source modules/settings/macos/screenshots.sh
 
 check_macos_settings() {
 
-    run_module "Finder" check_finder
-    run_module "Dock" check_dock
-    run_module "Keyboard" check_keyboard
-    run_module "Trackpad" check_trackpad
-    run_module "Screenshots" check_screenshots
+    check_finder >/dev/null 2>&1 || return 1
+    check_dock >/dev/null 2>&1 || return 1
+    check_keyboard >/dev/null 2>&1 || return 1
+    check_trackpad >/dev/null 2>&1 || return 1
+    check_screenshots >/dev/null 2>&1 || return 1
+
+    return 0
 
 }
 
@@ -30,10 +32,37 @@ check_macos_settings() {
 
 apply_macos_settings() {
 
-    run_configuration "Finder" check_finder apply_finder_settings
-    run_configuration "Dock" check_dock apply_dock_settings
-    run_configuration "Keyboard" check_keyboard apply_keyboard_settings
-    run_configuration "Trackpad" check_trackpad apply_trackpad_settings
-    run_configuration "Screenshots" check_screenshots apply_screenshots_settings
+    run_configuration \
+        "macOS Settings" \
+        check_macos_settings \
+        apply_macos_components
+
+}
+
+# ==========================================
+# Apply macOS Components
+# ==========================================
+
+apply_macos_components() {
+
+    if ! check_finder >/dev/null 2>&1; then
+        apply_finder_settings
+    fi
+
+    if ! check_dock >/dev/null 2>&1; then
+        apply_dock_settings
+    fi
+
+    if ! check_keyboard >/dev/null 2>&1; then
+        apply_keyboard_settings
+    fi
+
+    if ! check_trackpad >/dev/null 2>&1; then
+        apply_trackpad_settings
+    fi
+
+    if ! check_screenshots >/dev/null 2>&1; then
+        apply_screenshots_settings
+    fi
 
 }

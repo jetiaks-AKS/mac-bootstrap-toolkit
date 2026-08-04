@@ -6,8 +6,6 @@
 
 check_finder() {
 
-    info "Checking Finder..."
-
     local configured=true
 
     [[ "$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null)" == "1" ]] || configured=false

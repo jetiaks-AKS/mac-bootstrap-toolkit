@@ -28,10 +28,8 @@ install_homebrew() {
 
 check_homebrew() {
 
-    info "Checking Homebrew..."
-
     if is_homebrew_installed; then
-        success "Homebrew is already installed"
+        success "Homebrew already installed"
         return 0
     fi
 

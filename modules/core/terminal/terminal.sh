@@ -6,8 +6,6 @@
 
 check_terminal() {
 
-    info "Checking Terminal..."
-
     if [[ "$SHELL" != */zsh ]]; then
         warning "Shell is not zsh"
         return 1
@@ -18,7 +16,7 @@ check_terminal() {
         return 1
     fi
 
-    success "Terminal is configured"
+    success "Terminal already configured"
 
     return 0
 
