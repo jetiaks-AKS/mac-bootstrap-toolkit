@@ -9,7 +9,7 @@ install_appstore_app() {
     local app_id="$1"
     local app_name="$2"
 
-    info "Installing $app_name..."
+    action "Installing $app_name..."
 
     if MAS_NO_AUTO_INDEX=1 mas install "$app_id" >/dev/null 2>&1; then
 
@@ -65,7 +65,7 @@ install_appstore_apps() {
 
         if [[ $missing_apps -eq 1 ]]; then
 
-            info "Installing App Store applications..."
+            action "Installing App Store Applications..."
             echo
 
         fi

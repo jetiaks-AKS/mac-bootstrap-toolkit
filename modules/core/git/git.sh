@@ -38,7 +38,6 @@ check_git_configuration() {
         return 1
     fi
 
-    success "Git is already configured"
     return 0
 
 }
@@ -49,10 +48,8 @@ check_git_configuration() {
 
 check_git() {
 
-    info "Checking Git..."
-
     if is_git_installed; then
-        success "Git is already installed"
+        success "Git already installed"
         return 0
     fi
 
@@ -76,10 +73,10 @@ configure_git() {
     source config/git.conf
 
     if check_git_configuration; then
-    return 0
+        return 0
     fi
 
-    info "Configuring Git..."
+    action "Configuring Git..."
 
     git config --global user.name "$GIT_USER_NAME"
     git config --global user.email "$GIT_USER_EMAIL"

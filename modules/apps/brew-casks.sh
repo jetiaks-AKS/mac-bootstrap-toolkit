@@ -8,7 +8,7 @@ install_brew_cask() {
 
     local cask="$1"
 
-    info "Installing $cask..."
+    action "Installing $cask..."
 
     if HOMEBREW_NO_ENV_HINTS=1 brew install --cask "$cask"; then
 
@@ -61,7 +61,7 @@ install_brew_casks() {
         ((missing_casks++))
 
         if [[ $missing_casks -eq 1 ]]; then
-            info "Installing Homebrew Casks..."
+            action "Installing Homebrew Casks..."
             echo
         fi
 

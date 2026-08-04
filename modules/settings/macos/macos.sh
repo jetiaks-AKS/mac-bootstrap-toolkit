@@ -16,23 +16,13 @@ source modules/settings/macos/screenshots.sh
 
 check_macos_settings() {
 
-    local configured=true
+    check_finder >/dev/null 2>&1 || return 1
+    check_dock >/dev/null 2>&1 || return 1
+    check_keyboard >/dev/null 2>&1 || return 1
+    check_trackpad >/dev/null 2>&1 || return 1
+    check_screenshots >/dev/null 2>&1 || return 1
 
-    check_finder >/dev/null 2>&1 || configured=false
-    check_dock >/dev/null 2>&1 || configured=false
-    check_keyboard >/dev/null 2>&1 || configured=false
-    check_trackpad >/dev/null 2>&1 || configured=false
-    check_screenshots >/dev/null 2>&1 || configured=false
-
-    if $configured; then
-
-        success "macOS Settings are already configured"
-        return 0
-
-    fi
-
-    warning "macOS Settings require configuration"
-    return 1
+    return 0
 
 }
 

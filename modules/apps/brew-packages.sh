@@ -39,11 +39,11 @@ install_brew_packages() {
         ((missing_packages++))
 
         if [[ $missing_packages -eq 1 ]]; then
-            info "Installing Homebrew Packages..."
+            action "Installing Homebrew Packages..."
             echo
         fi
 
-        info "Installing $package..."
+        action "Installing $package..."
 
         if ! HOMEBREW_NO_ENV_HINTS=1 brew install "$package"; then
 

@@ -23,12 +23,12 @@ apply_vscode_settings() {
 
     if cmp -s "$source_file" "$target_file"; then
 
-        info "VS Code Settings are already up to date"
+        success "VS Code Settings already configured"
         return 0
 
     fi
 
-      info "Creating backup of current VS Code Settings..."
+      action "Creating backup of current VS Code Settings..."
 
       cp "$target_file" "$target_file.bootstrap.bak"
 

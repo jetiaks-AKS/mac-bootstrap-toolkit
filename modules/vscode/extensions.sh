@@ -23,7 +23,7 @@ install_vscode_extension() {
 
     local extension="$1"
 
-    info "Installing $extension..."
+    action "Installing $extension..."
 
     if code --install-extension "$extension" >/dev/null 2>&1; then
 
@@ -75,7 +75,7 @@ install_vscode_extensions() {
 
         if [[ $missing_extensions -eq 1 ]]; then
 
-            info "Installing VS Code Extensions..."
+            action "Installing VS Code Extensions..."
             echo
 
         fi

@@ -33,14 +33,22 @@ info() {
 
 detail() {
 
-    # Always write detailed information to the log
     log "[INFO] $1"
 
-    # Skip terminal output in Compact Mode
     [[ "$VERBOSE" == true ]] || return 0
 
-    # Show detailed information in Verbose Mode
     echo "[INFO] $1"
+
+}
+
+# ==========================================
+# Action Message
+# ==========================================
+
+action() {
+
+    echo "[....] $1"
+    log "[....] $1"
 
 }
 
@@ -150,7 +158,7 @@ run_configuration() {
 
     MODULE_CHANGED=false
 
-    $check_function
+    $check_function >/dev/null 2>&1
 
     local result=$?
 
@@ -159,6 +167,9 @@ run_configuration() {
         0)
 
             ((SKIPPED_COUNT++))
+
+            success "$module_name already configured"
+
             return 0
             ;;
 
@@ -168,11 +179,14 @@ run_configuration() {
                 MODULE_CHANGED=true
             fi
 
-            $check_function
+            $check_function >/dev/null 2>&1
 
             if [[ $? -eq 0 ]]; then
 
                 ((INSTALLED_COUNT++))
+
+                success "$module_name configured successfully"
+
                 return 0
 
             fi
@@ -202,17 +216,16 @@ show_summary() {
     section "Summary"
 
     if [[ $ERROR_COUNT -eq 0 ]]; then
-
         success "Bootstrap completed successfully"
-
     else
-
         error "Bootstrap completed with errors"
-
     fi
 
     echo
     log ""
+
+    echo "------------------------------------------"
+    log "------------------------------------------"
 
     echo "Modules Checked : $MODULES_CHECKED"
     echo "Installed       : $INSTALLED_COUNT"
@@ -234,10 +247,10 @@ show_summary() {
         end_time=$(date +%s)
         duration=$((end_time - START_TIME))
 
-        echo
-        echo "Duration        : ${duration}s"
+        echo "------------------------------------------"
+        log "------------------------------------------"
 
-        log ""
+        echo "Duration        : ${duration}s"
         log "Duration        : ${duration}s"
 
     fi
