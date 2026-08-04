@@ -1,50 +1,21 @@
 #!/bin/bash
 
 # ==========================================
-# Preflight Runner
+# Run Preflight Checks
 # ==========================================
 
-run_preflight() {
+run_preflight_checks() {
 
-    local check_function="$1"
+    section "Preflight Checks"
 
-    $check_function
+    check_internet || return 2
+    check_xcode || return 2
+    check_macos || return 2
+    check_admin || return 2
 
-    local result=$?
+    success "All preflight checks passed"
 
-    echo
-
-    return $result
-
-}
-
-# ==========================================
-# Run Required Preflight Check
-# ==========================================
-
-require_preflight() {
-
-    run_preflight "$1"
-
-    local result=$?
-
-    case $result in
-
-        0)
-            ((SUCCESS_COUNT++))
-            ;;
-
-        1)
-            ((WARNING_COUNT++))
-            ;;
-
-        2)
-            ((ERROR_COUNT++))
-            show_summary
-            exit 1
-            ;;
-
-    esac
+    return 0
 
 }
 
@@ -54,11 +25,11 @@ require_preflight() {
 
 check_internet() {
 
-    info "Checking Internet connection..."
+    detail "Checking Internet connection..."
 
     if ping -c 1 1.1.1.1 >/dev/null 2>&1; then
 
-        success "Internet connection available"
+        detail "Internet connection available"
         return 0
 
     fi
@@ -74,11 +45,11 @@ check_internet() {
 
 check_xcode() {
 
-    info "Checking Xcode Command Line Tools..."
+    detail "Checking Xcode Command Line Tools..."
 
     if xcode-select -p >/dev/null 2>&1; then
 
-        success "Xcode Command Line Tools are installed"
+        detail "Xcode Command Line Tools are installed"
         return 0
 
     fi
@@ -94,14 +65,14 @@ check_xcode() {
 
 check_macos() {
 
-    info "Checking macOS version..."
+    detail "Checking macOS version..."
 
     local current_version
     current_version=$(sw_vers -productVersion | cut -d "." -f1)
 
     if [[ "$current_version" -ge "$MIN_MACOS_VERSION" ]]; then
 
-        success "macOS version is supported"
+        detail "macOS version is supported"
         return 0
 
     fi
@@ -117,11 +88,11 @@ check_macos() {
 
 check_admin() {
 
-    info "Checking administrator privileges..."
+    detail "Checking administrator privileges..."
 
     if sudo -n true >/dev/null 2>&1; then
 
-        success "Administrator privileges available"
+        detail "Administrator privileges available"
         return 0
 
     fi
@@ -130,7 +101,7 @@ check_admin() {
 
     if sudo -v; then
 
-        success "Administrator privileges granted"
+        detail "Administrator privileges granted"
         return 0
 
     fi

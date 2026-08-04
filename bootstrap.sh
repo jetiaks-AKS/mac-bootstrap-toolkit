@@ -154,12 +154,15 @@ init_logger
 # Preflight Checks
 # ==========================================
 
-section "Preflight Checks"
+run_preflight_checks
 
-require_preflight check_internet
-require_preflight check_xcode
-require_preflight check_macos
-require_preflight check_admin
+if [[ $? -ne 0 ]]; then
+
+    show_summary
+    close_logger
+    exit 1
+
+fi
 
 # ==========================================
 # System Check
