@@ -34,6 +34,13 @@ source modules/vscode/settings.sh
 source modules/settings/macos/macos.sh
 
 # ==========================================
+# Discovery
+# ==========================================
+
+source modules/discovery/discovery.sh
+source modules/discovery/homebrew.sh
+
+# ==========================================
 # Toolkit Configuration
 # ==========================================
 
@@ -58,6 +65,11 @@ for arg in "$@"; do
         --bootstrap)
 
             MODE="--bootstrap"
+            ;;
+
+        --discover)
+
+            MODE="--discover"
             ;;
 
         -v|--verbose)
@@ -87,6 +99,10 @@ Usage:
 
   ./bootstrap.sh --bootstrap
       Bootstrap this Mac
+
+  ./bootstrap.sh --discover
+      Analyze current Mac and generate Bootstrap configuration
+
 
 Options:
 
@@ -119,11 +135,25 @@ EOF
 
 done
 
-if [[ "$MODE" == "--check" ]]; then
-    info "Mode: Check"
-else
-    info "Mode: Bootstrap"
-fi
+MODE_NAME="Unknown"
+
+case "$MODE" in
+
+    --check)
+        MODE_NAME="Check"
+        ;;
+
+    --bootstrap)
+        MODE_NAME="Bootstrap"
+        ;;
+
+    --discover)
+        MODE_NAME="Discovery"
+        ;;
+
+esac
+
+info "Mode: $MODE_NAME"
 
 if [[ "$VERBOSE" == true ]]; then
     info "Output: Verbose"
@@ -135,13 +165,7 @@ echo " $TOOLKIT_NAME"
 echo "=========================================="
 echo
 echo "Version : $TOOLKIT_VERSION"
-
-if [[ "$MODE" == "--check" ]]; then
-    echo "Mode    : Check"
-else
-    echo "Mode    : Bootstrap"
-fi
-
+echo "Mode    : $MODE_NAME"
 echo
 
 # ==========================================
@@ -175,26 +199,40 @@ run_module "Terminal" check_terminal
 
 
 # ==========================================
-# Bootstrap
+# Execution
 # ==========================================
 
-if [[ "$MODE" == "--bootstrap" ]]; then
+case "$MODE" in
 
-    configure_git
+    --check)
 
-    run_module "Homebrew Packages" install_brew_packages
+        ;;
 
-    run_module "Homebrew Casks" install_brew_casks
+    --bootstrap)
 
-    run_module "App Store" install_appstore_apps
+        configure_git
 
-    run_module "VS Code Extensions" install_vscode_extensions
+        run_module "Homebrew Packages" install_brew_packages
 
-    run_module "VS Code Settings" apply_vscode_settings
+        run_module "Homebrew Casks" install_brew_casks
 
-    apply_macos_settings
+        run_module "App Store" install_appstore_apps
 
-fi
+        run_module "VS Code Extensions" install_vscode_extensions
+
+        run_module "VS Code Settings" apply_vscode_settings
+
+        apply_macos_settings
+
+        ;;
+
+    --discover)
+
+        run_discovery
+
+        ;;
+
+esac
 
 show_summary
 
