@@ -10,4 +10,6 @@ run_discovery() {
 
     run_module "Git Discovery" discover_git
 
+    run_module "VS Code Discovery" discover_vscode
+
 }
