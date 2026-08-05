@@ -12,4 +12,6 @@ run_discovery() {
 
     run_module "VS Code Discovery" discover_vscode
 
+    run_module "macOS Discovery" discover_macos
+
 }
