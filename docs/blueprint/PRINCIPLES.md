@@ -142,6 +142,51 @@ Blueprint описывает рабочее окружение пользова�
 
 ---
 
+# 13. Discovery является частью Bootstrap Toolkit
+
+Discovery не создаёт собственную архитектуру.
+
+Все новые возможности должны интегрироваться
+в существующий Mac Bootstrap Toolkit.
+
+Toolkit развивается как единый проект.
+
+Не допускается создание параллельных механизмов,
+дублирующих уже существующую функциональность.
+
+# 14. Симметрия модулей
+
+Каждый модуль Bootstrap
+по возможности должен иметь зеркальный модуль Discovery.
+
+Например
+
+Bootstrap Homebrew
+
+↓
+
+Discovery Homebrew
+
+Bootstrap VS Code
+
+↓
+
+Discovery VS Code
+
+Bootstrap Finder
+
+↓
+
+Discovery Finder
+
+Bootstrap Workspace
+
+↓
+
+Discovery Workspace
+
+Таким образом сохраняется единая архитектура проекта.
+
 # Главная философия проекта
 
 Toolkit не пытается быть умнее пользователя.

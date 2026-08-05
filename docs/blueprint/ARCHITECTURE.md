@@ -1,38 +1,46 @@
-# Архитектурное решение №1
+# Архитектура Toolkit
 
-## Discovery не заменяет Bootstrap
+Toolkit имеет одну точку входа.
 
-Discovery не является отдельной системой восстановления.
+bootstrap.sh
 
-Его задача — автоматически проанализировать существующее рабочее пространство пользователя и сформировать конфигурацию для существующего Mac Bootstrap Toolkit.
+Поддерживаются три режима работы.
 
-Bootstrap остаётся основным механизмом установки и настройки системы.
+bootstrap.sh
 
-Discovery становится механизмом автоматического создания конфигурации.
+├── --check
 
-Таким образом:
+├── --bootstrap
 
-Старый Mac
+└── --discover
 
-↓
+Все режимы используют общую инфраструктуру Toolkit.
 
-Discovery
+- Logger
+- run_module()
+- Summary
+- Verbose Mode
+- Configuration Format
 
-↓
+Discovery не создаёт отдельную архитектуру.
 
-Автоматически создаёт Bootstrap Configuration
-
-↓
-
-Новый Mac
-
-↓
+Он использует существующую архитектуру Bootstrap Toolkit.
 
 Bootstrap
 
+Configuration
+
 ↓
 
-Полностью восстанавливает рабочее пространство пользователя.
+System
+
+Discovery
+
+System
+
+↓
+
+Configuration
 
 # Архитектурное решение №2
 
