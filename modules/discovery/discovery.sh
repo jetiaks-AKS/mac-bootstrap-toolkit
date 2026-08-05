@@ -8,6 +8,8 @@ run_discovery() {
 
     run_module "Homebrew Discovery" discover_homebrew
 
+    run_module "App Store Discovery" discover_appstore
+
     run_module "Git Discovery" discover_git
 
     run_module "VS Code Discovery" discover_vscode

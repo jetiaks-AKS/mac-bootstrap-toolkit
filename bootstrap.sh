@@ -42,6 +42,7 @@ source modules/discovery/homebrew.sh
 source modules/discovery/git.sh
 source modules/discovery/vscode.sh
 source modules/discovery/macos/macos.sh
+source modules/discovery/appstore.sh
 
 # ==========================================
 # Toolkit Configuration
