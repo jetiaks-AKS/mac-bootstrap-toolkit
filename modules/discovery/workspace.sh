@@ -28,6 +28,10 @@ discover_workspace() {
 
     echo
 
+    export_vscode_workspaces
+
+    echo
+
     export_workspace_inventory
 
     echo
