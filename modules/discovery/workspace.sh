@@ -28,6 +28,10 @@ discover_workspace() {
 
     echo
 
+    export_workspace_repositories
+
+    echo
+
     success "Workspace Discovery completed"
 
 }
