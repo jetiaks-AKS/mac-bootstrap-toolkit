@@ -46,6 +46,12 @@ source modules/discovery/appstore.sh
 source modules/discovery/workspace.sh
 
 # ==========================================
+# Bootstrap
+# ==========================================
+
+source modules/bootstrap/workspace/workspace.sh
+
+# ==========================================
 # Toolkit Configuration
 # ==========================================
 
@@ -214,6 +220,10 @@ case "$MODE" in
         ;;
 
     --bootstrap)
+
+        run_module "Workspace" bootstrap_workspace
+
+        echo
 
         configure_git
 
