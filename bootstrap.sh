@@ -43,6 +43,7 @@ source modules/discovery/git.sh
 source modules/discovery/vscode.sh
 source modules/discovery/macos/macos.sh
 source modules/discovery/appstore.sh
+source modules/discovery/workspace.sh
 
 # ==========================================
 # Toolkit Configuration

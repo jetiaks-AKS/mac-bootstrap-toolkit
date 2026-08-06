@@ -16,4 +16,6 @@ run_discovery() {
 
     run_module "macOS Discovery" discover_macos
 
+    run_module "Workspace Discovery" discover_workspace
+
 }
