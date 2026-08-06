@@ -24,13 +24,15 @@ discover_workspace() {
 
     echo
 
+    export_workspace_repositories
+
+    echo
+
     export_workspace_inventory
 
     echo
 
-    export_workspace_repositories
 
-    echo
 
     success "Workspace Discovery completed"
 

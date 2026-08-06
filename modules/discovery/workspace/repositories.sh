@@ -64,45 +64,31 @@ export_workspace_repositories() {
 
         while IFS= read -r git_dir; do
 
-            local repo_path
-            local repo_name
+    local repo_path repo_name
+    local remote current_branch default_branch has_changes
 
-            repo_path="$(dirname "$git_dir")"
-            repo_name="$(basename "$repo_path")"
+    repo_path="$(dirname "$git_dir")"
+    repo_name="$(basename "$repo_path")"
 
-            local remote
-            local current_branch
-            local default_branch
-            local has_changes
+    remote="$(get_repository_remote "$repo_path")"
+    current_branch="$(get_repository_current_branch "$repo_path")"
+    default_branch="$(get_repository_default_branch "$repo_path")"
+    has_changes="$(get_repository_status "$repo_path")"
 
-            remote="$(get_repository_remote "$repo_path")"
-
-            current_branch="$(get_repository_current_branch "$repo_path")"
-
-            default_branch="$(get_repository_default_branch "$repo_path")"
-
-            has_changes="$(get_repository_status "$repo_path")"
-
-            cat >> "$output_file" <<EOF
-            [$repo_name]
-
-            NAME="$repo_name"
-
-            PATH="$repo_path"
-
-            REMOTE="$remote"
-
-            DEFAULT_BRANCH="$default_branch"
-
-            CURRENT_BRANCH="$current_branch"
-
-            HAS_UNCOMMITTED_CHANGES="$has_changes"
+    cat >> "$output_file" <<EOF
+[$repo_name]
+NAME="$repo_name"
+PATH="$repo_path"
+REMOTE="$remote"
+DEFAULT_BRANCH="$default_branch"
+CURRENT_BRANCH="$current_branch"
+HAS_UNCOMMITTED_CHANGES="$has_changes"
 
 EOF
 
-            ((repo_count++))
+    ((repo_count++))
 
-        done < <(find "$workspace_path" -type d -name ".git" 2>/dev/null)
+done < <(find "$workspace_path" -type d -name ".git" 2>/dev/null)
 
     done < "$folders_file"
 
