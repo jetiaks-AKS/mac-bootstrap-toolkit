@@ -11,6 +11,7 @@ source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
 source modules/core/terminal/terminal.sh
 source modules/core/preflight/preflight.sh
+source modules/core/config/config.sh
 
 # ==========================================
 # Applications
