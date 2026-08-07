@@ -24,9 +24,44 @@
 
 ---
 
+## Discovery
+
+Проанализировать текущую систему и сформировать конфигурацию для последующего восстановления.
+
+```bash
+./bootstrap.sh --discover
+```
+
+Discovery автоматически экспортирует:
+
+- Homebrew;
+- Git;
+- VS Code;
+- настройки macOS;
+- Workspace.
+
+Результаты сохраняются в:
+
+```text
+config/generated/
+```
+
+---
+
+## Discovery (Verbose)
+
+Подробный анализ системы.
+
+```bash
+./bootstrap.sh --discover --verbose
+```
+
+Показывает подробную информацию обо всех найденных компонентах и ходе анализа.
+
+
 ## Bootstrap
 
-Полностью подготовить новый Mac.
+Восстановить рабочее окружение на основе конфигурации, подготовленной Discovery Engine.
 
 ```bash
 ./bootstrap.sh --bootstrap
@@ -34,6 +69,7 @@
 
 Выполняет:
 
+- восстановление Workspace;
 - настройку Git;
 - проверку SSH;
 - настройку Terminal;
@@ -139,3 +175,15 @@ exports/macos/
 ```bash
 ./scripts/analyze-macos-settings.sh
 ```
+
+---
+
+# Discovery Output
+
+Все автоматически сгенерированные конфигурации сохраняются в:
+
+```text
+config/generated/
+```
+
+Они используются Bootstrap Engine для последующего восстановления системы.

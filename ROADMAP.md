@@ -1,155 +1,219 @@
 # ROADMAP
 
-План развития проекта **Mac Bootstrap Toolkit**.
+План развития **Mac Bootstrap Toolkit**.
 
 ---
 
-## Long-term Vision
+# Vision
 
-Mac Bootstrap Toolkit развивается как единый набор инструментов для анализа, подготовки и восстановления рабочего пространства macOS.
+Mac Bootstrap Toolkit — это платформа для полного анализа, переноса, восстановления и сопровождения рабочего окружения macOS.
 
-Проект состоит из четырех основных компонентов:
+Проект строится вокруг единого жизненного цикла рабочего пространства пользователя.
 
-• Bootstrap Engine
-• Discovery Engine
-• Blueprint Manager
-• Restore Engine
+```text
+Current Mac
+     │
+     ▼
+ Discovery
+     │
+     ▼
+ Blueprint
+     │
+     ▼
+ Bootstrap
+     │
+     ▼
+ Verification
+     │
+     ▼
+ Restore
+     │
+     ▼
+ Ready-to-Work Mac
+```
 
-Каждый компонент развивается независимо, но использует общую модульную архитектуру Toolkit.
-
-# ✅ Version 1.0.0 (Stable)
-
-## Core
-
-- [x] Модульная архитектура Toolkit.
-- [x] Система логирования (`INFO`, `OK`, `WARN`, `ERROR`).
-- [x] Проверка системы (`--check`).
-- [x] Полная настройка (`--bootstrap`).
-- [x] Команда `--help`.
-- [x] Команда `--version`.
-
-## Preflight
-
-- [x] Проверка подключения к Интернету.
-- [x] Проверка Xcode Command Line Tools.
-- [x] Проверка версии macOS.
-- [x] Проверка прав администратора.
-
-## Homebrew
-
-- [x] Проверка Homebrew.
-- [x] Установка Homebrew.
-- [x] Установка Homebrew Packages.
-- [x] Установка Homebrew Casks.
-
-## Git
-
-- [x] Проверка установки Git.
-- [x] Проверка конфигурации Git.
-- [x] Автоматическая настройка Git.
-
-## SSH
-
-- [x] Проверка SSH.
-
-## Terminal
-
-- [x] Проверка Terminal.
-
-## App Store
-
-- [x] Установка приложений через `mas`.
-- [x] Проверка уже установленных приложений.
-
-## VS Code
-
-- [x] Установка расширений.
-- [x] Применение `settings.json`.
-- [x] Резервное копирование текущих настроек.
-- [x] Проверка актуальности настроек.
-
-## macOS
-
-- [x] Настройка Finder.
-- [x] Настройка Dock.
-- [x] Настройка Keyboard.
-- [x] Настройка Trackpad.
-- [x] Настройка Screenshots.
+В перспективе все этапы будут объединены интеллектуальным AI Assistant.
 
 ---
 
-# ✅ Version 1.1.0 (Stable)
+# Project Architecture
 
-## Интерфейс
+```text
+Mac Bootstrap Toolkit
 
-- [x] Компактный вывод Toolkit.
-- [x] Режим `--verbose`.
-- [x] Quiet Mode по умолчанию.
-- [x] Compact / Verbose режимы.
-- [x] Унифицирован вывод всех модулей.
-- [x] Итоговый Summary.
-- [x] Подсчёт установленных и пропущенных компонентов.
-- [x] Отображение времени выполнения Bootstrap.
-
-## Toolkit
-
-- [x] Verify After Apply.
-- [x] Self-Healing Homebrew Casks.
-- [x] Унифицированная система проверки модулей.
-- [x] Единый принцип `MODULE_CHANGED`.
-
-## Homebrew
-
-- [x] Автоматическое восстановление повреждённых Casks.
-- [x] Проверка фактического состояния приложений.
-
-## VS Code
-
-- [x] Автоматическое резервное копирование `settings.json`.
-- [x] Идемпотентное применение настроек.
+├── Core Engine
+├── Discovery Engine
+├── Blueprint Engine
+├── Bootstrap Engine
+├── Verification Engine
+├── Restore Engine
+└── AI Assistant
+```
 
 ---
 
-# 🚀 Version 1.2.0
+# Core Engine
 
-## Bootstrap Engine
+Фундамент Toolkit.
 
-### Toolkit
+## Реализовано
 
-- [ ] Логирование в файл.
-- [ ] Режим `--dry-run`.
-- [ ] Bootstrap Report.
-- [ ] Backup / Restore конфигурации.
-- [ ] Таймер выполнения каждого модуля.
-- [ ] Индикатор выполнения длительных операций.
+- [x] Модульная архитектура
+- [x] CLI
+- [x] Logging
+- [x] Compact Output
+- [x] Verbose Mode
+- [x] Summary
+- [x] Preflight Checks
+
+## Планируется
+
+- [ ] Bootstrap Report
+- [ ] Dry Run
+- [ ] Execution Timer
+- [ ] File Logging
+- [ ] Progress Indicator
+
+---
+
+# Discovery Engine
+
+Автоматический анализ текущей системы.
+
+## Реализовано
+
+### Foundation
+
+- [x] Discovery Controller
+
+### Homebrew
+
+- [x] Packages
+- [x] Casks
 
 ### Git
 
-- [ ] Показывать изменения конфигурации перед применением.
-
-### SSH
-
-- [ ] Автоматическое создание SSH-ключа.
-- [ ] Добавление ключа в `ssh-agent`.
-- [ ] Проверка подключения к GitHub.
+- [x] Git Configuration
 
 ### VS Code
 
-- [ ] Импорт `keybindings.json`.
-- [ ] Импорт пользовательских `snippets`.
+- [x] Extensions
+- [x] Settings
 
 ### macOS
 
-- [ ] Настройка Menu Bar.
-- [ ] Настройка Power Management.
-- [ ] Настройка Login Items.
+- [x] Finder
+- [x] Dock
+- [x] Keyboard
+- [x] Trackpad
+- [x] Screenshots
 
-### Infrastructure
+### Workspace
 
-- [ ] Создание структуры папки Infrastructure.
-- [ ] Импорт VS Code Workspace.
-- [ ] Клонирование Git-репозиториев.
-- [ ] Создание стандартных каталогов проекта.
+- [x] Workspace
+- [x] User Folders
+- [x] Git Repositories
+- [x] VS Code Projects
+- [x] VS Code Workspaces
+- [x] Inventory
+
+---
+
+## Планируется
+
+### Development
+
+- [ ] SSH
+- [ ] Terminal
+- [ ] Shell
+- [ ] Aliases
+
+### macOS
+
+- [ ] Menu Bar
+- [ ] Mission Control
+- [ ] Login Items
+- [ ] Power Management
+
+### Reports
+
+- [ ] Discovery Report
+
+---
+
+# Blueprint Engine
+
+Создание переносимого Blueprint рабочего пространства.
+
+## Планируется
+
+- [ ] Анализ результатов Discovery
+- [ ] Выбор компонентов
+- [ ] Manifest
+- [ ] Blueprint Package
+- [ ] Blueprint Validation
+
+---
+
+# Bootstrap Engine
+
+Автоматическое восстановление рабочего окружения.
+
+## Реализовано
+
+### Core
+
+- [x] Homebrew
+- [x] Git
+- [x] SSH
+- [x] Terminal
+
+### Applications
+
+- [x] Homebrew Packages
+- [x] Homebrew Casks
+- [x] App Store
+
+### VS Code
+
+- [x] Extensions
+- [x] Settings
+
+### macOS
+
+- [x] Finder
+- [x] Dock
+- [x] Keyboard
+- [x] Trackpad
+- [x] Screenshots
+
+### Workspace
+
+- [x] Folder Restoration
+
+---
+
+## В разработке
+
+### Workspace
+
+- [ ] Git Repositories
+- [ ] VS Code Projects
+- [ ] VS Code Workspaces
+
+---
+
+## Планируется
+
+### Git
+
+- [ ] Repository Update
+- [ ] Branch Verification
+
+### VS Code
+
+- [ ] Keybindings
+- [ ] User Snippets
 
 ### Configuration Profiles
 
@@ -159,108 +223,98 @@ Mac Bootstrap Toolkit развивается как единый набор ин
 
 ---
 
-## Discovery Engine
+# Verification Engine
 
-### Foundation
+Проверка корректности восстановления системы.
 
-- [x] Режим `--discover`
-- [x] Discovery Controller
+## Планируется
 
-### Homebrew
-
-- [x] Export Formulae
-- [ ] Export Casks
-
-### Development
-
-- [ ] Git
-- [ ] SSH
-- [ ] Terminal
-- [ ] Shell / Aliases
-
-### VS Code
-
-- [ ] Extensions
-- [ ] Settings
-- [ ] User Snippets
-
-### macOS
-
-- [ ] Finder
-- [ ] Dock
-- [ ] Keyboard
-- [ ] Trackpad
-- [ ] Mission Control
-- [ ] Menu Bar
-
-### Workspace
-
-- [ ] Applications
-- [ ] User folders
-- [ ] Documents
-- [ ] Projects
-- [ ] Infrastructure
-- [ ] Optional Workspace Archive
-
-### Reports
-
-- [ ] Discovery Report
-
-# 🌟 Version 2.0
-
-## Blueprint Manager
-
-Цель:
-Создание переносимого Blueprint рабочего пространства.
-
-### Blueprint
-
-- [ ] Просмотр результатов Discovery
-- [ ] Выбор компонентов пользователем
-- [ ] Создание Blueprint
-- [ ] Manifest.json
-- [ ] Проверка Blueprint
+- [ ] Homebrew Verification
+- [ ] Git Verification
+- [ ] VS Code Verification
+- [ ] macOS Verification
+- [ ] Workspace Verification
+- [ ] Bootstrap Validation Report
 
 ---
 
-## Restore Engine
+# Restore Engine
 
-Цель:
-Восстановление рабочего пространства из Blueprint.
+Полное восстановление рабочего пространства.
 
-### Restore
+## Планируется
 
-- [ ] Загрузка Blueprint
-- [ ] Анализ содержимого
-- [ ] Выбор компонентов пользователем
-- [ ] Восстановление приложений
-- [ ] Восстановление настроек
-- [ ] Восстановление Workspace
+- [ ] Restore Blueprint
+- [ ] Restore Applications
+- [ ] Restore Settings
+- [ ] Restore Workspace
+- [ ] Restore Reports
 
 ---
 
-## Toolkit
+# AI Assistant
 
-- [ ] Автоматическое тестирование модулей.
-- [ ] Автоматическая проверка после изменений.
-- [ ] Поддержка новых версий macOS.
-- [ ] Поддержка плагинов.
-- [ ] Интеграция с CI/CD.
-- [ ] Автоматическая сборка релизов.
+Интеллектуальный помощник Toolkit.
 
-### Configuration Schema Engine
+## Планируется
 
-- [ ] Единое описание поддерживаемых настроек.
-- [ ] Автоматическая генерация Check.
-- [ ] Автоматическая генерация Apply.
-- [ ] Автоматическая генерация Discovery.
-- [ ] Автоматическая генерация Blueprint.
-- [ ] Автоматическая генерация Restore.
+- [ ] Workspace Analysis
+- [ ] Project Classification
+- [ ] Configuration Recommendations
+- [ ] Intelligent Blueprint Generation
+- [ ] Interactive Bootstrap
+- [ ] Automatic Conflict Resolution
 
-## AI Workspace Analyzer
+---
 
-- [ ] Анализ структуры рабочего пространства.
-- [ ] Определение типа проектов (DevOps, Development, Music, Design и др.).
-- [ ] Рекомендации по переносу компонентов.
-- [ ] Автоматическая классификация папок.
-- [ ] Формирование интеллектуального Blueprint.
+# Documentation
+
+## Планируется
+
+- [ ] Architecture Documentation
+- [ ] Developer Guide
+- [ ] Module Development Guide
+- [ ] Plugin Development Guide
+
+---
+
+# Current Status
+
+Current Development Stage
+
+```text
+Core
+    │
+    ▼
+Discovery
+    │
+    ▼
+Blueprint
+    │
+    ▼
+Bootstrap
+    │
+    ▼
+Verification
+    │
+    ▼
+Restore
+```
+
+Current Progress
+
+```text
+Core Engine           ██████████ 100%
+
+Discovery Engine      ████████░░ 80%
+
+Blueprint Engine      ░░░░░░░░░░   0%
+
+Bootstrap Engine      ███████░░░ 70%
+
+Verification Engine   ░░░░░░░░░░   0%
+
+Restore Engine        ░░░░░░░░░░   0%
+
+AI Assistant          ░░░░░░░░░░   0%
+```

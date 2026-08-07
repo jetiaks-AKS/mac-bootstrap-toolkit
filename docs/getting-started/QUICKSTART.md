@@ -43,7 +43,45 @@ Toolkit проверит:
 
 ---
 
-## 4. Выполнить Bootstrap
+## 4. Выполнить Discovery
+
+Перед переносом рабочего окружения рекомендуется выполнить анализ текущей системы.
+
+Стандартный режим:
+
+```bash
+./bootstrap.sh --discover
+```
+
+Подробный режим:
+
+```bash
+./bootstrap.sh --discover --verbose
+```
+
+Discovery автоматически соберёт информацию о:
+
+- Homebrew;
+- Git;
+- VS Code;
+- настройках macOS;
+- Workspace;
+- структуре каталогов;
+- Git-репозиториях.
+
+Результаты сохраняются в каталоге:
+
+```text
+config/generated/
+```
+
+Полученные конфигурации используются Bootstrap Engine для последующего восстановления системы.
+
+---
+
+## 5. Выполнить Bootstrap
+
+Bootstrap использует конфигурацию, ранее подготовленную Discovery Engine, и автоматически воспроизводит рабочее окружение.
 
 Стандартный режим:
 
@@ -92,6 +130,18 @@ Toolkit автоматически:
 
 ```bash
 ./bootstrap.sh --check --verbose
+```
+
+### Discovery
+
+```bash
+./bootstrap.sh --discover
+```
+
+### Discovery (Verbose)
+
+```bash
+./bootstrap.sh --discover --verbose
 ```
 
 ### Bootstrap
