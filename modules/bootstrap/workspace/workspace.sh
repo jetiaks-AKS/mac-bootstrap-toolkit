@@ -7,6 +7,7 @@
 source modules/bootstrap/workspace/folders.sh
 source modules/bootstrap/workspace/repositories.sh
 source modules/bootstrap/workspace/vscode.sh
+source modules/bootstrap/workspace/repositories-helpers.sh
 
 bootstrap_workspace() {
 

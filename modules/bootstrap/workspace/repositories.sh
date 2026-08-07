@@ -36,10 +36,9 @@ for repository in $repositories; do
     remote=$(config_get "$config_file" "$repository" REMOTE)
     branch=$(config_get "$config_file" "$repository" CURRENT_BRANCH)
 
-    info "Repository : $repository"
-    info "Path       : $path"
-    info "Remote     : $remote"
-    info "Branch     : $branch"
+    info "Repository: $repository"
+
+    repository_verify "$path" "$remote" "$branch"
 
     echo
 
