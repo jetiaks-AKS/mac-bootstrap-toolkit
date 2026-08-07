@@ -62,22 +62,27 @@ repository_verify() {
     local expected_remote="$2"
     local expected_branch="$3"
 
-  if ! repository_exists "$path"; then
+    local repository_cloned=false
 
-    action "Cloning repository..."
+    if ! repository_exists "$path"; then
 
-    repository_clone "$expected_remote" "$path"
+        action "Cloning repository..."
 
-    if ! repository_clone "$expected_remote" "$path"; then
-    error "Failed to clone repository"
-    return 1
+        if ! repository_clone "$expected_remote" "$path"; then
+            error "Failed to clone repository"
+            return 1
+        fi
+
+        success "Repository cloned"
+
+        MODULE_CHANGED=true
+        repository_cloned=true
+
     fi
 
-    success "Repository cloned"
-
-  fi
-
-    success "Repository found"
+    if [[ "$repository_cloned" == false ]]; then
+        success "Repository found"
+    fi
 
     if ! repository_is_git "$path"; then
         warning "Directory is not a Git repository"
