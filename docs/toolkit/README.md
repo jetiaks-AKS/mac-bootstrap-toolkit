@@ -6,45 +6,34 @@
 
 ## Содержание
 
-### Architecture
+### ARCHITECTURE.md
 
-Описание архитектуры Toolkit.
-
-- ARCHITECTURE.md
+Описание общей архитектуры Mac Bootstrap Toolkit.
 
 ---
 
-### Modules
+### MODULES.md
 
-Описание всех модулей Toolkit.
-
-- MODULES.md
+Описание всех модулей Toolkit и их назначения.
 
 ---
 
-### Configuration
+### CONFIGURATION.md
 
-Описание конфигурационных файлов.
-
-- CONFIGURATION.md
+Описание структуры и принципов работы конфигурационных файлов.
 
 ---
 
-### Logging
+### OUTPUT.md
 
-Описание системы логирования.
-
-- LOGGING.md
+Описание формата вывода Toolkit.
 
 ---
 
-### Output
+### LOGGING.md
 
-Описание режима вывода Toolkit.
+Описание единой системы логирования.
 
-- OUTPUT.md
-
----
 
 ## Назначение
 
