@@ -191,6 +191,11 @@ Mac Bootstrap Toolkit
 
 - [x] Folder Restoration
 - [x] Git Repository Restoration
+- [x] Git Branch Restoration
+
+### Git
+
+- [x] Automatic Branch Restore (Checkout)
 
 ---
 
@@ -208,7 +213,6 @@ Mac Bootstrap Toolkit
 ### Git
 
 - [ ] Repository Update (Fetch / Pull)
-- [ ] Automatic Branch Restore (Checkout)
 
 ### VS Code
 
