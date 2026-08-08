@@ -53,6 +53,45 @@ repository_branch() {
 }
 
 # ==========================================
+# Clone Repository
+# ==========================================
+
+repository_clone() {
+
+    local remote="$1"
+    local path="$2"
+
+    git clone "$remote" "$path"
+
+}
+
+# ==========================================
+# Repository Is Clean
+# ==========================================
+
+repository_is_clean() {
+
+    local repository_path="$1"
+
+    git -C "$repository_path" diff --quiet &&
+    git -C "$repository_path" diff --cached --quiet
+
+}
+
+# ==========================================
+# Repository Checkout
+# ==========================================
+
+repository_checkout() {
+
+    local repository_path="$1"
+    local branch="$2"
+
+    git -C "$repository_path" checkout "$branch" >/dev/null 2>&1
+
+}
+
+# ==========================================
 # Verify Repository
 # ==========================================
 
@@ -106,26 +145,37 @@ repository_verify() {
 
     current_branch=$(repository_branch "$path")
 
-    if [[ "$current_branch" != "$expected_branch" ]]; then
-        warning "Branch does not match"
+if [[ "$current_branch" != "$expected_branch" ]]; then
+
+    warning "Branch does not match"
+
+    if ! repository_is_clean "$path"; then
+        warning "Repository has uncommitted changes"
         return 1
     fi
 
-    success "Branch verified"
+    action "Restoring branch..."
 
-    return 0
+    if ! repository_checkout "$path" "$expected_branch"; then
+        error "Failed to restore branch"
+        return 1
+    fi
 
-}
+    MODULE_CHANGED=true
 
-# ==========================================
-# Clone Repository
-# ==========================================
+    success "Branch restored"
 
-repository_clone() {
+    current_branch=$(repository_branch "$path")
 
-    local remote="$1"
-    local path="$2"
+    if [[ "$current_branch" != "$expected_branch" ]]; then
+        error "Branch verification failed"
+        return 1
+    fi
 
-    git clone "$remote" "$path"
+fi
+
+success "Branch verified"
+
+return 0
 
 }
