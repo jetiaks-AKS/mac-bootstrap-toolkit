@@ -190,6 +190,7 @@ Mac Bootstrap Toolkit
 ### Workspace
 
 - [x] Folder Restoration
+- [x] Git Repository Restoration
 
 ---
 
@@ -197,7 +198,6 @@ Mac Bootstrap Toolkit
 
 ### Workspace
 
-- [ ] Git Repositories
 - [ ] VS Code Projects
 - [ ] VS Code Workspaces
 
@@ -207,8 +207,8 @@ Mac Bootstrap Toolkit
 
 ### Git
 
-- [ ] Repository Update
-- [ ] Branch Verification
+- [ ] Repository Update (Fetch / Pull)
+- [ ] Automatic Branch Restore (Checkout)
 
 ### VS Code
 
@@ -221,7 +221,7 @@ Mac Bootstrap Toolkit
 - [ ] Work
 - [ ] Minimal
 
----
+
 
 # Verification Engine
 
@@ -310,7 +310,7 @@ Discovery Engine      ████████░░ 80%
 
 Blueprint Engine      ░░░░░░░░░░   0%
 
-Bootstrap Engine      ███████░░░ 70%
+Bootstrap Engine      ████████░░ 80%
 
 Verification Engine   ░░░░░░░░░░   0%
 
