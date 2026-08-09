@@ -1,324 +1,353 @@
-# ROADMAP
+# Roadmap
 
-План развития **Mac Bootstrap Toolkit**.
+## Назначение
 
----
+Roadmap описывает последовательность развития
+Mac Bootstrap Toolkit.
 
-# Vision
+Архитектура проекта определяется в `ARCHITECTURE.md`.
 
-Mac Bootstrap Toolkit — это платформа для полного анализа, переноса, восстановления и сопровождения рабочего окружения macOS.
+Roadmap определяет:
 
-Проект строится вокруг единого жизненного цикла рабочего пространства пользователя.
+- какие этапы уже завершены;
+- над чем ведётся работа;
+- что планируется дальше;
+- в каком порядке развивается система.
 
-```text
-Current Mac
-     │
-     ▼
- Discovery
-     │
-     ▼
- Blueprint
-     │
-     ▼
- Bootstrap
-     │
-     ▼
- Verification
-     │
-     ▼
- Restore
-     │
-     ▼
- Ready-to-Work Mac
-```
-
-В перспективе все этапы будут объединены интеллектуальным AI Assistant.
+Roadmap не заменяет архитектурную документацию и не описывает
+детали реализации отдельных модулей.
 
 ---
 
-# Project Architecture
+# Этап 1 — Core
 
-```text
-Mac Bootstrap Toolkit
-
-├── Core Engine
-├── Discovery Engine
-├── Blueprint Engine
-├── Bootstrap Engine
-├── Verification Engine
-├── Restore Engine
-└── AI Assistant
-```
-
----
-
-# Core Engine
+**Статус: Completed**
 
 Фундамент Toolkit.
 
-## Реализовано
-
-- [x] Модульная архитектура
-- [x] CLI
-- [x] Logging
-- [x] Compact Output
-- [x] Verbose Mode
-- [x] Summary
-- [x] Preflight Checks
-
-## Планируется
-
-- [ ] Bootstrap Report
-- [ ] Dry Run
-- [ ] Execution Timer
-- [ ] File Logging
-- [ ] Progress Indicator
+- [x] Common utilities
+- [x] Logger
+- [x] Preflight
+- [x] Homebrew
+- [x] Git
+- [x] SSH
+- [x] Terminal
+- [x] Configuration Engine
+- [x] базовая структура модулей
+- [x] единый Bootstrap Engine
 
 ---
 
-# Discovery Engine
+# Этап 2 — Discovery Engine
 
-Автоматический анализ текущей системы.
+**Статус: In Development**
 
-## Реализовано
+Автоматическое исследование текущего Mac.
 
-### Foundation
+## Applications
 
-- [x] Discovery Controller
+- [x] Homebrew Packages
+- [x] Homebrew Casks
+- [x] App Store
 
-### Homebrew
+## Development Environment
 
-- [x] Packages
-- [x] Casks
+- [x] Git
+- [x] VS Code Extensions
+- [x] VS Code Settings
 
-### Git
+## Workspace
 
-- [x] Git Configuration
+- [x] Workspace folders
+- [x] Git repositories
+- [x] Repository metadata
+- [ ] VS Code Projects
+- [ ] VS Code Workspaces
 
-### VS Code
-
-- [x] Extensions
-- [x] Settings
-
-### macOS
+## macOS
 
 - [x] Finder
 - [x] Dock
 - [x] Keyboard
 - [x] Trackpad
 - [x] Screenshots
-
-### Workspace
-
-- [x] Workspace
-- [x] User Folders
-- [x] Git Repositories
-- [x] VS Code Projects
-- [x] VS Code Workspaces
-- [x] Inventory
-
----
-
-## Планируется
-
-### Development
-
 - [ ] SSH
 - [ ] Terminal
 - [ ] Shell
 - [ ] Aliases
-
-### macOS
-
 - [ ] Menu Bar
 - [ ] Mission Control
 - [ ] Login Items
 - [ ] Power Management
 
-### Reports
+## Discovery Infrastructure
 
+- [x] Generated configuration
+- [x] Discovery modules
+- [x] Configuration export
+- [x] базовый Discovery workflow
 - [ ] Discovery Report
+- [ ] расширенная валидация Discovery
 
 ---
 
-# Blueprint Engine
+# Этап 3 — Generated Configuration
 
-Создание переносимого Blueprint рабочего пространства.
+**Статус: Completed**
 
-## Планируется
+Формирование воспроизводимого описания обнаруженного окружения.
 
-- [ ] Анализ результатов Discovery
-- [ ] Выбор компонентов
-- [ ] Manifest
-- [ ] Blueprint Package
-- [ ] Blueprint Validation
+- [x] `config/generated/`
+- [x] Applications configuration
+- [x] Git configuration
+- [x] VS Code configuration
+- [x] Workspace configuration
+- [x] macOS Settings configuration
+- [x] единый принцип Discovery → Generated Configuration → Bootstrap
+- [x] устранение дублирования пользовательских настроек в Bootstrap-коде
 
 ---
 
-# Bootstrap Engine
+# Этап 4 — Bootstrap Engine
 
-Автоматическое восстановление рабочего окружения.
+**Статус: In Development**
 
-## Реализовано
+Восстановление рабочего окружения на основе конфигурации.
 
-### Core
+## Core
 
 - [x] Homebrew
 - [x] Git
 - [x] SSH
 - [x] Terminal
 
-### Applications
+## Applications
 
 - [x] Homebrew Packages
 - [x] Homebrew Casks
 - [x] App Store
 
-### VS Code
+## VS Code
 
 - [x] Extensions
 - [x] Settings
+- [ ] Projects
+- [ ] Workspaces
+- [ ] Keybindings
+- [ ] Snippets
+- [ ] Profiles
 
-### macOS
+## Workspace
+
+- [x] Folders
+- [x] Git repositories
+- [x] Remote verification
+- [x] Branch verification
+- [x] Repository restoration
+- [ ] VS Code Projects
+- [ ] VS Code Workspaces
+
+## macOS Settings
 
 - [x] Finder
 - [x] Dock
 - [x] Keyboard
 - [x] Trackpad
 - [x] Screenshots
-
-### Workspace
-
-- [x] Folder Restoration
-- [x] Git Repository Restoration
-- [x] Git Branch Restoration
-
-### Git
-
-- [x] Automatic Branch Restore (Checkout)
+- [ ] дополнительные системные настройки
 
 ---
 
-## В разработке
+# Этап 5 — Blueprint Engine
 
-### Workspace
+**Статус: Planned**
 
-- [ ] VS Code Projects
-- [ ] VS Code Workspaces
+Формирование целевого профиля рабочего окружения.
 
----
+- [ ] Blueprint format
+- [ ] Component selection
+- [ ] Required / Optional components
+- [ ] Parameter overrides
+- [ ] Component exclusions
+- [ ] Blueprint validation
+- [ ] Blueprint versioning
+- [ ] Blueprint import / export
 
-## Планируется
+Основная цель:
 
-### Git
-
-- [ ] Repository Update (Fetch / Pull)
-
-### VS Code
-
-- [ ] Keybindings
-- [ ] User Snippets
-
-### Configuration Profiles
-
-- [ ] Personal
-- [ ] Work
-- [ ] Minimal
-
-
-
-# Verification Engine
-
-Проверка корректности восстановления системы.
-
-## Планируется
-
-- [ ] Homebrew Verification
-- [ ] Git Verification
-- [ ] VS Code Verification
-- [ ] macOS Verification
-- [ ] Workspace Verification
-- [ ] Bootstrap Validation Report
+```text
+Observed State
+      ↓
+   Blueprint
+      ↓
+Desired State
+````
 
 ---
 
-# Restore Engine
+# Этап 6 — Verification Engine
 
-Полное восстановление рабочего пространства.
+**Статус: Planned**
 
-## Планируется
+Проверка соответствия текущего Mac целевому состоянию.
 
-- [ ] Restore Blueprint
-- [ ] Restore Applications
-- [ ] Restore Settings
-- [ ] Restore Workspace
-- [ ] Restore Reports
+* [ ] State comparison
+* [ ] Component verification
+* [ ] Configuration verification
+* [ ] Missing component detection
+* [ ] Configuration mismatch detection
+* [ ] Verification report
+* [ ] Verification summary
 
----
+Основная цель:
 
-# AI Assistant
-
-Интеллектуальный помощник Toolkit.
-
-## Планируется
-
-- [ ] Workspace Analysis
-- [ ] Project Classification
-- [ ] Configuration Recommendations
-- [ ] Intelligent Blueprint Generation
-- [ ] Interactive Bootstrap
-- [ ] Automatic Conflict Resolution
+```text
+Current State
+      ↓
+Verification
+      ↓
+Differences
+```
 
 ---
 
-# Documentation
+# Этап 7 — Restore Engine
 
-## Планируется
+**Статус: Planned**
 
-- [ ] Architecture Documentation
-- [ ] Developer Guide
-- [ ] Module Development Guide
-- [ ] Plugin Development Guide
+Полное воспроизводимое восстановление рабочего окружения.
+
+* [ ] Restore workflow
+* [ ] Dependency handling
+* [ ] Restore ordering
+* [ ] Restore verification
+* [ ] Recovery from partial failure
+* [ ] Restore report
+* [ ] Restore summary
+
+Основная цель:
+
+```text
+Blueprint
+    ↓
+Verification
+    ↓
+Bootstrap
+    ↓
+Restore
+    ↓
+Verified Mac
+```
 
 ---
 
-# Current Status
+# Этап 8 — AI Assistant
 
-Current Development Stage
+**Статус: Planned**
+
+Интеллектуальный слой поверх существующей архитектуры.
+
+* [ ] Environment analysis
+* [ ] Configuration analysis
+* [ ] Blueprint generation
+* [ ] Difference explanation
+* [ ] Troubleshooting
+* [ ] Restore assistance
+* [ ] Recommendations
+* [ ] Automated remediation suggestions
+
+AI Assistant не заменяет существующие компоненты Toolkit,
+а использует их данные и результаты.
+
+---
+
+# Этап 9 — Quality & Reliability
+
+**Статус: Planned**
+
+Повышение надёжности и качества всей системы.
+
+* [ ] Полная проверка идемпотентности модулей
+* [ ] Расширенная обработка ошибок
+* [ ] Единый стиль сообщений
+* [ ] Расширенный Verbose Mode
+* [ ] Улучшение Summary
+* [ ] Конфигурационная валидация
+* [ ] Regression tests
+* [ ] ShellCheck / code quality
+* [ ] Documentation review
+
+---
+
+# Текущий фокус
+
+Текущий приоритет:
+
+```text
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Bootstrap
+```
+
+Эта часть архитектуры формирует основу для следующих этапов.
+
+После стабилизации текущего цикла основным следующим архитектурным
+этапом является Blueprint Engine.
+
+---
+
+# Порядок развития
 
 ```text
 Core
-    │
-    ▼
+  ↓
 Discovery
-    │
-    ▼
-Blueprint
-    │
-    ▼
+  ↓
+Generated Configuration
+  ↓
 Bootstrap
-    │
-    ▼
+  ↓
+Blueprint
+  ↓
 Verification
-    │
-    ▼
+  ↓
 Restore
+  ↓
+AI Assistant
 ```
 
-Current Progress
+Quality & Reliability развивается параллельно всем этапам.
+
+---
+
+# Правило Roadmap
+
+Roadmap показывает **путь реализации**, а не полный список
+архитектурных возможностей.
+
+Архитектура проекта определяется в:
 
 ```text
-Core Engine           ██████████ 100%
+ARCHITECTURE.md
+```
 
-Discovery Engine      ████████░░ 80%
+Конкретные ближайшие задачи находятся в:
 
-Blueprint Engine      ░░░░░░░░░░   0%
+```text
+TODO.md
+```
 
-Bootstrap Engine      ████████░░ 80%
+История завершённых изменений находится в:
 
-Verification Engine   ░░░░░░░░░░   0%
+```text
+CHANGELOG.md
+```
 
-Restore Engine        ░░░░░░░░░░   0%
+При добавлении новой функции Roadmap обновляется только в части
+её статуса и этапа реализации.
 
-AI Assistant          ░░░░░░░░░░   0%
+Структура целевой архитектуры при этом не изменяется.
+
 ```

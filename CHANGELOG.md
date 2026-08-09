@@ -139,6 +139,36 @@
 
 ## [1.2.0-dev]
 
+### Changed
+
+#### Configuration Architecture
+
+- Bootstrap переведён на использование автоматически сгенерированной конфигурации из `config/generated/`.
+- Устранено дублирование пользовательских настроек между Discovery и Bootstrap.
+- Конфигурации Homebrew Packages, Homebrew Casks и App Store переведены на generated configuration.
+- Git переведён на `config/generated/git.conf`.
+- VS Code Extensions переведён на `config/generated/vscode-extensions.conf`.
+- VS Code Settings переведён на `config/generated/vscode/settings.json`.
+- Workspace Folders и Repositories используют generated configuration.
+- Настройки Finder, Dock, Keyboard, Trackpad и Screenshots переведены на generated configuration.
+- Добавлен общий механизм применения macOS defaults из generated configuration.
+- Закреплён принцип `Discovery → Generated Configuration → Bootstrap`.
+
+#### Bootstrap
+
+- Унифицирована работа macOS Settings через общий configuration executor.
+- Bootstrap-модули macOS больше не содержат собственных пользовательских значений настроек.
+- Проверка, применение и повторная проверка macOS Settings переведены на общий механизм.
+- Git и VS Code Settings переведены на актуальные generated-конфигурации.
+
+#### Documentation
+
+- Архитектурная документация переработана с учётом целевой архитектуры проекта.
+- Документация разделена по назначению: Architecture, Modules, Configuration, Logging, Output, Roadmap и TODO.
+- Архитектурные документы переведены на модель целевой системы, а не только текущей реализации.
+- Зафиксировано разделение Observed State и Desired State.
+- Зафиксирован жизненный цикл `Discovery → Generated Configuration → Blueprint → Verification → Bootstrap → Restore`.
+
 ### Added
 
 #### Discovery Engine
