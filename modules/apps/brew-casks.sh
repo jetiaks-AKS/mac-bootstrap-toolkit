@@ -94,7 +94,7 @@ install_brew_casks() {
 
     fi
 
-    local config_file="config/brew-casks.conf"
+    local config_file="config/generated/brew-casks.conf"
 
     if [[ ! -f "$config_file" ]]; then
 

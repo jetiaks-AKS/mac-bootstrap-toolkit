@@ -55,7 +55,7 @@ install_vscode_extensions() {
 
     check_vscode_cli || return 1
 
-    local config_file="config/vscode-extensions.conf"
+    local config_file="config/generated/vscode-extensions.conf"
 
     if [[ ! -f "$config_file" ]]; then
 

@@ -4,6 +4,7 @@
 # macOS Settings
 # ==========================================
 
+source modules/settings/macos/defaults.sh
 source modules/settings/macos/finder.sh
 source modules/settings/macos/dock.sh
 source modules/settings/macos/keyboard.sh
