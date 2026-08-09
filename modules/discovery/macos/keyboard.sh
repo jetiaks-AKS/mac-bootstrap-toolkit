@@ -14,8 +14,8 @@ export_keyboard_settings() {
     action "Exporting Keyboard configuration..."
 
     cat > "$output_file" <<EOF
-KEYBOARD_KEY_REPEAT="$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null)"
-KEYBOARD_INITIAL_KEY_REPEAT="$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)"
+NSGlobalDomain|KeyRepeat|int|$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null)
+NSGlobalDomain|InitialKeyRepeat|int|$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)
 EOF
 
     success "Keyboard configuration exported"

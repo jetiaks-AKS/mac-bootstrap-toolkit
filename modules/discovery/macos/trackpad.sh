@@ -14,9 +14,9 @@ export_trackpad_settings() {
     action "Exporting Trackpad configuration..."
 
     cat > "$output_file" <<EOF
-TRACKPAD_CLICKING="$(defaults read com.apple.AppleMultitouchTrackpad Clicking 2>/dev/null)"
-TRACKPAD_SCALING="$(defaults read NSGlobalDomain com.apple.trackpad.scaling 2>/dev/null)"
-TRACKPAD_RIGHT_CLICK="$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)"
+com.apple.AppleMultitouchTrackpad|Clicking|bool|$(defaults read com.apple.AppleMultitouchTrackpad Clicking 2>/dev/null)
+NSGlobalDomain|com.apple.trackpad.scaling|int|$(defaults read NSGlobalDomain com.apple.trackpad.scaling 2>/dev/null)
+com.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)
 EOF
 
     success "Trackpad configuration exported"

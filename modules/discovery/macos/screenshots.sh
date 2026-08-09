@@ -14,7 +14,7 @@ export_screenshots_settings() {
     action "Exporting Screenshots configuration..."
 
     cat > "$output_file" <<EOF
-SCREENSHOTS_LOCATION="$(defaults read com.apple.screencapture location 2>/dev/null)"
+com.apple.screencapture|location|string|$(defaults read com.apple.screencapture location 2>/dev/null)
 EOF
 
     success "Screenshots configuration exported"
