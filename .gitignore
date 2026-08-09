@@ -18,3 +18,7 @@ logs/
 .env.local
 
 exports/
+
+# Generated machine-specific configuration
+
+config/generated/

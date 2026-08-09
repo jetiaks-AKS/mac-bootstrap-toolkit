@@ -1,28 +1,47 @@
 # Mac Bootstrap Toolkit
 
-Автоматизированная подготовка и восстановление рабочего окружения macOS.
+Automated preparation and restoration of a macOS working environment.
 
-**Текущая версия: 2.0.0 Stable**
-
----
-
-## Назначение
-
-Mac Bootstrap Toolkit помогает воспроизводимо подготовить рабочее окружение macOS.
-
-Toolkit может:
-
-- проанализировать существующее окружение;
-- автоматически сформировать его конфигурацию;
-- использовать эту конфигурацию для Bootstrap нового Mac;
-- проверять текущее состояние поддерживаемых компонентов;
-- при необходимости восстанавливать их.
-
-Главная идея проекта — переносить не всю систему, а именно **рабочее пространство пользователя**.
+**Current version: 2.0.0 Stable**
 
 ---
 
-## Основной workflow
+## Purpose
+
+Mac Bootstrap Toolkit helps reproducibly prepare a macOS working environment.
+
+The Toolkit can:
+
+- analyze an existing environment;
+- automatically generate its configuration;
+- use that configuration to bootstrap a new Mac;
+- check the current state of supported components;
+- restore them when necessary.
+
+The main idea of the project is to transfer not the entire system, but specifically the user's **working environment**.
+
+---
+
+## Project Status
+
+Mac Bootstrap Toolkit is an independent hobby project created primarily as
+a practical tool for quickly transferring a personal working environment to
+a new Mac.
+
+The Toolkit already fulfills its original purpose: it can discover an
+existing working environment, generate its configuration, and use that
+configuration to bootstrap a new Mac.
+
+There is still plenty of room for further development, improvements and new
+features. The project is therefore continuing to evolve beyond its original
+goal.
+
+Ideas, suggestions, feedback and improvements are welcome. However, this is
+a personal project developed in my spare time, so there is no fixed support
+schedule or expectation of continuous day-to-day maintenance.
+
+
+## Main Workflow
 
 ```text
 Existing Mac
@@ -36,23 +55,23 @@ Generated Configuration
 Ready-to-Work Mac
 ````
 
-Discovery автоматически анализирует существующее окружение и формирует конфигурацию, которую затем использует Bootstrap.
+Discovery automatically analyzes the existing environment and generates configuration that is then used by Bootstrap.
 
-Этот подход позволяет постепенно развивать Toolkit от простого Bootstrap-инструмента к полноценной системе воспроизводимого рабочего окружения.
+This approach allows the Toolkit to gradually evolve from a simple Bootstrap tool into a complete system for reproducible macOS working environments.
 
 ---
 
-## Возможности
+## Features
 
 ### Bootstrap
 
 * Homebrew Packages;
 * Homebrew Casks;
-* приложения App Store;
+* App Store applications;
 * Git;
 * VS Code Extensions;
 * VS Code Settings;
-* настройки macOS;
+* macOS Settings;
 * Workspace Folders;
 * Git Repositories;
 * Git Branch Restoration.
@@ -64,13 +83,13 @@ Discovery автоматически анализирует существующ
 * Git Configuration;
 * VS Code Extensions;
 * VS Code Settings;
-* настройки macOS;
-* структура Workspace;
+* macOS Settings;
+* Workspace structure;
 * Workspace Folders;
 * Git Repositories;
 * Workspace Inventory.
 
-Результаты Discovery сохраняются в:
+Discovery results are stored in:
 
 ```text
 config/generated/
@@ -78,40 +97,40 @@ config/generated/
 
 ---
 
-## Принципы
+## Principles
 
-* **Discovery First** — существующее окружение сначала анализируется, а не описывается вручную.
-* **Generated Configuration** — результаты Discovery используются как конфигурация для Bootstrap.
-* **Idempotent** — повторный запуск не должен выполнять ненужные изменения.
-* **Verify After Apply** — после применения изменений состояние проверяется повторно.
-* **Self-Healing** — поддерживаемые компоненты могут автоматически восстанавливаться.
-* **Quiet by Default** — стандартный вывод остаётся компактным.
-* **Verbose When Needed** — `--verbose` показывает подробную информацию.
-* **Modular Architecture** — функциональность разделена на независимые модули.
+* **Discovery First** — the existing environment is analyzed first instead of being described manually.
+* **Generated Configuration** — Discovery results are used as configuration for Bootstrap.
+* **Idempotent** — repeated runs should not perform unnecessary changes.
+* **Verify After Apply** — the resulting state is checked again after changes are applied.
+* **Self-Healing** — supported components can be automatically restored when necessary.
+* **Quiet by Default** — standard output remains compact.
+* **Verbose When Needed** — `--verbose` provides detailed information.
+* **Modular Architecture** — functionality is divided into independent modules.
 
 ---
 
 ## CLI
 
-Проверка системы:
+Check the system:
 
 ```bash
 ./bootstrap.sh --check
 ```
 
-Discovery текущего окружения:
+Discover the current environment:
 
 ```bash
 ./bootstrap.sh --discover
 ```
 
-Bootstrap рабочего окружения:
+Bootstrap the working environment:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
-Подробный вывод:
+Verbose output:
 
 ```bash
 ./bootstrap.sh --check --verbose
@@ -119,7 +138,7 @@ Bootstrap рабочего окружения:
 ./bootstrap.sh --bootstrap --verbose
 ```
 
-Дополнительно:
+Additional commands:
 
 ```bash
 ./bootstrap.sh --help
@@ -128,7 +147,7 @@ Bootstrap рабочего окружения:
 
 ---
 
-## Структура
+## Structure
 
 ```text
 .
@@ -141,9 +160,9 @@ Bootstrap рабочего окружения:
 └── bootstrap.sh
 ```
 
-Основная логика Toolkit находится в `modules/`.
+The main Toolkit logic is located in `modules/`.
 
-Автоматически обнаруженная конфигурация находится в:
+Automatically discovered configuration is stored in:
 
 ```text
 config/generated/
@@ -151,7 +170,7 @@ config/generated/
 
 ---
 
-## Реализовано
+## Implemented
 
 ### Core
 
@@ -192,12 +211,13 @@ config/generated/
 
 ---
 
-## Развитие проекта
+## Project Development
 
-Текущая версия 2.0.0 формирует стабильную основу для дальнейшего развития Toolkit.
+Version 2.0.0 establishes a stable foundation for further development of the Toolkit.
 
-Следующие архитектурные этапы:
+The following architectural stages are planned:
 
+```text
 Discovery
      ↓
 Generated Configuration
@@ -209,51 +229,53 @@ Verification
 Bootstrap
      ↓
 Restore
+```
 
-Blueprint, Verification, Restore и AI Assistant являются следующими этапами развития проекта и не являются частью текущего стабильного функционала.
+Blueprint, Verification, Restore and AI Assistant are future development stages and are not part of the current stable functionality.
 
-Подробный план развития описан в `ROADMAP.md`.
-
----
-
-## Документация
-
-Документация проекта разделена по назначению:
-
-- `docs/getting-started/` — начало работы и основные сценарии.
-- `docs/toolkit/` — архитектура и устройство Toolkit.
-- `docs/macos/` — документация по macOS.
-- `docs/git/` — Git и рабочие процессы.
-- `docs/blueprint/` — материалы по Blueprint.
-- `docs/ideas/` — идеи и направления развития.
-
-Основные документы:
-
-- `ROADMAP.md` — план развития проекта.
-- `TODO.md` — текущие технические задачи.
-- `CHANGELOG.md` — история изменений.
+The detailed development plan is described in `ROADMAP.md`.
 
 ---
 
-## Статус
+## Documentation
 
-| Параметр     | Значение   |
-| ------------ | ---------- |
-| Статус       | **Stable** |
-| Версия       | **2.0.0**  |
-| Платформа    | macOS      |
-| Язык         | Bash       |
-| Архитектура  | Модульная  |
-| Конфигурация | Generated  |
-| Лицензия     | MIT        |
+Project documentation is organized by purpose:
+
+* `docs/getting-started/` — getting started and common usage scenarios.
+* `docs/toolkit/` — Toolkit architecture and internals.
+* `docs/macos/` — macOS documentation.
+* `docs/git/` — Git and development workflows.
+* `docs/blueprint/` — Blueprint materials.
+* `docs/ideas/` — ideas and future development directions.
+
+Main documents:
+
+* `ROADMAP.md` — project development roadmap.
+* `TODO.md` — current technical tasks.
+* `CHANGELOG.md` — project change history.
 
 ---
 
-Mac Bootstrap Toolkit развивается как система воспроизводимого рабочего окружения macOS.
+## Status
 
-Версия **2.0.0 Stable** фиксирует стабильную основу Toolkit:
-**Discovery → Generated Configuration → Bootstrap**.
+| Parameter     | Value      |
+| ------------- | ---------- |
+| Status        | **Stable** |
+| Version       | **2.0.0**  |
+| Platform      | macOS      |
+| Language      | Bash       |
+| Architecture  | Modular    |
+| Configuration | Generated  |
+| License       | MIT        |
 
-Эта архитектура является основой для дальнейшего развития проекта.
+---
+
+Mac Bootstrap Toolkit is evolving as a system for reproducible macOS working environments.
+
+Version **2.0.0 Stable** establishes the stable foundation of the Toolkit:
+
+**Discovery → Generated Configuration → Bootstrap**
+
+This architecture serves as the foundation for the further development of the project.
 
 ```
