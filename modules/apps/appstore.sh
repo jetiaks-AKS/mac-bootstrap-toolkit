@@ -46,7 +46,7 @@ install_appstore_apps() {
 
     fi
 
-    local config_file="config/appstore.conf"
+    local config_file="config/generated/appstore.conf"
 
     if [[ ! -f "$config_file" ]]; then
 

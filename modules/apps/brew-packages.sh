@@ -13,7 +13,7 @@ install_brew_packages() {
 
     fi
 
-    local config_file="config/brew-packages.conf"
+    local config_file="config/generated/brew-packages.conf"
 
     if [[ ! -f "$config_file" ]]; then
 
