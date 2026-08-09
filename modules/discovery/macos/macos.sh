@@ -9,7 +9,7 @@ source modules/discovery/macos/dock.sh
 source modules/discovery/macos/keyboard.sh
 source modules/discovery/macos/trackpad.sh
 source modules/discovery/macos/screenshots.sh
-source modules/discovery/macos/dock.sh
+
 
 discover_macos() {
 

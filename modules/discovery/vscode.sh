@@ -25,6 +25,16 @@ export_vscode_extensions() {
     local extension_count
     extension_count=$(wc -l < "$output_file" | tr -d ' ')
 
+    if [[ "$VERBOSE" == true ]]; then
+
+        while IFS= read -r extension; do
+
+            [[ -n "$extension" ]] && detail "$extension"
+
+        done < "$output_file"
+
+    fi
+
     success "$extension_count Extensions exported"
 
 }
@@ -49,6 +59,13 @@ export_vscode_settings() {
     action "Exporting VS Code Settings..."
 
     cp "$source_file" "$output_file"
+
+    if [[ "$VERBOSE" == true ]]; then
+
+        detail "Source: $source_file"
+        detail "Configuration saved to: $output_file"
+
+    fi
 
     success "VS Code Settings exported"
 

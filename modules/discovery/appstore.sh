@@ -20,10 +20,28 @@ discover_appstore() {
 
     action "Exporting App Store applications..."
 
-    MAS_NO_AUTO_INDEX=1 mas list > "$output_file"
+    MAS_NO_AUTO_INDEX=1 mas list | awk '{
+        app_id=$1
+        $1=""
+        sub(/^[[:space:]]+/, "")
+        sub(/[[:space:]]+\([^()]+\)$/, "")
+        print app_id "|" $0
+    }' > "$output_file"
 
     local app_count
     app_count=$(wc -l < "$output_file" | tr -d ' ')
+
+    if [[ "$VERBOSE" == true ]]; then
+
+        while IFS="|" read -r app_id app_name; do
+
+            [[ -z "$app_id" ]] && continue
+
+            detail "$app_id  $app_name"
+
+        done < "$output_file"
+
+    fi
 
     success "$app_count App Store application(s) exported"
 

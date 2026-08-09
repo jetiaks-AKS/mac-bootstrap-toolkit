@@ -58,6 +58,16 @@ SYSTEM_FOLDERS=$system
 TOTAL_REPOSITORIES=$repositories
 EOF
 
+    if [[ "$VERBOSE" == true ]]; then
+
+        detail "Total folders: $total"
+        detail "Workspace folders: $workspace"
+        detail "User folders: $user"
+        detail "System folders: $system"
+        detail "Git repositories: $repositories"
+
+    fi
+
     success "Workspace inventory generated"
 
 }

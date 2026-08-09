@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # ==========================================
 # VS Code Workspace Discovery
 # ==========================================
@@ -38,6 +37,13 @@ export_vscode_workspaces() {
 PATH="$workspace_file"
 
 EOF
+
+            if [[ "$VERBOSE" == true ]]; then
+
+                detail "Workspace: $workspace_name"
+                detail "Path: $workspace_file"
+
+            fi
 
             ((workspace_count++))
 

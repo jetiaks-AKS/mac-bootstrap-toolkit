@@ -216,9 +216,41 @@ show_summary() {
     section "Summary"
 
     if [[ $ERROR_COUNT -eq 0 ]]; then
-        success "Bootstrap completed successfully"
+
+        case "$MODE" in
+
+            --discover)
+                success "Discovery completed successfully"
+                ;;
+
+            --bootstrap)
+                success "Bootstrap completed successfully"
+                ;;
+
+            --check)
+                success "System check completed successfully"
+                ;;
+
+        esac
+
     else
-        error "Bootstrap completed with errors"
+
+        case "$MODE" in
+
+            --discover)
+                error "Discovery completed with errors"
+                ;;
+
+            --bootstrap)
+                error "Bootstrap completed with errors"
+                ;;
+
+            --check)
+                error "System check completed with errors"
+                ;;
+
+        esac
+
     fi
 
     echo

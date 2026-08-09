@@ -17,6 +17,9 @@ export_screenshots_settings() {
 com.apple.screencapture|location|string|$(defaults read com.apple.screencapture location 2>/dev/null)
 EOF
 
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
     success "Screenshots configuration exported"
 
 }

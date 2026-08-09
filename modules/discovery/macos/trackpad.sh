@@ -19,6 +19,9 @@ NSGlobalDomain|com.apple.trackpad.scaling|int|$(defaults read NSGlobalDomain com
 com.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)
 EOF
 
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
     success "Trackpad configuration exported"
 
 }

@@ -18,6 +18,9 @@ NSGlobalDomain|KeyRepeat|int|$(defaults read NSGlobalDomain KeyRepeat 2>/dev/nul
 NSGlobalDomain|InitialKeyRepeat|int|$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)
 EOF
 
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
     success "Keyboard configuration exported"
 
 }

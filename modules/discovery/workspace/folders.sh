@@ -51,6 +51,10 @@ export_workspace_folders() {
 
         echo "$name|$type" >> "$output_file"
 
+        if [[ "$VERBOSE" == true ]]; then
+            detail "$name ($type)"
+        fi
+
     done
 
     local folder_count

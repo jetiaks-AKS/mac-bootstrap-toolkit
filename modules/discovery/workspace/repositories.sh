@@ -64,36 +64,36 @@ export_workspace_repositories() {
 
         while IFS= read -r git_dir; do
 
-    local repo_path repo_name
-    local remote current_branch default_branch has_changes
-    local has_vscode_folder has_settings has_tasks has_launch has_extensions
+            local repo_path repo_name
+            local remote current_branch default_branch has_changes
+            local has_vscode_folder has_settings has_tasks has_launch has_extensions
 
-    repo_path="$(dirname "$git_dir")"
-    repo_name="$(basename "$repo_path")"
+            repo_path="$(dirname "$git_dir")"
+            repo_name="$(basename "$repo_path")"
 
-    remote="$(get_repository_remote "$repo_path")"
-    current_branch="$(get_repository_current_branch "$repo_path")"
-    default_branch="$(get_repository_default_branch "$repo_path")"
-    has_changes="$(get_repository_status "$repo_path")"
+            remote="$(get_repository_remote "$repo_path")"
+            current_branch="$(get_repository_current_branch "$repo_path")"
+            default_branch="$(get_repository_default_branch "$repo_path")"
+            has_changes="$(get_repository_status "$repo_path")"
 
-    has_vscode_folder="false"
-    has_settings="false"
-    has_tasks="false"
-    has_launch="false"
-    has_extensions="false"
+            has_vscode_folder="false"
+            has_settings="false"
+            has_tasks="false"
+            has_launch="false"
+            has_extensions="false"
 
-    if [[ -d "$repo_path/.vscode" ]]; then
+            if [[ -d "$repo_path/.vscode" ]]; then
 
-        has_vscode_folder="true"
+                has_vscode_folder="true"
 
-        [[ -f "$repo_path/.vscode/settings.json" ]] && has_settings="true"
-        [[ -f "$repo_path/.vscode/tasks.json" ]] && has_tasks="true"
-        [[ -f "$repo_path/.vscode/launch.json" ]] && has_launch="true"
-        [[ -f "$repo_path/.vscode/extensions.json" ]] && has_extensions="true"
+                [[ -f "$repo_path/.vscode/settings.json" ]] && has_settings="true"
+                [[ -f "$repo_path/.vscode/tasks.json" ]] && has_tasks="true"
+                [[ -f "$repo_path/.vscode/launch.json" ]] && has_launch="true"
+                [[ -f "$repo_path/.vscode/extensions.json" ]] && has_extensions="true"
 
-    fi
+            fi
 
-    cat >> "$output_file" <<EOF
+            cat >> "$output_file" <<EOF
 [$repo_name]
 NAME="$repo_name"
 PATH="$repo_path"
@@ -109,9 +109,21 @@ HAS_EXTENSIONS="$has_extensions"
 
 EOF
 
-    ((repo_count++))
+            if [[ "$VERBOSE" == true ]]; then
 
-done < <(find "$workspace_path" -type d -name ".git" 2>/dev/null)
+                detail "Repository: $repo_name"
+                detail "Path: $repo_path"
+                detail "Remote: ${remote:-none}"
+                detail "Current branch: ${current_branch:-none}"
+                detail "Default branch: ${default_branch:-none}"
+                detail "Uncommitted changes: $has_changes"
+                detail "VS Code folder: $has_vscode_folder"
+
+            fi
+
+            ((repo_count++))
+
+        done < <(find "$workspace_path" -type d -name ".git" 2>/dev/null)
 
     done < "$folders_file"
 

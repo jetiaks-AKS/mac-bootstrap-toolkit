@@ -21,6 +21,9 @@ com.apple.finder|_FXSortFoldersFirst|bool|$(defaults read com.apple.finder _FXSo
 com.apple.finder|FXRemoveOldTrashItems|bool|$(defaults read com.apple.finder FXRemoveOldTrashItems 2>/dev/null)
 EOF
 
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
     success "Finder configuration exported"
 
 }

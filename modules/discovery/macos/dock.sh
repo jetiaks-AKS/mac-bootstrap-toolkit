@@ -19,6 +19,9 @@ com.apple.dock|magnification|bool|$(defaults read com.apple.dock magnification 2
 com.apple.dock|largesize|int|$(defaults read com.apple.dock largesize 2>/dev/null)
 EOF
 
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
     success "Dock configuration exported"
 
 }
