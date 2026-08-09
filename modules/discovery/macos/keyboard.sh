@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# ==========================================
+# Keyboard Discovery
+# ==========================================
+
+export_keyboard_settings() {
+
+    local output_dir="config/generated/macos"
+    local output_file="$output_dir/keyboard.conf"
+
+    mkdir -p "$output_dir"
+
+    action "Exporting Keyboard configuration..."
+
+    cat > "$output_file" <<EOF
+NSGlobalDomain|KeyRepeat|int|$(defaults read NSGlobalDomain KeyRepeat 2>/dev/null)
+NSGlobalDomain|InitialKeyRepeat|int|$(defaults read NSGlobalDomain InitialKeyRepeat 2>/dev/null)
+EOF
+
+if [[ "$VERBOSE" == true ]]; then
+    detail "Configuration saved to: $output_file"
+fi
+    success "Keyboard configuration exported"
+
+}

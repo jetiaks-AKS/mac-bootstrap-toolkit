@@ -1,30 +1,18 @@
 #!/bin/bash
 
 # ==========================================
+# Finder Settings
+# ==========================================
+
+FINDER_CONFIG="config/generated/macos/finder.conf"
+
+# ==========================================
 # Check Finder
 # ==========================================
 
 check_finder() {
 
-    local configured=true
-
-    [[ "$(defaults read NSGlobalDomain AppleShowAllExtensions 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read com.apple.finder ShowPathbar 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read com.apple.finder ShowStatusBar 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read com.apple.finder FXPreferredViewStyle 2>/dev/null)" == "Nlsv" ]] || configured=false
-    [[ "$(defaults read com.apple.finder FXDefaultSearchScope 2>/dev/null)" == "SCcf" ]] || configured=false
-    [[ "$(defaults read com.apple.finder _FXSortFoldersFirst 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read com.apple.finder FXRemoveOldTrashItems 2>/dev/null)" == "1" ]] || configured=false
-
-    if $configured; then
-
-        success "Finder is already configured"
-        return 0
-
-    fi
-
-    warning "Finder requires configuration"
-    return 1
+    check_defaults_config "$FINDER_CONFIG"
 
 }
 
@@ -36,15 +24,7 @@ apply_finder_settings() {
 
     info "Configuring Finder..."
 
-    defaults write NSGlobalDomain AppleShowAllExtensions -bool true
-    defaults write com.apple.finder ShowPathbar -bool true
-    defaults write com.apple.finder ShowStatusBar -bool true
-
-    defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
-    defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
-
-    defaults write com.apple.finder _FXSortFoldersFirst -bool true
-    defaults write com.apple.finder FXRemoveOldTrashItems -bool true
+    apply_defaults_config "$FINDER_CONFIG"
 
     killall Finder >/dev/null 2>&1
 

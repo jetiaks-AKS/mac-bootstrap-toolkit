@@ -1,26 +1,18 @@
 #!/bin/bash
 
 # ==========================================
+# Trackpad Settings
+# ==========================================
+
+TRACKPAD_CONFIG="config/generated/macos/trackpad.conf"
+
+# ==========================================
 # Check Trackpad
 # ==========================================
 
 check_trackpad() {
 
-    local configured=true
-
-    [[ "$(defaults read com.apple.AppleMultitouchTrackpad Clicking 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read NSGlobalDomain com.apple.trackpad.scaling 2>/dev/null)" == "1" ]] || configured=false
-    [[ "$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)" == "1" ]] || configured=false
-
-    if $configured; then
-
-    success "Trackpad is already configured"
-    return 0
-
-    fi
-
-    warning "Trackpad requires configuration"
-    return 1
+    check_defaults_config "$TRACKPAD_CONFIG"
 
 }
 
@@ -32,9 +24,7 @@ apply_trackpad_settings() {
 
     info "Configuring Trackpad..."
 
-    defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
-    defaults write NSGlobalDomain com.apple.trackpad.scaling -int 1
-    defaults write com.apple.AppleMultitouchTrackpad TrackpadRightClick -bool true
+    apply_defaults_config "$TRACKPAD_CONFIG"
 
     success "Trackpad configured successfully"
 

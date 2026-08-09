@@ -16,7 +16,7 @@ is_git_installed() {
 
 check_git_configuration() {
 
-    source config/git.conf
+    source config/generated/git.conf
 
     if [[ "$(git config --global user.name)" != "$GIT_USER_NAME" ]]; then
         return 1
@@ -65,12 +65,12 @@ check_git() {
 
 configure_git() {
 
-    if [[ ! -f "config/git.conf" ]]; then
-        error "config/git.conf not found"
+    if [[ ! -f "config/generated/git.conf" ]]; then
+        error "config/generated/git.conf not found"
         return 2
     fi
 
-    source config/git.conf
+    source config/generated/git.conf
 
     if check_git_configuration; then
         return 0

@@ -1,27 +1,18 @@
 #!/bin/bash
 
 # ==========================================
+# Screenshots Settings
+# ==========================================
+
+SCREENSHOTS_CONFIG="config/generated/macos/screenshots.conf"
+
+# ==========================================
 # Check Screenshots
 # ==========================================
 
 check_screenshots() {
 
-    local configured=true
-    local location
-
-    location="$(defaults read com.apple.screencapture location 2>/dev/null)"
-
-    [[ "$location" == "~/Screenshots" || "$location" == "$HOME/Screenshots" ]] || configured=false
-
-    if $configured; then
-
-    success "Screenshots are already configured"
-    return 0
-
-    fi
-
-    warning "Screenshots require configuration"
-    return 1
+    check_defaults_config "$SCREENSHOTS_CONFIG"
 
 }
 
@@ -35,7 +26,7 @@ apply_screenshots_settings() {
 
     mkdir -p "$HOME/Screenshots"
 
-    defaults write com.apple.screencapture location "$HOME/Screenshots"
+    apply_defaults_config "$SCREENSHOTS_CONFIG"
 
     killall SystemUIServer >/dev/null 2>&1
 
