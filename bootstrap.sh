@@ -165,6 +165,12 @@ case "$MODE" in
 
 esac
 
+# ==========================================
+# Initialize Logger
+# ==========================================
+
+init_logger
+
 info "Mode: $MODE_NAME"
 
 if [[ "$VERBOSE" == true ]]; then
@@ -180,11 +186,6 @@ echo "Version : $TOOLKIT_VERSION"
 echo "Mode    : $MODE_NAME"
 echo
 
-# ==========================================
-# Initialize Logger
-# ==========================================
-
-init_logger
 
 # ==========================================
 # Preflight Checks
