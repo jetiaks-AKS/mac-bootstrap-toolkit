@@ -22,3 +22,7 @@ exports/
 # Generated machine-specific configuration
 
 config/generated/
+
+# Archived old documentation versions
+
+docs/old vers/
