@@ -1,5 +1,7 @@
 # Mac Bootstrap Toolkit
 
+[English](README.md) | Русский
+
 Автоматизированная подготовка и восстановление рабочего окружения macOS.
 
 **Текущая версия: 2.0.1 Stable**
@@ -34,7 +36,7 @@ Generated Configuration
  Bootstrap
      ↓
 Ready-to-Work Mac
-````
+```
 
 Discovery автоматически анализирует существующее окружение и формирует конфигурацию, которую затем использует Bootstrap.
 
@@ -254,5 +256,3 @@ Mac Bootstrap Toolkit развивается как система воспро�
 **Discovery → Generated Configuration → Bootstrap**.
 
 Эта архитектура является основой для дальнейшего развития проекта.
-
-```

@@ -1,314 +1,136 @@
 # Quick Start
 
-## 1. Клонировать репозиторий
+English | [Русский](QUICKSTART.ru.md)
+
+This guide covers the implemented Mac Bootstrap Toolkit 2.0.1 workflow:
+
+```text
+Discovery → config/generated/ → Bootstrap
+```
+
+## Requirements
+
+- macOS 15 or later;
+- Xcode Command Line Tools;
+- an internet connection;
+- an administrator account;
+- Git.
+
+Homebrew can be installed interactively by the Toolkit when it is missing.
+Some optional areas also require their command-line tools: `mas` for Mac App
+Store applications and `code` for VS Code extensions.
+
+## 1. Clone the repository
 
 ```bash
 git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
-````
-
-## 2. Перейти в каталог проекта
-
-```bash
 cd mac-bootstrap-toolkit
 ```
 
----
+Run every Toolkit command from the repository root. `bootstrap.sh` loads files
+through relative paths.
 
-## 3. Проверить систему
+## 2. Review the CLI
 
-Перед выполнением Bootstrap рекомендуется проверить текущее состояние системы.
+```bash
+./bootstrap.sh --help
+./bootstrap.sh --version
+```
 
-Стандартный режим:
+The implemented modes are `--check`, `--discover`, and `--bootstrap`.
+`--verbose` can be combined with any of them.
+
+## 3. Check the Mac
 
 ```bash
 ./bootstrap.sh --check
 ```
 
-Для получения подробной информации используйте:
+For diagnostic details:
 
 ```bash
 ./bootstrap.sh --check --verbose
 ```
 
-Toolkit проверит:
+The command checks internet access, Xcode Command Line Tools, the macOS
+version, administrator privileges, Homebrew, Git, SSH, and Terminal. It asks
+for administrator authentication and may offer to install Homebrew.
 
-* Internet connection;
-* Xcode Command Line Tools;
-* macOS version;
-* administrator privileges;
-* Homebrew;
-* Git;
-* SSH;
-* Terminal.
-
-В стандартном режиме вывод остаётся компактным.
-
-Verbose Mode дополнительно показывает диагностическую информацию.
-
----
-
-## 4. Выполнить Discovery
-
-Перед переносом рабочего окружения рекомендуется выполнить анализ текущей системы.
-
-Стандартный режим:
+## 4. Discover the source environment
 
 ```bash
 ./bootstrap.sh --discover
 ```
 
-Подробный режим:
+Or use verbose output:
 
 ```bash
 ./bootstrap.sh --discover --verbose
 ```
 
-Discovery автоматически соберёт информацию о:
-
-* Homebrew Packages;
-* Homebrew Casks;
-* App Store applications;
-* Git configuration;
-* VS Code Extensions;
-* VS Code Settings;
-* macOS Settings;
-* Workspace;
-* структуре каталогов;
-* Git-репозиториях;
-* repository metadata;
-* VS Code Workspaces.
-
-Результаты сохраняются локально в каталоге:
+Discovery inspects supported Homebrew, App Store, Git, VS Code, macOS settings,
+and workspace state. It creates or overwrites machine-specific files in:
 
 ```text
 config/generated/
 ```
 
-`config/generated/` содержит machine-specific данные,
-полученные в результате Discovery, и исключён из Git.
+That directory is excluded from Git. Treat its contents as sensitive local
+configuration: it may include personal paths, Git identity, repository URLs,
+and editor settings. Review the generated files and transfer them to a target
+Mac through an appropriately private method.
 
-Полученные конфигурации используются Bootstrap Engine
-для последующего восстановления системы.
+Discovery does not install applications or apply system settings. Its expected
+side effect is writing generated configuration; the common preflight and core
+checks still run first and can request administrator authentication or offer to
+install Homebrew.
 
----
+## 5. Bootstrap the target environment
 
-## 5. Выполнить Bootstrap
-
-Bootstrap использует конфигурацию, ранее подготовленную
-Discovery Engine, и автоматически воспроизводит рабочее окружение.
-
-Стандартный режим:
-
-```bash
-./bootstrap.sh --bootstrap
-```
-
-Подробный режим:
-
-```bash
-./bootstrap.sh --bootstrap --verbose
-```
-
-Toolkit автоматически:
-
-* проверит и при необходимости установит Homebrew;
-* проверит Git;
-* проверит SSH;
-* проверит Terminal;
-* восстановит Workspace;
-* проверит Git repositories;
-* проверит Remote URL;
-* проверит текущие Git branches;
-* восстановит необходимые Homebrew Packages;
-* восстановит необходимые Homebrew Casks;
-* восстановит отсутствующие Homebrew Casks при необходимости;
-* установит приложения App Store;
-* установит расширения VS Code;
-* применит настройки VS Code;
-* создаст резервную копию текущих настроек VS Code;
-* настроит Finder;
-* настроит Dock;
-* настроит Keyboard;
-* настроит Trackpad;
-* настроит Screenshots.
-
-Bootstrap является идемпотентным.
-
-Если компонент уже находится в требуемом состоянии,
-изменения не выполняются.
-
-После завершения Toolkit покажет итоговый Summary:
-
-```text
-Modules Checked
-Installed
-Skipped
-Warnings
-Errors
-Duration
-```
-
----
-
-## 6. Dry-run
-
-Dry-run предназначен для безопасственного предварительного
-просмотра изменений, которые Bootstrap собирается выполнить.
-
-Логика режима:
-
-```text
-Current State
-      ↓
-Bootstrap Checks
-      ↓
-Planned Changes
-```
-
-Dry-run не должен изменять состояние системы.
-
-После реализации режима команда будет иметь вид:
-
-```bash
-./bootstrap.sh --bootstrap --dry-run
-```
-
-Для подробного просмотра:
-
-```bash
-./bootstrap.sh --bootstrap --dry-run --verbose
-```
-
-Dry-run должен показывать:
-
-* какие компоненты уже настроены;
-* какие компоненты требуют изменений;
-* какие действия планируется выполнить;
-* итоговый Summary;
-* отсутствие фактических изменений.
-
-> **Примечание:** Dry-run является следующим функциональным
-> этапом Toolkit и не должен считаться доступным до его реализации.
-
----
-
-## Дополнительные команды
-
-### Проверка системы
-
-```bash
-./bootstrap.sh --check
-```
-
-### Проверка системы (Verbose)
-
-```bash
-./bootstrap.sh --check --verbose
-```
-
-### Discovery
-
-```bash
-./bootstrap.sh --discover
-```
-
-### Discovery (Verbose)
-
-```bash
-./bootstrap.sh --discover --verbose
-```
-
-### Bootstrap
+Place the reviewed generated configuration under `config/generated/` on the
+target Mac, then run from the repository root:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
-### Bootstrap (Verbose)
+For diagnostic details:
 
 ```bash
 ./bootstrap.sh --bootstrap --verbose
 ```
 
-### Dry-run
+Bootstrap uses the generated configuration to:
 
-```bash
-./bootstrap.sh --bootstrap --dry-run
-```
+- create missing workspace folders;
+- clone missing Git repositories, verify origins, and restore configured
+  branches only when existing repositories are clean;
+- apply global Git configuration;
+- install missing Homebrew formulae and casks;
+- install configured App Store applications when `mas` is available;
+- install VS Code extensions and apply VS Code user settings;
+- apply supported Finder, Dock, keyboard, trackpad, and screenshot settings.
 
-### Dry-run (Verbose)
+The VS Code settings module creates `settings.json.bootstrap.bak` before
+replacing an existing, different settings file. Existing workspace directories
+and repository remotes are not overwritten. Conflicts are reported for manual
+attention.
 
-```bash
-./bootstrap.sh --bootstrap --dry-run --verbose
-```
+## Logs and exit status
 
-### Версия Toolkit
+Runs write the latest log to `logs/latest.log` and timestamped history logs to
+`logs/history/`. Both locations are excluded from Git.
 
-```bash
-./bootstrap.sh --version
-```
+The final process status is:
 
-### Справка
+- `0` — success;
+- `1` — completed with warnings;
+- `2` — error.
 
-```bash
-./bootstrap.sh --help
-```
+## What is not available yet
 
----
+Dry-run, Blueprint, Verification, Restore, and AI Assistant are planned future
+work. In particular, `--dry-run` is not a supported option in version 2.0.1.
+See the project [roadmap](../../ROADMAP.md) for status.
 
-## Логи
-
-Каждый запуск Toolkit создаёт исторический лог.
-
-Последний запуск доступен здесь:
-
-```text
-logs/latest.log
-```
-
-История запусков хранится в:
-
-```text
-logs/history/
-```
-
-Типы исторических логов:
-
-```text
-check-YYYY-MM-DD_HH-MM-SS.log
-bootstrap-YYYY-MM-DD_HH-MM-SS.log
-discover-YYYY-MM-DD_HH-MM-SS.log
-```
-
-Быстро посмотреть последний лог:
-
-```bash
-cat logs/latest.log
-```
-
-Посмотреть последние записи:
-
-```bash
-tail -30 logs/latest.log
-```
-
-Посмотреть историю запусков:
-
-```bash
-ls -lt logs/history/
-```
-
-Логи являются локальными рабочими файлами и не попадают
-в Git.
-
----
-
-## Требования
-
-* macOS 15 или новее
-* Xcode Command Line Tools
-* Подключение к Интернету
-* Учётная запись администратора
-* Git
-* Homebrew устанавливается Toolkit автоматически,
-  если он отсутствует
+Return to the [main README](../../README.md).

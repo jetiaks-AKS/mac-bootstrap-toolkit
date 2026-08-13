@@ -1,466 +1,131 @@
-# Архитектура Mac Bootstrap Toolkit
+# Mac Bootstrap Toolkit Architecture
 
-## Назначение
+English | [Русский](ARCHITECTURE.ru.md)
 
-Mac Bootstrap Toolkit — модульная система для анализа, описания,
-проверки и воспроизводимого восстановления рабочего окружения macOS.
+Mac Bootstrap Toolkit is a modular Bash system for discovering and
+reproducing supported parts of a macOS working environment.
 
-Основная цель — получить возможность исследовать существующий Mac,
-сформировать описание его окружения и использовать это описание
-для подготовки другого Mac с минимальным количеством ручных действий.
+## Current architecture
 
----
-
-## Целевая архитектура
+Version 2.0.1 implements this stable contract:
 
 ```text
 Current Mac
-    │
-    ▼
+    ↓
 Discovery
-    │
-    ▼
-Generated Configuration
-    │
-    ▼
-Blueprint
-    │
-    ├──────────────► Verification
-    │
-    ▼
-Bootstrap
-    │
-    ├──────────────► Dry-run
-    │
-    ▼
-Restore
-    │
-    ▼
-Target Mac
-````
-
-Дополнительный интеллектуальный слой:
-
-```text
-AI Assistant
-      │
-      └── работает поверх Discovery / Blueprint /
-          Verification / Bootstrap / Restore
-```
-
-### Что означает каждый уровень
-
-**Discovery** — определяет, что существует на текущем Mac.
-
-**Generated Configuration** — сохраняет обнаруженное состояние
-в воспроизводимом машинно-читаемом виде.
-
-**Blueprint** — определяет, каким должно быть целевое окружение.
-
-**Verification** — сравнивает текущее состояние с целевым и определяет
-необходимые изменения.
-
-**Bootstrap** — применяет необходимые изменения.
-
-**Dry-run** — безопасный режим Bootstrap, который определяет и
-показывает предполагаемые изменения без их применения.
-
-**Restore** — обеспечивает воспроизводимое восстановление всего
-окружения с учётом зависимостей между компонентами.
-
-**AI Assistant** — помогает анализировать окружение, формировать
-решения, объяснять различия и управлять процессом.
-
----
-
-# Основные архитектурные принципы
-
-## Discovery → Generated Configuration → Bootstrap
-
-Это основной контракт Toolkit.
-
-```text
-Current Mac
-    │
-    ▼
-Discovery
-    │
-    ▼
+    ↓
 config/generated/
-    │
-    ▼
+    ↓
 Bootstrap
+    ↓
+Target Mac
 ```
 
-Discovery является источником фактического состояния.
+### Discovery
 
-Bootstrap использует результаты Discovery и не должен содержать
-дублирующие значения пользовательской конфигурации.
+Discovery reads supported state from the current Mac and exports it to
+`config/generated/`. Its modules cover Homebrew, App Store applications,
+global Git configuration, VS Code, selected macOS settings, and workspace
+metadata.
 
-Поэтому изменение обнаруженной настройки должно по возможности
-происходить через конфигурацию, а не через изменение Bootstrap-кода.
+Generated configuration is machine-specific local data and is excluded from
+Git. Discovery is not a backup system: it records configuration and metadata,
+but does not copy user documents or repository contents.
 
----
+### Generated configuration
 
-## Observed State → Desired State
+Generated files form the boundary between Discovery and Bootstrap. Simple
+lists and shell-style configuration are used for application and Git data;
+sectioned configuration is read through the Configuration Engine for workspace
+repositories. Exporters and consumers must keep their formats compatible.
 
-Toolkit разделяет два понятия:
+Because generated files can contain personal paths, Git identity, repository
+URLs, and editor settings, they should be reviewed and transferred privately.
 
-**Observed State** — то, что реально обнаружено на текущем Mac.
+### Bootstrap
 
-**Desired State** — то, что должно быть на целевом Mac.
+Bootstrap consumes generated configuration and applies supported state. Its
+normal module lifecycle is:
 
-Их связывает Blueprint:
+```text
+Check → Apply → Verify
+```
+
+Modules are intended to be idempotent: they first inspect existing state,
+apply only needed changes, and verify the result where supported. The current
+execution order is:
+
+1. preflight checks;
+2. Homebrew, Git, SSH, and Terminal checks;
+3. workspace folders and Git repositories;
+4. global Git configuration;
+5. Homebrew formulae and casks;
+6. App Store applications;
+7. VS Code extensions and user settings;
+8. Finder, Dock, keyboard, trackpad, and screenshot settings.
+
+Workspace restoration creates missing directories and clones missing
+repositories. For existing repositories it verifies `origin`; it only restores
+a configured branch when tracked and staged changes are absent. Conflicts are
+reported rather than resolved destructively.
+
+### Core services
+
+`modules/core/` provides shared infrastructure:
+
+- compact and verbose output, module execution, statistics, and summary;
+- per-run and latest logging with interruption handling;
+- preflight checks;
+- configuration parsing;
+- common Homebrew, Git, SSH, and Terminal checks.
+
+Domain-specific discovery or bootstrap behavior remains outside Core.
+
+### Project layout
+
+```text
+bootstrap.sh                 CLI and orchestration
+modules/core/                shared infrastructure
+modules/discovery/           observed-state exporters
+modules/bootstrap/           workspace bootstrap
+modules/apps/                Homebrew and App Store consumers
+modules/vscode/              VS Code consumers
+modules/settings/macos/      macOS settings consumers
+config/                      static Toolkit configuration
+config/generated/            local machine-specific configuration
+settings/                    static settings sources
+scripts/                     supporting analysis/export scripts
+docs/                        project documentation
+```
+
+## Planned architecture
+
+The following stages describe future direction and are not implemented in
+version 2.0.1:
 
 ```text
 Observed State
-      │
-      ▼
-   Blueprint
-      │
-      ▼
-Desired State
-```
-
-До появления Blueprint существующий Bootstrap может использовать
-непосредственно Generated Configuration как источник восстановления.
-
-После появления Blueprint Generated Configuration будет описывать
-Observed State, а Blueprint — формировать Desired State.
-
----
-
-# Основные компоненты
-
-## Core
-
-Фундаментальные сервисы Toolkit:
-
-* common utilities;
-* logging;
-* preflight;
-* Homebrew;
-* Git;
-* SSH;
-* Terminal;
-* configuration services.
-
-Core предоставляет общую инфраструктуру и не должен содержать
-логику конкретного пользовательского окружения.
-
----
-
-## Discovery Engine
-
-Отвечает за исследование текущего Mac.
-
-Области Discovery включают:
-
-* приложения;
-* Homebrew;
-* Git;
-* SSH;
-* Terminal;
-* VS Code;
-* Workspace;
-* macOS Settings;
-* другие компоненты рабочего окружения.
-
-Результат сохраняется в:
-
-```text
-config/generated/
-```
-
----
-
-## Configuration Engine
-
-Предоставляет общие механизмы работы с конфигурацией Toolkit.
-
-Он отвечает за чтение, получение и обработку конфигурационных данных,
-но не определяет бизнес-логику отдельных модулей.
-
-Generated Configuration содержит machine-specific данные
-об обнаруженном окружении и не является частью публичного
-Git-состояния проекта.
-
----
-
-## Blueprint Engine
-
-Формирует целевой профиль Mac на основе обнаруженного состояния.
-
-Blueprint должен позволять:
-
-* выбирать компоненты;
-* исключать компоненты;
-* изменять параметры;
-* задавать целевые значения;
-* определять обязательные и необязательные компоненты.
-
----
-
-## Verification Engine
-
-Определяет соответствие текущего Mac целевому состоянию.
-
-```text
-Current State
-      │
-      ▼
-Verification
-      │
-      ▼
-Differences
-```
-
-Verification ничего не изменяет — он только определяет состояние
-и необходимые действия.
-
----
-
-## Bootstrap Engine
-
-Применяет целевую конфигурацию.
-
-Основной принцип работы:
-
-```text
-Check
-  ↓
-Apply
-  ↓
-Verify
-```
-
-Bootstrap должен быть идемпотентным:
-
-```text
-Первый запуск → применить изменения
-
-Повторный запуск → обнаружить уже настроенное → пропустить
-```
-
-Основные области:
-
-* Core;
-* Applications;
-* Workspace;
-* VS Code;
-* macOS Settings.
-
----
-
-## Dry-run Mode
-
-Dry-run является режимом работы Bootstrap Engine,
-а не отдельным архитектурным Engine.
-
-Он позволяет предварительно определить, какие изменения
-Bootstrap собирается выполнить, без фактического изменения системы.
-
-Основной принцип:
-
-```text
-Current State
-      ↓
-Bootstrap Checks
-      ↓
-Planned Changes
-```
-
-Dry-run должен использовать существующий Module Lifecycle,
-проверки и Logger, но вместо применения изменений формировать
-предварительный результат выполнения.
-
-Основные требования:
-
-* не изменять состояние системы;
-* показывать планируемые изменения;
-* использовать единый формат вывода;
-* учитывать результаты проверок модулей;
-* использовать существующий механизм логирования;
-* формировать понятный Summary;
-* по возможности обеспечивать соответствие результата Dry-run
-  последующему реальному Bootstrap.
-
-Dry-run не заменяет Bootstrap и не определяет Desired State.
-
-Его задача — безопасно показать предполагаемое выполнение
-существующего Bootstrap workflow.
-
----
-
-## Restore Engine
-
-Обеспечивает воспроизводимое восстановление рабочего окружения.
-
-Restore объединяет результаты Blueprint, Verification и Bootstrap
-и отвечает за восстановление системы как единого окружения,
-а не отдельных независимых модулей.
-
----
-
-## AI Assistant
-
-AI Assistant является дополнительным уровнем автоматизации.
-
-Он не заменяет существующие компоненты, а использует их данные
-и результаты для:
-
-* анализа;
-* диагностики;
-* формирования Blueprint;
-* объяснения различий;
-* рекомендаций;
-* помощи при восстановлении.
-
----
-
-# Workspace
-
-Workspace является отдельной областью рабочего окружения.
-
-Он включает:
-
-* директории;
-* Git repositories;
-* remotes;
-* branches;
-* VS Code Projects;
-* VS Code Workspaces.
-
-Архитектура Workspace:
-
-```text
-Discovery
-    ↓
-Workspace State
     ↓
 Blueprint
     ↓
 Verification
     ↓
-Bootstrap / Dry-run / Restore
-```
-
----
-
-# macOS Settings
-
-Настройки macOS используют общий принцип:
-
-```text
-macOS
-  ↓
-Discovery
-  ↓
-config/generated/macos/
-  ↓
-Bootstrap
-  ↓
-macOS
-```
-
-Dry-run для macOS Settings должен определять предполагаемые
-изменения до их применения.
-
-Новые настройки должны по возможности добавляться через generated
-configuration и общий механизм применения, а не через дублирование
-одинаковой логики в отдельных модулях.
-
----
-
-# Расширяемость
-
-Новый компонент Toolkit должен по возможности проходить один и тот же
-жизненный цикл:
-
-```text
-Discovery
-    ↓
-Generated Configuration
-    ↓
-Blueprint
-    ↓
-Verification
-    ↓
-Bootstrap
+Bootstrap with Dry-run
     ↓
 Restore
 ```
 
-Для Bootstrap-компонентов также должен поддерживаться безопасный
-предварительный режим:
+- **Dry-run** will preview Bootstrap actions without applying them.
+- **Blueprint** will define desired state separately from discovered state.
+- **Verification** will compare current and desired state.
+- **Restore** will coordinate complete environment recovery and dependencies.
+- **AI Assistant** is a planned layer for analysis, explanations, and guided
+  workflows over these components.
 
-```text
-Bootstrap
-    ↓
-Dry-run
-    ↓
-Planned Changes
-```
+Until those stages are implemented, Bootstrap reads generated observed state
+directly. The current CLI has no `--dry-run` option.
 
-Добавление нового компонента не должно требовать переписывания
-существующих компонентов.
+Implementation status is maintained in [ROADMAP.md](../../ROADMAP.md), with
+near-term work in [TODO.md](../../TODO.md).
 
----
-
-# Статусы реализации
-
-Архитектура описывает **целевую систему**, а не только то,
-что уже реализовано.
-
-Компоненты могут иметь статус:
-
-```text
-Planned
-    ↓
-In Development
-    ↓
-Implemented
-    ↓
-Verified
-```
-
-Режимы работы Toolkit могут развиваться независимо от основных
-архитектурных компонентов.
-
-Текущий статус определяется в:
-
-* `ROADMAP.md` — этапы проекта;
-* `TODO.md` — ближайшие задачи;
-* `CHANGELOG.md` — история изменений.
-
-`ARCHITECTURE.md` изменяется только при изменении самой архитектуры,
-а не при каждом добавлении очередной функции.
-
----
-
-# Главный принцип
-
-> **Discover → Describe → Define → Verify → Bootstrap → Restore**
-
-Toolkit должен превращать текущее рабочее окружение в воспроизводимое
-целевое состояние, которое можно проверить и восстановить на другом Mac.
-
-Dry-run является безопасным режимом выполнения Bootstrap
-и позволяет предварительно увидеть предполагаемые изменения
-без изменения состояния системы.
-
-```text
-Discover
-    ↓
-Describe
-    ↓
-Define
-    ↓
-Verify
-    ↓
-Bootstrap
-    ↓
-Restore
-```
-
-````
+Return to the [main README](../../README.md).
