@@ -195,9 +195,11 @@ run_preflight_checks
 
 if [[ $? -ne 0 ]]; then
 
+    ((ERROR_COUNT++))
+
     show_summary
     close_logger
-    exit 1
+    exit 2
 
 fi
 
@@ -227,7 +229,7 @@ case "$MODE" in
 
         echo
 
-        configure_git
+        run_module "Git Configuration" configure_git
 
         run_module "Homebrew Packages" install_brew_packages
 
@@ -254,3 +256,6 @@ esac
 show_summary
 
 close_logger
+
+toolkit_exit_code
+exit $?

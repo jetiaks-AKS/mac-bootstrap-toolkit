@@ -136,20 +136,25 @@ run_module() {
 
         0)
             log "[MODULE] RESULT: SUCCESS"
+            return 0
             ;;
 
         1)
             ((WARNING_COUNT++))
             log "[MODULE] RESULT: WARNING"
+            return 1
             ;;
 
         2)
             ((ERROR_COUNT++))
             log "[MODULE] RESULT: ERROR"
+            return 2
             ;;
 
         *)
+            ((ERROR_COUNT++))
             log "[MODULE] RESULT: UNKNOWN ($result)"
+            return 2
             ;;
 
     esac
@@ -241,6 +246,24 @@ run_configuration() {
             ;;
 
     esac
+
+}
+
+# ==========================================
+# Toolkit Exit Code
+# ==========================================
+
+toolkit_exit_code() {
+
+    if [[ $ERROR_COUNT -gt 0 ]]; then
+        return 2
+    fi
+
+    if [[ $WARNING_COUNT -gt 0 ]]; then
+        return 1
+    fi
+
+    return 0
 
 }
 
