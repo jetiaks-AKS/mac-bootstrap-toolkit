@@ -8,8 +8,10 @@ LOG_DIR="logs"
 LOG_HISTORY_DIR="$LOG_DIR/history"
 LOG_FILE=""
 LATEST_LOG="$LOG_DIR/latest.log"
+LOG_PREFIX="unknown"
 
 START_TIME=0
+LOGGER_CLOSED=false
 
 # ==========================================
 # Initialize Logger
@@ -22,7 +24,22 @@ init_logger() {
     local timestamp
     timestamp="$(date +"%Y-%m-%d_%H-%M-%S")"
 
-    LOG_FILE="$LOG_HISTORY_DIR/bootstrap-$timestamp.log"
+    case "$MODE" in
+        --bootstrap)
+            LOG_PREFIX="bootstrap"
+            ;;
+        --discover)
+            LOG_PREFIX="discover"
+            ;;
+        --check)
+            LOG_PREFIX="check"
+            ;;
+        *)
+            LOG_PREFIX="unknown"
+            ;;
+    esac
+
+    LOG_FILE="$LOG_HISTORY_DIR/${LOG_PREFIX}-${timestamp}.log"
 
     touch "$LOG_FILE"
 
@@ -34,16 +51,25 @@ init_logger() {
     log ""
     log "Version  : $TOOLKIT_VERSION"
 
-    if [[ "$MODE" == "--bootstrap" ]]; then
-    log "Mode     : Bootstrap"
-    else
-    log "Mode     : Check"
-    fi
+    case "$MODE" in
+        --bootstrap)
+            log "Mode     : Bootstrap"
+            ;;
+        --discover)
+            log "Mode     : Discovery"
+            ;;
+        --check)
+            log "Mode     : Check"
+            ;;
+        *)
+            log "Mode     : Unknown"
+            ;;
+    esac
 
     if [[ "$VERBOSE" == true ]]; then
-    log "Verbose  : Yes"
+        log "Verbose  : Yes"
     else
-    log "Verbose  : No"
+        log "Verbose  : No"
     fi
 
     log ""
@@ -51,6 +77,7 @@ init_logger() {
     log ""
     log "=========================================="
 
+    trap 'handle_interrupt' INT TERM
 }
 
 # ==========================================
@@ -61,8 +88,40 @@ log() {
 
     [[ -n "$LOG_FILE" ]] || return 0
 
-    echo "$1" >> "$LOG_FILE"
+    local timestamp
+    timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
+    printf '%s %s\n' "$timestamp" "$1" >> "$LOG_FILE"
+}
+
+# ==========================================
+# Handle Interruption
+# ==========================================
+
+handle_interrupt() {
+
+    [[ "$LOGGER_CLOSED" == true ]] && exit 130
+
+    log ""
+    log "[WARN] Toolkit interrupted"
+    log "Finished : $(date '+%Y-%m-%d %H:%M:%S')"
+
+    local end_time
+    local duration
+
+    end_time=$(date +%s)
+    duration=$((end_time - START_TIME))
+
+    log "Duration : ${duration}s"
+    log "Status   : Interrupted"
+    log ""
+    log "=========================================="
+
+    cp "$LOG_FILE" "$LATEST_LOG"
+
+    LOGGER_CLOSED=true
+
+    exit 130
 }
 
 # ==========================================
@@ -70,6 +129,9 @@ log() {
 # ==========================================
 
 close_logger() {
+
+    [[ -n "$LOG_FILE" ]] || return 0
+    [[ "$LOGGER_CLOSED" == true ]] && return 0
 
     local end_time
     local duration
@@ -85,4 +147,5 @@ close_logger() {
 
     cp "$LOG_FILE" "$LATEST_LOG"
 
+    LOGGER_CLOSED=true
 }

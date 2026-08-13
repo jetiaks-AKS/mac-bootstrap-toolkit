@@ -108,6 +108,8 @@ Roadmap не заменяет архитектурную документаци�
 - [x] macOS Settings configuration
 - [x] единый принцип Discovery → Generated Configuration → Bootstrap
 - [x] устранение дублирования пользовательских настроек в Bootstrap-коде
+- [x] machine-specific Generated Configuration
+- [x] исключение `config/generated/` из публичного Git-репозитория
 
 ---
 
@@ -164,20 +166,61 @@ Roadmap не заменяет архитектурную документаци�
 
 ---
 
-# Этап 5 — Blueprint Engine
+# Этап 5 — Dry-run Mode
+
+**Статус: Planned**
+
+Безопасный режим предварительного выполнения Toolkit.
+
+Dry-run позволяет определить, какие изменения Toolkit
+собирается выполнить, не изменяя состояние системы.
+
+Основная цель:
+
+```text
+Current State
+      ↓
+Bootstrap Checks
+      ↓
+Planned Changes
+````
+
+* [ ] Добавить `--dry-run`
+* [ ] Предварительная проверка всех Bootstrap-модулей
+* [ ] Определение изменений без их применения
+* [ ] Единый формат отображения планируемых изменений
+* [ ] Поддержка Dry-run для Applications
+* [ ] Поддержка Dry-run для VS Code
+* [ ] Поддержка Dry-run для Workspace
+* [ ] Поддержка Dry-run для macOS Settings
+* [ ] Интеграция Dry-run с существующим Module Lifecycle
+* [ ] Интеграция Dry-run с Logger
+* [ ] Интеграция Dry-run с Summary
+* [ ] Проверка соответствия Dry-run фактическому Bootstrap
+
+Dry-run не изменяет существующую архитектурную модель
+Discovery → Generated Configuration → Bootstrap.
+
+Он является безопасным режимом выполнения уже существующего
+Bootstrap Engine и подготавливает систему к следующим
+архитектурным этапам.
+
+---
+
+# Этап 6 — Blueprint Engine
 
 **Статус: Planned**
 
 Формирование целевого профиля рабочего окружения.
 
-- [ ] Blueprint format
-- [ ] Component selection
-- [ ] Required / Optional components
-- [ ] Parameter overrides
-- [ ] Component exclusions
-- [ ] Blueprint validation
-- [ ] Blueprint versioning
-- [ ] Blueprint import / export
+* [ ] Blueprint format
+* [ ] Component selection
+* [ ] Required / Optional components
+* [ ] Parameter overrides
+* [ ] Component exclusions
+* [ ] Blueprint validation
+* [ ] Blueprint versioning
+* [ ] Blueprint import / export
 
 Основная цель:
 
@@ -187,14 +230,14 @@ Observed State
    Blueprint
       ↓
 Desired State
-````
+```
 
 Blueprint должен стать источником целевого состояния,
 а не заменять существующий Discovery Engine.
 
 ---
 
-# Этап 6 — Verification Engine
+# Этап 7 — Verification Engine
 
 **Статус: Planned**
 
@@ -220,7 +263,7 @@ Differences
 
 ---
 
-# Этап 7 — Restore Engine
+# Этап 8 — Restore Engine
 
 **Статус: Planned**
 
@@ -250,7 +293,7 @@ Verified Mac
 
 ---
 
-# Этап 8 — AI Assistant
+# Этап 9 — AI Assistant
 
 **Статус: Planned**
 
@@ -270,17 +313,22 @@ AI Assistant не заменяет существующие компоненты
 
 ---
 
-# Этап 9 — Quality & Reliability
+# Этап 10 — Quality & Reliability
 
 **Статус: In Development**
 
 Повышение надёжности и качества всей системы.
 
+* [x] Единая система Module Lifecycle Logging
+* [x] History logs для основных режимов Toolkit
+* [x] `latest.log`
+* [x] Обработка прерывания Toolkit
+* [x] Compact / Verbose Output
 * [ ] Полная проверка идемпотентности модулей
 * [ ] Расширенная обработка ошибок
 * [ ] Единый стиль сообщений
-* [ ] Расширение Verbose Mode
 * [ ] Улучшение Summary
+* [ ] Отдельная корректировка Summary для Discovery Mode
 * [ ] Конфигурационная валидация
 * [ ] Regression tests
 * [ ] ShellCheck / code quality
@@ -293,7 +341,7 @@ Quality & Reliability развивается параллельно
 
 # Текущий фокус
 
-Версия **2.0.0 Stable** завершает базовый цикл:
+Версия **2.0.1 Stable** завершает базовый цикл:
 
 ```text
 Discovery
@@ -303,7 +351,14 @@ Generated Configuration
 Bootstrap
 ```
 
-Следующим архитектурным этапом является **Blueprint Engine**.
+Базовый цикл Toolkit реализован и стабилизирован.
+
+Текущий фокус разработки — повышение надёжности существующего
+Bootstrap Engine, завершение ревизии Logging и Module Lifecycle,
+а также реализация **Dry-run Mode**.
+
+После завершения Dry-run следующим архитектурным этапом является
+**Blueprint Engine**.
 
 Техническая стабилизация и улучшение существующих компонентов
 продолжаются параллельно через `TODO.md`.
@@ -320,6 +375,8 @@ Discovery
 Generated Configuration
   ↓
 Bootstrap
+  ↓
+Dry-run
   ↓
 Blueprint
   ↓
@@ -362,4 +419,4 @@ CHANGELOG.md
 
 Структура целевой архитектуры при этом не изменяется.
 
-````
+```

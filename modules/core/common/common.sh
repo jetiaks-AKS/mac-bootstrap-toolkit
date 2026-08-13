@@ -118,24 +118,43 @@ run_module() {
 
     MODULE_CHANGED=false
 
+    log "[MODULE] START: $module_name"
+
     $module_function
 
     local result=$?
 
     if [[ "$MODULE_CHANGED" == true ]]; then
         ((INSTALLED_COUNT++))
+        log "[MODULE] Changed: Yes"
     else
         ((SKIPPED_COUNT++))
+        log "[MODULE] Changed: No"
     fi
 
     case $result in
 
+        0)
+            log "[MODULE] RESULT: SUCCESS"
+            return 0
+            ;;
+
         1)
             ((WARNING_COUNT++))
+            log "[MODULE] RESULT: WARNING"
+            return 1
             ;;
 
         2)
             ((ERROR_COUNT++))
+            log "[MODULE] RESULT: ERROR"
+            return 2
+            ;;
+
+        *)
+            ((ERROR_COUNT++))
+            log "[MODULE] RESULT: UNKNOWN ($result)"
+            return 2
             ;;
 
     esac
@@ -158,6 +177,8 @@ run_configuration() {
 
     MODULE_CHANGED=false
 
+    log "[MODULE] START: $module_name"
+
     $check_function >/dev/null 2>&1
 
     local result=$?
@@ -167,6 +188,9 @@ run_configuration() {
         0)
 
             ((SKIPPED_COUNT++))
+
+            log "[MODULE] Changed: No"
+            log "[MODULE] RESULT: SUCCESS"
 
             success "$module_name already configured"
 
@@ -185,11 +209,17 @@ run_configuration() {
 
                 ((INSTALLED_COUNT++))
 
+                log "[MODULE] Changed: Yes"
+                log "[MODULE] RESULT: SUCCESS"
+
                 success "$module_name configured successfully"
 
                 return 0
 
             fi
+
+            log "[MODULE] Changed: $MODULE_CHANGED"
+            log "[MODULE] RESULT: ERROR"
 
             error "$module_name configuration failed"
 
@@ -199,11 +229,41 @@ run_configuration() {
 
         2)
 
+            log "[MODULE] Changed: No"
+            log "[MODULE] RESULT: ERROR"
+
+            ((ERROR_COUNT++))
+            return 2
+            ;;
+
+        *)
+
+            log "[MODULE] Changed: No"
+            log "[MODULE] RESULT: UNKNOWN ($result)"
+
             ((ERROR_COUNT++))
             return 2
             ;;
 
     esac
+
+}
+
+# ==========================================
+# Toolkit Exit Code
+# ==========================================
+
+toolkit_exit_code() {
+
+    if [[ $ERROR_COUNT -gt 0 ]]; then
+        return 2
+    fi
+
+    if [[ $WARNING_COUNT -gt 0 ]]; then
+        return 1
+    fi
+
+    return 0
 
 }
 

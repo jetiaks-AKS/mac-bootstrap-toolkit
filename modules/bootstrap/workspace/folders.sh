@@ -10,11 +10,11 @@ bootstrap_workspace_folders() {
 
     local config_file="config/generated/workspace/folders.conf"
 
-    if [[ ! -f "$config_file" ]]; then
+    if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
 
         warning "Workspace configuration not found"
 
-        return
+        return 1
 
     fi
 
@@ -26,12 +26,19 @@ if [[ ! -d "$HOME/$folder" ]]; then
 
     action "Creating: $folder"
 
-    mkdir -p "$HOME/$folder"
+        if ! mkdir -p "$HOME/$folder"; then
 
-fi
+            error "Failed to create workspace folder: $folder"
+            return 2
 
-done < "$config_file"
+        fi
+
+    fi
+
+    done < "$config_file"
 
     success "Workspace configuration loaded"
+
+    return 0
 
 }

@@ -1,178 +1,136 @@
 # Quick Start
 
-## 1. Клонировать репозиторий
+English | [Русский](QUICKSTART.ru.md)
+
+This guide covers the implemented Mac Bootstrap Toolkit 2.0.1 workflow:
+
+```text
+Discovery → config/generated/ → Bootstrap
+```
+
+## Requirements
+
+- macOS 15 or later;
+- Xcode Command Line Tools;
+- an internet connection;
+- an administrator account;
+- Git.
+
+Homebrew can be installed interactively by the Toolkit when it is missing.
+Some optional areas also require their command-line tools: `mas` for Mac App
+Store applications and `code` for VS Code extensions.
+
+## 1. Clone the repository
 
 ```bash
 git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
-```
-
-## 2. Перейти в каталог проекта
-
-```bash
 cd mac-bootstrap-toolkit
 ```
 
----
+Run every Toolkit command from the repository root. `bootstrap.sh` loads files
+through relative paths.
 
-## 3. Проверить систему
+## 2. Review the CLI
 
-Перед выполнением Bootstrap рекомендуется проверить текущее состояние системы.
+```bash
+./bootstrap.sh --help
+./bootstrap.sh --version
+```
+
+The implemented modes are `--check`, `--discover`, and `--bootstrap`.
+`--verbose` can be combined with any of them.
+
+## 3. Check the Mac
 
 ```bash
 ./bootstrap.sh --check
 ```
 
-Для получения подробной информации используйте:
+For diagnostic details:
 
 ```bash
 ./bootstrap.sh --check --verbose
 ```
 
-Toolkit проверит:
+The command checks internet access, Xcode Command Line Tools, the macOS
+version, administrator privileges, Homebrew, Git, SSH, and Terminal. It asks
+for administrator authentication and may offer to install Homebrew.
 
-- Homebrew
-- Git
-- SSH
-- Terminal
-- Homebrew Packages
-- Homebrew Casks
-- App Store Applications
-- VS Code Extensions
-- VS Code Settings
-- macOS Settings
-
----
-
-## 4. Выполнить Discovery
-
-Перед переносом рабочего окружения рекомендуется выполнить анализ текущей системы.
-
-Стандартный режим:
+## 4. Discover the source environment
 
 ```bash
 ./bootstrap.sh --discover
 ```
 
-Подробный режим:
+Or use verbose output:
 
 ```bash
 ./bootstrap.sh --discover --verbose
 ```
 
-Discovery автоматически соберёт информацию о:
-
-- Homebrew;
-- Git;
-- VS Code;
-- настройках macOS;
-- Workspace;
-- структуре каталогов;
-- Git-репозиториях.
-
-Результаты сохраняются в каталоге:
+Discovery inspects supported Homebrew, App Store, Git, VS Code, macOS settings,
+and workspace state. It creates or overwrites machine-specific files in:
 
 ```text
 config/generated/
 ```
 
-Полученные конфигурации используются Bootstrap Engine для последующего восстановления системы.
+That directory is excluded from Git. Treat its contents as sensitive local
+configuration: it may include personal paths, Git identity, repository URLs,
+and editor settings. Review the generated files and transfer them to a target
+Mac through an appropriately private method.
 
----
+Discovery does not install applications or apply system settings. Its expected
+side effect is writing generated configuration; the common preflight and core
+checks still run first and can request administrator authentication or offer to
+install Homebrew.
 
-## 5. Выполнить Bootstrap
+## 5. Bootstrap the target environment
 
-Bootstrap использует конфигурацию, ранее подготовленную Discovery Engine, и автоматически воспроизводит рабочее окружение.
-
-Стандартный режим:
-
-```bash
-./bootstrap.sh --bootstrap
-```
-
-Подробный режим:
-
-```bash
-./bootstrap.sh --bootstrap --verbose
-```
-
-Toolkit автоматически:
-
-- установит и настроит Homebrew;
-- настроит Git;
-- проверит SSH;
-- настроит Terminal;
-- установит Homebrew Packages;
-- установит Homebrew Casks;
-- восстановит отсутствующие Homebrew Casks при необходимости;
-- установит приложения App Store;
-- установит расширения VS Code;
-- применит настройки VS Code;
-- создаст резервную копию текущих настроек VS Code;
-- настроит Finder;
-- настроит Dock;
-- настроит Keyboard;
-- настроит Trackpad;
-- настроит Screenshots.
-
-После завершения Toolkit покажет итоговый Summary с количеством проверенных, изменённых и пропущенных модулей.
-
----
-
-## Дополнительные команды
-
-### Проверка системы
-
-```bash
-./bootstrap.sh --check
-```
-
-### Проверка системы (Verbose)
-
-```bash
-./bootstrap.sh --check --verbose
-```
-
-### Discovery
-
-```bash
-./bootstrap.sh --discover
-```
-
-### Discovery (Verbose)
-
-```bash
-./bootstrap.sh --discover --verbose
-```
-
-### Bootstrap
+Place the reviewed generated configuration under `config/generated/` on the
+target Mac, then run from the repository root:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
-### Bootstrap (Verbose)
+For diagnostic details:
 
 ```bash
 ./bootstrap.sh --bootstrap --verbose
 ```
 
-### Версия Toolkit
+Bootstrap uses the generated configuration to:
 
-```bash
-./bootstrap.sh --version
-```
+- create missing workspace folders;
+- clone missing Git repositories, verify origins, and restore configured
+  branches only when existing repositories are clean;
+- apply global Git configuration;
+- install missing Homebrew formulae and casks;
+- install configured App Store applications when `mas` is available;
+- install VS Code extensions and apply VS Code user settings;
+- apply supported Finder, Dock, keyboard, trackpad, and screenshot settings.
 
-### Справка
+The VS Code settings module creates `settings.json.bootstrap.bak` before
+replacing an existing, different settings file. Existing workspace directories
+and repository remotes are not overwritten. Conflicts are reported for manual
+attention.
 
-```bash
-./bootstrap.sh --help
-```
+## Logs and exit status
 
----
+Runs write the latest log to `logs/latest.log` and timestamped history logs to
+`logs/history/`. Both locations are excluded from Git.
 
-## Требования
+The final process status is:
 
-- macOS Tahoe 26 или новее
-- Xcode Command Line Tools
-- Подключение к Интернету
-- Учётная запись администратора
+- `0` — success;
+- `1` — completed with warnings;
+- `2` — error.
+
+## What is not available yet
+
+Dry-run, Blueprint, Verification, Restore, and AI Assistant are planned future
+work. In particular, `--dry-run` is not a supported option in version 2.0.1.
+See the project [roadmap](../../ROADMAP.md) for status.
+
+Return to the [main README](../../README.md).

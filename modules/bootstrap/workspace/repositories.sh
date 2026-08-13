@@ -10,23 +10,25 @@ bootstrap_workspace_repositories() {
 
     local config_file="config/generated/workspace/repositories.conf"
 
-    if [[ ! -f "$config_file" ]]; then
+    if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
         warning "Workspace repositories configuration not found"
-        return
+        return 1
     fi
 
     local repositories
 
     repositories=$(config_sections "$config_file") || {
         warning "Unable to read configuration"
-        return
+        return 1
     }
 
     success "Workspace repositories configuration loaded"
 
     echo
 
-for repository in $repositories; do
+    local has_warnings=false
+
+    for repository in $repositories; do
 
     local path
     local remote
@@ -38,10 +40,19 @@ for repository in $repositories; do
 
     info "Repository: $repository"
 
-    repository_verify "$path" "$remote" "$branch"
+        if ! repository_verify "$path" "$remote" "$branch"; then
+            warning "Repository requires manual attention: $repository"
+            has_warnings=true
+        fi
 
-    echo
+        echo
 
-done
+    done
+
+    if [[ "$has_warnings" == true ]]; then
+        return 1
+    fi
+
+    return 0
 
 }

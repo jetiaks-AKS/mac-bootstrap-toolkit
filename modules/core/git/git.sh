@@ -78,11 +78,23 @@ configure_git() {
 
     action "Configuring Git..."
 
-    git config --global user.name "$GIT_USER_NAME"
-    git config --global user.email "$GIT_USER_EMAIL"
-    git config --global init.defaultBranch "$GIT_DEFAULT_BRANCH"
-    git config --global pull.rebase "$GIT_PULL_REBASE"
-    git config --global core.editor "$GIT_EDITOR"
+    if ! git config --global user.name "$GIT_USER_NAME" ||
+        ! git config --global user.email "$GIT_USER_EMAIL" ||
+        ! git config --global init.defaultBranch "$GIT_DEFAULT_BRANCH" ||
+        ! git config --global pull.rebase "$GIT_PULL_REBASE" ||
+        ! git config --global core.editor "$GIT_EDITOR"; then
+
+        error "Failed to configure Git"
+        return 2
+
+    fi
+
+    if ! check_git_configuration; then
+
+        error "Git configuration verification failed"
+        return 2
+
+    fi
 
     success "Git configured successfully"
 

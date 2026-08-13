@@ -17,7 +17,12 @@ apply_vscode_settings() {
 
     fi
 
-    mkdir -p "$target_dir"
+    if ! mkdir -p "$target_dir"; then
+
+        error "Failed to create VS Code settings directory"
+        return 2
+
+    fi
 
     if [[ -f "$target_file" ]]; then
 
@@ -30,12 +35,24 @@ apply_vscode_settings() {
 
         action "Creating backup of current VS Code Settings..."
 
-        cp "$target_file" "$target_file.bootstrap.bak"
+        if ! cp "$target_file" "$target_file.bootstrap.bak"; then
+
+            error "Failed to back up current VS Code Settings"
+            return 2
+
+        fi
 
     fi
 
-    cp "$source_file" "$target_file"
+    if ! cp "$source_file" "$target_file"; then
+
+        error "Failed to apply VS Code Settings"
+        return 2
+
+    fi
 
     success "VS Code Settings applied successfully"
+
+    return 0
 
 }
