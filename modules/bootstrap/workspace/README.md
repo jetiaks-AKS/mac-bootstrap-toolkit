@@ -12,8 +12,6 @@
 
 - folders.conf
 - repositories.conf
-- vscode-workspaces.conf
-- vscode-projects.conf
 
 ---
 
@@ -33,9 +31,12 @@
 репозиториев и завершает Workspace с предупреждением. Существующие
 данные и Git remote при этом не изменяются.
 
-### VS Code
+### Branches
 
-Восстановление рабочих пространств и проектов VS Code.
+Восстановление рабочей Git-ветки выполняется только в чистом
+репозитории с совпадающим remote.
+
+Восстановление VS Code Workspaces и Projects пока не реализовано.
 
 ---
 

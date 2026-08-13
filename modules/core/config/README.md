@@ -64,7 +64,7 @@ config_get repositories.conf mac-bootstrap-toolkit PATH
 Результат:
 
 ```text
-/Users/vladimirmazaev/Projects/mac-bootstrap-toolkit
+/Users/username/Projects/mac-bootstrap-toolkit
 ```
 
 ---

@@ -224,7 +224,6 @@ Blueprint, Verification, Restore и AI Assistant являются следующ
 - `docs/toolkit/` — архитектура и устройство Toolkit.
 - `docs/macos/` — документация по macOS.
 - `docs/git/` — Git и рабочие процессы.
-- `docs/blueprint/` — материалы по Blueprint.
 - `docs/ideas/` — идеи и направления развития.
 
 Основные документы:

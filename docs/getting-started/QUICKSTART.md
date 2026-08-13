@@ -305,7 +305,7 @@ ls -lt logs/history/
 
 ## Требования
 
-* macOS Tahoe 26 или новее
+* macOS 15 или новее
 * Xcode Command Line Tools
 * Подключение к Интернету
 * Учётная запись администратора
