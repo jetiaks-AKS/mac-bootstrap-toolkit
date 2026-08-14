@@ -133,6 +133,14 @@ near-term technical work is tracked in [TODO.md](TODO.md).
 - [Internal documentation index](docs/README.md) (Russian)
 - [Changelog](CHANGELOG.md) (Russian)
 
+## Support
+
+Mac Bootstrap Toolkit is free and open source.
+
+If the project saves you time and you would like to support its continued
+development, you can make a voluntary donation via
+[Boosty](https://boosty.to/jetiaks/donate).
+
 ## License
 
 Mac Bootstrap Toolkit is available under the [MIT License](LICENSE).
