@@ -75,14 +75,35 @@ export_vscode_settings() {
 
 discover_vscode() {
 
+    local discovery_result=0
+    local exporter_result
+
     export_vscode_extensions
+    exporter_result=$?
+
+    if [[ $exporter_result -gt $discovery_result ]]; then
+        discovery_result=$exporter_result
+    fi
 
     echo
 
     export_vscode_settings
+    exporter_result=$?
+
+    if [[ $exporter_result -gt $discovery_result ]]; then
+        discovery_result=$exporter_result
+    fi
 
     echo
 
-    success "VS Code Discovery completed"
+    if [[ $discovery_result -eq 0 ]]; then
+        success "VS Code Discovery completed"
+    elif [[ $discovery_result -eq 1 ]]; then
+        warning "VS Code Discovery completed with warnings"
+    else
+        error "VS Code Discovery completed with errors"
+    fi
+
+    return "$discovery_result"
 
 }
