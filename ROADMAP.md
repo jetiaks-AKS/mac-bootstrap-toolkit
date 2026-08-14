@@ -5,7 +5,7 @@
 Roadmap описывает последовательность развития
 Mac Bootstrap Toolkit.
 
-Архитектура проекта определяется в `ARCHITECTURE.md`.
+Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`.
 
 Roadmap определяет:
 
@@ -166,11 +166,58 @@ Roadmap не заменяет архитектурную документаци�
 
 ---
 
-# Этап 5 — Dry-run Mode
+# Текущий фокус после 2.0.1 — Foundation Review / Reliability
+
+**Статус: In Development**
+
+Проверка и стабилизация существующей цепочки:
+
+```text
+Discovery → Generated Configuration → Bootstrap
+```
+
+- [ ] Полная проверка идемпотентности и повторного запуска
+- [ ] Проверка согласованности Generated Configuration
+- [ ] Проверка использования Bootstrap всех уже обнаруживаемых данных
+- [ ] Единый Module Lifecycle и контракт exit codes
+- [ ] Проверка важных edge cases
+- [ ] Валидация конфигурации
+- [ ] Regression tests, ShellCheck и code quality work
+
+Это этап проверки существующего фундамента, а не новый Engine.
+
+---
+
+# Этап 5 — Blueprint Engine
 
 **Статус: Planned**
 
-Безопасный режим предварительного выполнения Toolkit.
+Простой слой выбора между Discovery и Bootstrap. Discovery может
+обнаружить больше компонентов, чем пользователь хочет перенести;
+Blueprint определяет, какие из них действительно нужно восстановить.
+
+- [ ] Blueprint format
+- [ ] Выбор категорий и компонентов
+- [ ] Выбор отдельных обнаруженных компонентов
+- [ ] Component exclusions
+- [ ] Blueprint validation
+- [ ] Связь Blueprint с Generated Configuration и Bootstrap
+
+Первый scope может охватывать Applications, Homebrew, VS Code,
+Workspace и macOS Settings. Required / Optional component model,
+parameter overrides, versioning и import / export не входят в
+обязательный первый scope.
+
+Blueprint не должен превращаться в сложный configuration framework
+или требовать Profiles.
+
+---
+
+# Этап 6 — Dry-run / Preview
+
+**Статус: Planned**
+
+Безопасный предварительный просмотр действий Toolkit.
 
 Dry-run позволяет определить, какие изменения Toolkit
 собирается выполнить, не изменяя состояние системы.
@@ -183,185 +230,150 @@ Current State
 Bootstrap Checks
       ↓
 Planned Changes
-````
-
-* [ ] Добавить `--dry-run`
-* [ ] Предварительная проверка всех Bootstrap-модулей
-* [ ] Определение изменений без их применения
-* [ ] Единый формат отображения планируемых изменений
-* [ ] Поддержка Dry-run для Applications
-* [ ] Поддержка Dry-run для VS Code
-* [ ] Поддержка Dry-run для Workspace
-* [ ] Поддержка Dry-run для macOS Settings
-* [ ] Интеграция Dry-run с существующим Module Lifecycle
-* [ ] Интеграция Dry-run с Logger
-* [ ] Интеграция Dry-run с Summary
-* [ ] Проверка соответствия Dry-run фактическому Bootstrap
-
-Dry-run не изменяет существующую архитектурную модель
-Discovery → Generated Configuration → Bootstrap.
-
-Он является безопасным режимом выполнения уже существующего
-Bootstrap Engine и подготавливает систему к следующим
-архитектурным этапам.
-
----
-
-# Этап 6 — Blueprint Engine
-
-**Статус: Planned**
-
-Формирование целевого профиля рабочего окружения.
-
-* [ ] Blueprint format
-* [ ] Component selection
-* [ ] Required / Optional components
-* [ ] Parameter overrides
-* [ ] Component exclusions
-* [ ] Blueprint validation
-* [ ] Blueprint versioning
-* [ ] Blueprint import / export
-
-Основная цель:
-
-```text
-Observed State
-      ↓
-   Blueprint
-      ↓
-Desired State
 ```
 
-Blueprint должен стать источником целевого состояния,
-а не заменять существующий Discovery Engine.
+- [ ] Добавить `--dry-run`
+- [ ] Выполнять проверки без изменений состояния
+- [ ] Определять и единообразно показывать planned changes
+- [ ] Поддержать Applications, VS Code, Workspace и macOS Settings
+- [ ] Интегрировать Preview с Module Lifecycle, Logger и Summary
+- [ ] Проверить соответствие Preview фактическому Bootstrap
+
+Dry-run остаётся режимом существующего Bootstrap, а не отдельным
+planner framework.
 
 ---
 
-# Этап 7 — Verification Engine
+# Этап 7 — Bootstrap through Blueprint
 
 **Статус: Planned**
 
-Проверка соответствия текущего Mac целевому состоянию.
+Адаптация существующего Bootstrap Engine для применения только
+состояния, выбранного в Blueprint.
 
-* [ ] State comparison
-* [ ] Component verification
-* [ ] Configuration verification
-* [ ] Missing component detection
-* [ ] Configuration mismatch detection
-* [ ] Verification report
-* [ ] Verification summary
+- [ ] Передавать выбор Blueprint в Bootstrap
+- [ ] Не применять обнаруженные, но не выбранные компоненты
+- [ ] Сохранять безопасный и идемпотентный Bootstrap lifecycle
+
+---
+
+# Этап 8 — Verification
+
+**Статус: Planned**
+
+Подтверждение результата Bootstrap с использованием существующей
+модели Check → Apply → Verify.
+
+- [ ] Component verification
+- [ ] Configuration verification
+- [ ] Missing component detection
+- [ ] Mismatch detection
+- [ ] Итоговый verification status / report
 
 Основная цель:
 
 ```text
-Current State
+Selected State
+      ↓
+ Bootstrap
       ↓
 Verification
-      ↓
-Differences
 ```
 
 ---
 
-# Этап 8 — Restore Engine
+# Этап 9 — Coverage Expansion
 
 **Статус: Planned**
 
-Полное воспроизводимое восстановление рабочего окружения.
+Разумное расширение покрытия после завершения основного цикла.
 
-* [ ] Restore workflow
-* [ ] Dependency handling
-* [ ] Restore ordering
-* [ ] Restore verification
-* [ ] Recovery from partial failure
-* [ ] Restore report
-* [ ] Restore summary
+## macOS Settings
 
-Основная цель:
+- [ ] Добавлять только полезные и стабильные настройки
+- [ ] Оценить Menu Bar, Mission Control, Login Items и Power Management
 
-```text
-Blueprint
-    ↓
-Verification
-    ↓
-Bootstrap
-    ↓
-Restore
-    ↓
-Verified Mac
-```
+Кандидаты не являются обязательным полным списком; цель этапа — не
+поддержка сотен `defaults`.
 
----
+## VS Code
 
-# Этап 9 — AI Assistant
+- [ ] Projects
+- [ ] Workspaces
+- [ ] Keybindings
+- [ ] Snippets — при подтверждённой пользе
 
-**Статус: Planned**
+Profiles не относятся к ближайшему обязательному покрытию.
 
-Интеллектуальный слой поверх существующей архитектуры.
+## Discovery
 
-* [ ] Environment analysis
-* [ ] Configuration analysis
-* [ ] Blueprint generation
-* [ ] Difference explanation
-* [ ] Troubleshooting
-* [ ] Restore assistance
-* [ ] Recommendations
-* [ ] Automated remediation suggestions
-
-AI Assistant не заменяет существующие компоненты Toolkit,
-а использует их данные и результаты.
+Новый Discovery-модуль приоритетен, когда его результат можно
+использовать при восстановлении.
 
 ---
 
-# Этап 10 — Quality & Reliability
+# Optional / Future Evolution
 
-**Статус: In Development**
+**Статус: Optional**
 
-Повышение надёжности и качества всей системы.
+- Restore Engine — только если появится чёткая ответственность,
+  принципиально не покрываемая цепочкой Blueprint → Bootstrap → Verification
+- AI Assistant
+- Profiles
+- Machine Diff
+- Secrets integrations
+- Plugins
+- GUI
 
-* [x] Единая система Module Lifecycle Logging
-* [x] History logs для основных режимов Toolkit
-* [x] `latest.log`
-* [x] Обработка прерывания Toolkit
-* [x] Compact / Verbose Output
-* [ ] Полная проверка идемпотентности модулей
-* [ ] Расширенная обработка ошибок
-* [ ] Единый стиль сообщений
-* [ ] Улучшение Summary
-* [ ] Отдельная корректировка Summary для Discovery Mode
-* [ ] Конфигурационная валидация
-* [ ] Regression tests
-* [ ] ShellCheck / code quality
-* [ ] Documentation review
-
-Quality & Reliability развивается параллельно
-основным архитектурным этапам.
+Эти идеи не являются обязательными утверждёнными этапами. Отдельный
+Restore Engine не исключён, но больше не считается обязательным
+следующим звеном архитектуры.
 
 ---
 
-# Текущий фокус
+# Quality & Reliability
 
-Версия **2.0.1 Stable** завершает базовый цикл:
+**Статус: In Development (параллельное направление)**
+
+Повышение надёжности и качества всей системы:
+
+- [ ] Idempotency и error handling
+- [ ] Configuration validation
+- [ ] Regression tests
+- [ ] ShellCheck и code quality
+- [ ] Согласованность документации
+
+Summary и вывод улучшаются только при выявлении конкретных проблем,
+а не как самостоятельные стратегические цели.
+
+---
+
+# Продуктовая модель
 
 ```text
 Discovery
     ↓
 Generated Configuration
     ↓
+Blueprint
+    ↓
+Dry-run / Preview
+    ↓
 Bootstrap
+    ↓
+Verification
 ```
 
-Базовый цикл Toolkit реализован и стабилизирован.
+Discovery фиксирует текущее состояние, Generated Configuration хранит
+machine-specific результат, Blueprint выбирает нужное для переноса,
+Preview показывает действия без изменений, Bootstrap безопасно
+применяет выбранное состояние, а Verification подтверждает результат.
 
-Текущий фокус разработки — повышение надёжности существующего
-Bootstrap Engine, завершение ревизии Logging и Module Lifecycle,
-а также реализация **Dry-run Mode**.
-
-После завершения Dry-run следующим архитектурным этапом является
-**Blueprint Engine**.
-
-Техническая стабилизация и улучшение существующих компонентов
-продолжаются параллельно через `TODO.md`.
+Toolkit не должен становиться универсальным macOS configuration
+framework. Новая функция оправдана, если заметно улучшает обнаружение
+состояния, выбор нужного, безопасное применение или проверку результата.
+Внутренняя сложность не должна без необходимости переходить в
+пользовательский workflow.
 
 ---
 
@@ -376,15 +388,19 @@ Generated Configuration
   ↓
 Bootstrap
   ↓
-Dry-run
+Foundation Review / Reliability
   ↓
 Blueprint
   ↓
+Dry-run / Preview
+  ↓
+Bootstrap using Blueprint
+  ↓
 Verification
   ↓
-Restore
+Coverage Expansion
   ↓
-AI Assistant
+Optional / Future Evolution
 ```
 
 Quality & Reliability развивается параллельно всем этапам.
@@ -399,7 +415,7 @@ Roadmap показывает **путь реализации**, а не полн
 Архитектура проекта определяется в:
 
 ```text
-ARCHITECTURE.md
+docs/toolkit/ARCHITECTURE.md
 ```
 
 Конкретные ближайшие технические задачи находятся в:
@@ -418,5 +434,3 @@ CHANGELOG.md
 её статуса и этапа реализации.
 
 Структура целевой архитектуры при этом не изменяется.
-
-```
