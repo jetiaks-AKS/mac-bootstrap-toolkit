@@ -39,6 +39,12 @@ return 2
 
 install_appstore_apps() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items app-store)" ]]; then
+        success "No App Store applications selected by Blueprint"
+        return 0
+    fi
+
     if ! command -v mas >/dev/null 2>&1; then
 
         warning "mas is not installed"
@@ -46,7 +52,8 @@ install_appstore_apps() {
 
     fi
 
-    local config_file="config/generated/appstore.conf"
+    local config_file
+    config_file="$(blueprint_generated_file app-store)"
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -63,6 +70,7 @@ install_appstore_apps() {
 
         [[ -z "$app_id" ]] && continue
         [[ "$app_id" =~ ^# ]] && continue
+        blueprint_item_selected app-store "$app_id" || continue
 
         if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
 

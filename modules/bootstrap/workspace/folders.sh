@@ -6,9 +6,16 @@
 
 bootstrap_workspace_folders() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items workspace-folders)" ]]; then
+        success "No Workspace folders selected by Blueprint"
+        return 0
+    fi
+
     action "Creating Workspace folders..."
 
-    local config_file="config/generated/workspace/folders.conf"
+    local config_file
+    config_file="$(blueprint_generated_file workspace-folders)"
 
     if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
 
@@ -21,6 +28,7 @@ bootstrap_workspace_folders() {
 while IFS="|" read -r folder type; do
 
     [[ -z "$folder" ]] && continue
+    blueprint_item_selected workspace-folders "$folder" || continue
 
 if [[ ! -d "$HOME/$folder" ]]; then
 

@@ -135,18 +135,21 @@ Blueprint определяет:
 
 > **что должно быть.**
 
-Stage 1 добавляет основу Blueprint parser и validation. Пользовательский
-`config/blueprint.conf` содержит только выбор категорий и отдельных
-обнаруженных компонентов; реальные значения остаются исключительно в
-`config/generated/`.
+Blueprint сейчас предоставляет parser, validation и item-level фильтрацию
+Bootstrap. Пользовательский `config/blueprint.conf` содержит только выбор
+категорий и отдельных обнаруженных компонентов; реальные значения остаются
+исключительно в `config/generated/`.
 
 Файл Blueprint локальный, исключён из Git и не создаётся автоматически.
 Нейтральная структура формата приведена в
 `config/blueprint.example.conf`.
 
-На Stage 1 Blueprint ещё не подключён к Bootstrap и не имеет
-interactive CLI. До следующих этапов существующий Bootstrap продолжает
-напрямую использовать Generated Configuration без фильтрации.
+При наличии Blueprint Bootstrap фильтрует Homebrew packages и casks,
+приложения App Store, расширения VS Code, папки Workspace и Git-репозитории по
+item-секциям. Без Blueprint сохраняется прежняя обработка всех компонентов из
+Generated Configuration.
+
+Фильтрация категорий и модулей, interactive CLI и Dry-run пока не реализованы.
 
 ---
 

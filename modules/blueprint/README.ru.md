@@ -2,8 +2,8 @@
 
 [English version](README.md)
 
-Blueprint Stage 1 предоставляет parser и validation для будущего слоя
-пользовательского выбора. Он не меняет поведение Discovery или Bootstrap и не
+Blueprint реализуется поэтапно как слой пользовательского выбора. Сейчас он
+предоставляет parser, validation и item-level фильтрацию Bootstrap. Он не
 добавляет интерактивный CLI-режим.
 
 Пользовательский файл — `config/blueprint.conf`. Он исключён из Git и никогда
@@ -21,10 +21,10 @@ item-секций:
 - `[git-repositories]`
 
 Пустая item-секция выбирает ноль компонентов. Если
-`config/blueprint.conf` отсутствует, selection API сообщает о legacy-режиме с
-полным scope для будущей интеграции с Bootstrap.
+`config/blueprint.conf` отсутствует, Bootstrap сохраняет legacy-поведение с
+полным scope.
 
-API Stage 1 в `blueprint.sh`:
+API в `blueprint.sh`:
 
 - `blueprint_exists [file]`
 - `blueprint_category_enabled category [file]`
@@ -37,5 +37,11 @@ Validation возвращает `0` для валидного или отсут�
 или неоднозначного ввода. Validation никогда не перезаписывает Blueprint.
 
 Discovery по-прежнему сканирует все поддерживаемые области, а Blueprint хранит
-только пользовательский выбор. На текущем этапе Bootstrap ещё не фильтруется
-через Blueprint; интерактивной команды `--blueprint` и Dry-run пока нет.
+только пользовательский выбор. Generated Configuration остаётся источником
+фактических значений. При наличии Blueprint Bootstrap фильтрует Homebrew
+packages, Homebrew casks, приложения App Store, расширения VS Code, папки
+Workspace и Git-репозитории по соответствующим item-секциям.
+
+Фильтрация категорий и модулей пока не реализована: Git Configuration, VS Code
+Settings и настройки macOS не управляются секцией `[categories]`. Интерактивной
+команды `--blueprint` и Dry-run пока нет.

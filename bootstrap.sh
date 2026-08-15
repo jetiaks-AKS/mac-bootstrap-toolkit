@@ -14,6 +14,12 @@ source modules/core/preflight/preflight.sh
 source modules/core/config/config.sh
 
 # ==========================================
+# Blueprint
+# ==========================================
+
+source modules/blueprint/blueprint.sh
+
+# ==========================================
 # Applications
 # ==========================================
 
@@ -225,23 +231,34 @@ case "$MODE" in
 
     --bootstrap)
 
-        run_module "Workspace" bootstrap_workspace
+        blueprint_result=0
 
-        echo
+        if blueprint_exists; then
+            run_module "Blueprint Validation" blueprint_validate
+            blueprint_result=$?
+        fi
 
-        run_module "Git Configuration" configure_git
+        if [[ $blueprint_result -ne 2 ]]; then
 
-        run_module "Homebrew Packages" install_brew_packages
+            run_module "Workspace" bootstrap_workspace
 
-        run_module "Homebrew Casks" install_brew_casks
+            echo
 
-        run_module "App Store" install_appstore_apps
+            run_module "Git Configuration" configure_git
 
-        run_module "VS Code Extensions" install_vscode_extensions
+            run_module "Homebrew Packages" install_brew_packages
 
-        run_module "VS Code Settings" apply_vscode_settings
+            run_module "Homebrew Casks" install_brew_casks
 
-        apply_macos_settings
+            run_module "App Store" install_appstore_apps
+
+            run_module "VS Code Extensions" install_vscode_extensions
+
+            run_module "VS Code Settings" apply_vscode_settings
+
+            apply_macos_settings
+
+        fi
 
         ;;
 

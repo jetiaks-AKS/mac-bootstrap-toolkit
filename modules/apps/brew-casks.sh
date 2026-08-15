@@ -87,6 +87,12 @@ return 2
 
 install_brew_casks() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items homebrew-casks)" ]]; then
+        success "No Homebrew casks selected by Blueprint"
+        return 0
+    fi
+
     if ! command -v brew >/dev/null 2>&1; then
 
         error "Homebrew is not installed"
@@ -94,7 +100,8 @@ install_brew_casks() {
 
     fi
 
-    local config_file="config/generated/brew-casks.conf"
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-casks)"
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -109,6 +116,7 @@ install_brew_casks() {
 
         [[ -z "$cask" ]] && continue
         [[ "$cask" =~ ^# ]] && continue
+        blueprint_item_selected homebrew-casks "$cask" || continue
 
         if is_cask_installed "$cask"; then
 

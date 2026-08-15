@@ -2,9 +2,9 @@
 
 [Русская версия](README.ru.md)
 
-Blueprint Stage 1 provides parsing and validation for the future user-selection
-layer. It does not change Discovery or Bootstrap behavior and does not add an
-interactive CLI mode.
+Blueprint is being implemented incrementally as the user-selection layer.
+It currently provides parsing, validation, and item-level Bootstrap filtering.
+It does not add an interactive CLI mode.
 
 The user-specific file is `config/blueprint.conf`. It is ignored by Git and is
 never generated automatically. `config/blueprint.example.conf` contains the
@@ -21,10 +21,9 @@ sections:
 - `[git-repositories]`
 
 An empty item section selects zero items. When `config/blueprint.conf` is
-absent, the selection API reports legacy all-inclusive behavior for future
-Bootstrap integration.
+absent, Bootstrap retains its legacy all-inclusive behavior.
 
-The Stage 1 API in `blueprint.sh` is:
+The API in `blueprint.sh` is:
 
 - `blueprint_exists [file]`
 - `blueprint_category_enabled category [file]`
@@ -37,6 +36,11 @@ Blueprint with stale selected items, and `2` for malformed or ambiguous input.
 Validation never rewrites the Blueprint.
 
 Discovery still scans every supported area, while Blueprint stores only the
-user's selection. Bootstrap is not yet filtered through Blueprint at the
-current implementation stage; there is no interactive `--blueprint` command or
-Dry-run yet.
+user's selection. Generated Configuration remains the source of actual values.
+When a Blueprint exists, Bootstrap filters Homebrew packages, Homebrew casks,
+App Store applications, VS Code extensions, workspace folders, and Git
+repositories by their corresponding item sections.
+
+Category/module filtering is not implemented yet: Git Configuration, VS Code
+Settings, and macOS settings are not gated by `[categories]`. There is no
+interactive `--blueprint` command or Dry-run yet.
