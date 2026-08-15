@@ -46,5 +46,19 @@ The `[categories]` section independently controls Git Configuration, VS Code
 Settings, and the Finder, Dock, Keyboard, Trackpad, and Screenshots macOS
 modules. VS Code extensions remain controlled separately by their item section.
 
-Blueprint is not yet a fully completed user-facing feature. There is no
-interactive `--blueprint` command or Dry-run yet.
+Create or edit the local Blueprint with:
+
+```text
+./bootstrap.sh --discover
+./bootstrap.sh --blueprint
+./bootstrap.sh --bootstrap
+```
+
+The selector offers All, None, or Edit for each discovered item area. Edit mode
+shows the current checkbox state on pages of 10 items. Entered numbers toggle
+those checkboxes; they may be separated by commas or spaces and may include
+ranges such as `5-9` or mixed input such as `1,3,7-10`. Running `--blueprint`
+again loads the current choices for editing.
+
+The Blueprint remains local, private, and ignored by Git. Dry-run is not
+implemented yet.

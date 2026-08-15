@@ -18,6 +18,7 @@ source modules/core/config/config.sh
 # ==========================================
 
 source modules/blueprint/blueprint.sh
+source modules/blueprint/selector.sh
 
 # ==========================================
 # Applications
@@ -90,6 +91,11 @@ for arg in "$@"; do
             MODE="--discover"
             ;;
 
+        --blueprint)
+
+            MODE="--blueprint"
+            ;;
+
         -v|--verbose)
 
             VERBOSE=true
@@ -120,6 +126,9 @@ Usage:
 
   ./bootstrap.sh --discover
       Analyze current Mac and generate Bootstrap configuration
+
+  ./bootstrap.sh --blueprint
+      Select what Bootstrap should restore
 
 
 Options:
@@ -169,6 +178,10 @@ case "$MODE" in
         MODE_NAME="Discovery"
         ;;
 
+    --blueprint)
+        MODE_NAME="Blueprint"
+        ;;
+
 esac
 
 # ==========================================
@@ -191,6 +204,13 @@ echo
 echo "Version : $TOOLKIT_VERSION"
 echo "Mode    : $MODE_NAME"
 echo
+
+if [[ "$MODE" == "--blueprint" ]]; then
+    blueprint_selector_run
+    blueprint_result=$?
+    close_logger
+    exit "$blueprint_result"
+fi
 
 
 # ==========================================

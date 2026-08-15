@@ -152,7 +152,21 @@ Generated Configuration.
 
 Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
 и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Interactive CLI
-и Dry-run пока не реализованы.
+доступен через последовательный workflow:
+
+```text
+./bootstrap.sh --discover
+./bootstrap.sh --blueprint
+./bootstrap.sh --bootstrap
+```
+
+Selector предлагает All, None или Edit для каждой непустой item-области. Edit
+показывает текущее состояние checkbox на страницах по 10 компонентов, а
+введённые отдельные номера, списки и диапазоны переключают эти checkbox.
+Существующий Blueprint можно изменить повторным запуском `--blueprint`.
+
+`config/blueprint.conf` остаётся локальным, приватным и исключённым из Git.
+Dry-run пока не реализован.
 
 ---
 
