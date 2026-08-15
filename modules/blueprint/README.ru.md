@@ -3,8 +3,8 @@
 [English version](README.md)
 
 Blueprint реализуется поэтапно как слой пользовательского выбора. Сейчас он
-предоставляет parser, validation и item-level фильтрацию Bootstrap. Он не
-добавляет интерактивный CLI-режим.
+предоставляет parser, validation, item-level и category/module-level фильтрацию
+Bootstrap. Он не добавляет интерактивный CLI-режим.
 
 Пользовательский файл — `config/blueprint.conf`. Он исключён из Git и никогда
 не создаётся автоматически. `config/blueprint.example.conf` содержит
@@ -42,6 +42,9 @@ Discovery по-прежнему сканирует все поддерживае
 packages, Homebrew casks, приложения App Store, расширения VS Code, папки
 Workspace и Git-репозитории по соответствующим item-секциям.
 
-Фильтрация категорий и модулей пока не реализована: Git Configuration, VS Code
-Settings и настройки macOS не управляются секцией `[categories]`. Интерактивной
-команды `--blueprint` и Dry-run пока нет.
+Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
+и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Расширения
+VS Code по-прежнему управляются отдельно своей item-секцией.
+
+Blueprint пока не является полностью завершённой пользовательской функцией.
+Интерактивной команды `--blueprint` и Dry-run ещё нет.

@@ -244,7 +244,9 @@ case "$MODE" in
 
             echo
 
-            run_module "Git Configuration" configure_git
+            if blueprint_category_enabled git-configuration; then
+                run_module "Git Configuration" configure_git
+            fi
 
             run_module "Homebrew Packages" install_brew_packages
 
@@ -254,9 +256,17 @@ case "$MODE" in
 
             run_module "VS Code Extensions" install_vscode_extensions
 
-            run_module "VS Code Settings" apply_vscode_settings
+            if blueprint_category_enabled vscode-settings; then
+                run_module "VS Code Settings" apply_vscode_settings
+            fi
 
-            apply_macos_settings
+            if blueprint_category_enabled macos-finder ||
+               blueprint_category_enabled macos-dock ||
+               blueprint_category_enabled macos-keyboard ||
+               blueprint_category_enabled macos-trackpad ||
+               blueprint_category_enabled macos-screenshots; then
+                apply_macos_settings
+            fi
 
         fi
 

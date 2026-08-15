@@ -17,11 +17,25 @@ source modules/settings/macos/screenshots.sh
 
 check_macos_settings() {
 
-    check_finder >/dev/null 2>&1 || return 1
-    check_dock >/dev/null 2>&1 || return 1
-    check_keyboard >/dev/null 2>&1 || return 1
-    check_trackpad >/dev/null 2>&1 || return 1
-    check_screenshots >/dev/null 2>&1 || return 1
+    if blueprint_category_enabled macos-finder; then
+        check_finder >/dev/null 2>&1 || return 1
+    fi
+
+    if blueprint_category_enabled macos-dock; then
+        check_dock >/dev/null 2>&1 || return 1
+    fi
+
+    if blueprint_category_enabled macos-keyboard; then
+        check_keyboard >/dev/null 2>&1 || return 1
+    fi
+
+    if blueprint_category_enabled macos-trackpad; then
+        check_trackpad >/dev/null 2>&1 || return 1
+    fi
+
+    if blueprint_category_enabled macos-screenshots; then
+        check_screenshots >/dev/null 2>&1 || return 1
+    fi
 
     return 0
 
@@ -46,23 +60,28 @@ apply_macos_settings() {
 
 apply_macos_components() {
 
-    if ! check_finder >/dev/null 2>&1; then
+    if blueprint_category_enabled macos-finder &&
+       ! check_finder >/dev/null 2>&1; then
         apply_finder_settings
     fi
 
-    if ! check_dock >/dev/null 2>&1; then
+    if blueprint_category_enabled macos-dock &&
+       ! check_dock >/dev/null 2>&1; then
         apply_dock_settings
     fi
 
-    if ! check_keyboard >/dev/null 2>&1; then
+    if blueprint_category_enabled macos-keyboard &&
+       ! check_keyboard >/dev/null 2>&1; then
         apply_keyboard_settings
     fi
 
-    if ! check_trackpad >/dev/null 2>&1; then
+    if blueprint_category_enabled macos-trackpad &&
+       ! check_trackpad >/dev/null 2>&1; then
         apply_trackpad_settings
     fi
 
-    if ! check_screenshots >/dev/null 2>&1; then
+    if blueprint_category_enabled macos-screenshots &&
+       ! check_screenshots >/dev/null 2>&1; then
         apply_screenshots_settings
     fi
 

@@ -36,6 +36,7 @@ source "$PROJECT_ROOT/modules/apps/brew-packages.sh"
 source "$PROJECT_ROOT/modules/apps/brew-casks.sh"
 source "$PROJECT_ROOT/modules/apps/appstore.sh"
 source "$PROJECT_ROOT/modules/vscode/extensions.sh"
+source "$PROJECT_ROOT/modules/settings/macos/macos.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/folders.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/repositories.sh"
 
@@ -203,6 +204,16 @@ write_blueprint() {
     } > "$BLUEPRINT_FILE"
 }
 
+set_blueprint_category() {
+    local category="$1"
+    local enabled="$2"
+
+    sed -i.bak \
+        "s/^${category}=\"[^\"]*\"$/${category}=\"${enabled}\"/" \
+        "$BLUEPRINT_FILE"
+    rm -f "$BLUEPRINT_FILE.bak"
+}
+
 write_generated_state() {
     mkdir -p "$BLUEPRINT_GENERATED_DIR/workspace" "$HOME"
 
@@ -354,6 +365,151 @@ if [[ $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
     pass "stale Blueprint warning survives successful Bootstrap orchestration"
 else
     fail "stale Blueprint orchestration (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, status=$orchestration_status, processed='$PROCESSED_ITEMS')"
+fi
+
+rm -f "$BLUEPRINT_FILE"
+reset_orchestration
+run_bootstrap_orchestration >/dev/null
+expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings macos-settings"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "missing Blueprint keeps category consumers in Bootstrap orchestration"
+else
+    fail "missing Blueprint category orchestration (processed='$PROCESSED_ITEMS')"
+fi
+
+write_blueprint
+set_blueprint_category git-configuration false
+set_blueprint_category vscode-settings false
+reset_orchestration
+run_bootstrap_orchestration >/dev/null
+expected_steps="workspace homebrew-packages homebrew-casks app-store vscode-extensions macos-settings"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "disabled Git and VS Code Settings do not disable VS Code extensions"
+else
+    fail "Git and VS Code category filtering (processed='$PROCESSED_ITEMS')"
+fi
+
+set_blueprint_category macos-finder false
+set_blueprint_category macos-dock false
+set_blueprint_category macos-keyboard false
+set_blueprint_category macos-trackpad false
+set_blueprint_category macos-screenshots false
+reset_orchestration
+run_bootstrap_orchestration >/dev/null
+expected_steps="workspace homebrew-packages homebrew-casks app-store vscode-extensions"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "disabled categories omit Git, VS Code Settings, and macOS orchestration"
+else
+    fail "disabled category orchestration (processed='$PROCESSED_ITEMS')"
+fi
+
+CHECK_RESULT=0
+
+check_finder() {
+    record_orchestration_step check-finder
+    return "$CHECK_RESULT"
+}
+
+check_dock() {
+    record_orchestration_step check-dock
+    return "$CHECK_RESULT"
+}
+
+check_keyboard() {
+    record_orchestration_step check-keyboard
+    return "$CHECK_RESULT"
+}
+
+check_trackpad() {
+    record_orchestration_step check-trackpad
+    return "$CHECK_RESULT"
+}
+
+check_screenshots() {
+    record_orchestration_step check-screenshots
+    return "$CHECK_RESULT"
+}
+
+apply_finder_settings() {
+    record_orchestration_step apply-finder
+}
+
+apply_dock_settings() {
+    record_orchestration_step apply-dock
+}
+
+apply_keyboard_settings() {
+    record_orchestration_step apply-keyboard
+}
+
+apply_trackpad_settings() {
+    record_orchestration_step apply-trackpad
+}
+
+apply_screenshots_settings() {
+    record_orchestration_step apply-screenshots
+}
+
+rm -f "$BLUEPRINT_FILE"
+PROCESSED_ITEMS=""
+check_macos_settings
+expected_steps="check-finder check-dock check-keyboard check-trackpad check-screenshots"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "missing Blueprint keeps all macOS modules eligible"
+else
+    fail "missing Blueprint macOS eligibility (processed='$PROCESSED_ITEMS')"
+fi
+
+write_blueprint
+PROCESSED_ITEMS=""
+check_macos_settings
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "true Blueprint categories keep all macOS modules eligible"
+else
+    fail "true Blueprint macOS eligibility (processed='$PROCESSED_ITEMS')"
+fi
+
+set_blueprint_category macos-finder false
+set_blueprint_category macos-dock false
+set_blueprint_category macos-keyboard false
+set_blueprint_category macos-trackpad false
+set_blueprint_category macos-screenshots false
+PROCESSED_ITEMS=""
+check_macos_settings
+
+if [[ -z "$PROCESSED_ITEMS" ]]; then
+    pass "false Blueprint categories skip all macOS module checks"
+else
+    fail "false Blueprint macOS checks (processed='$PROCESSED_ITEMS')"
+fi
+
+write_blueprint
+set_blueprint_category macos-dock false
+set_blueprint_category macos-trackpad false
+PROCESSED_ITEMS=""
+check_macos_settings
+expected_steps="check-finder check-keyboard check-screenshots"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "mixed Blueprint categories check macOS modules independently"
+else
+    fail "mixed Blueprint macOS checks (processed='$PROCESSED_ITEMS')"
+fi
+
+CHECK_RESULT=1
+PROCESSED_ITEMS=""
+apply_macos_components
+expected_steps="check-finder apply-finder check-keyboard apply-keyboard check-screenshots apply-screenshots"
+
+if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
+    pass "mixed Blueprint categories apply macOS modules independently"
+else
+    fail "mixed Blueprint macOS apply (processed='$PROCESSED_ITEMS')"
 fi
 
 if [[ $TEST_FAILURES -ne 0 ]]; then

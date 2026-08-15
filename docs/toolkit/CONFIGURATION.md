@@ -135,10 +135,11 @@ Blueprint определяет:
 
 > **что должно быть.**
 
-Blueprint сейчас предоставляет parser, validation и item-level фильтрацию
-Bootstrap. Пользовательский `config/blueprint.conf` содержит только выбор
-категорий и отдельных обнаруженных компонентов; реальные значения остаются
-исключительно в `config/generated/`.
+Blueprint сейчас предоставляет parser, validation, item-level и
+category/module-level фильтрацию Bootstrap. Пользовательский
+`config/blueprint.conf` содержит только выбор категорий и отдельных
+обнаруженных компонентов; реальные значения остаются исключительно в
+`config/generated/`.
 
 Файл Blueprint локальный, исключён из Git и не создаётся автоматически.
 Нейтральная структура формата приведена в
@@ -149,7 +150,9 @@ Bootstrap. Пользовательский `config/blueprint.conf` содерж
 item-секциям. Без Blueprint сохраняется прежняя обработка всех компонентов из
 Generated Configuration.
 
-Фильтрация категорий и модулей, interactive CLI и Dry-run пока не реализованы.
+Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
+и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Interactive CLI
+и Dry-run пока не реализованы.
 
 ---
 

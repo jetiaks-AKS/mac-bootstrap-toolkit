@@ -3,8 +3,9 @@
 [Русская версия](README.ru.md)
 
 Blueprint is being implemented incrementally as the user-selection layer.
-It currently provides parsing, validation, and item-level Bootstrap filtering.
-It does not add an interactive CLI mode.
+It currently provides parsing, validation, item-level Bootstrap filtering, and
+category/module-level Bootstrap filtering. It does not add an interactive CLI
+mode.
 
 The user-specific file is `config/blueprint.conf`. It is ignored by Git and is
 never generated automatically. `config/blueprint.example.conf` contains the
@@ -41,6 +42,9 @@ When a Blueprint exists, Bootstrap filters Homebrew packages, Homebrew casks,
 App Store applications, VS Code extensions, workspace folders, and Git
 repositories by their corresponding item sections.
 
-Category/module filtering is not implemented yet: Git Configuration, VS Code
-Settings, and macOS settings are not gated by `[categories]`. There is no
+The `[categories]` section independently controls Git Configuration, VS Code
+Settings, and the Finder, Dock, Keyboard, Trackpad, and Screenshots macOS
+modules. VS Code extensions remain controlled separately by their item section.
+
+Blueprint is not yet a fully completed user-facing feature. There is no
 interactive `--blueprint` command or Dry-run yet.

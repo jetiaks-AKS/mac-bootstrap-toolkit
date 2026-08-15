@@ -52,14 +52,6 @@ TODO содержит ближайшие задачи по улучшению и
 
 ---
 
-# Blueprint Preparation
-
-- [ ] Подключить выбор категорий Blueprint к соответствующим Bootstrap-модулям
-- [ ] Сохранить legacy-поведение без Blueprint и корректную propagation
-      статусов при category/module filtering
-
----
-
 # Documentation
 
 - [ ] Поддерживать документацию в соответствии с кодом
