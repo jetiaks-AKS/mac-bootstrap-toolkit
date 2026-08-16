@@ -220,6 +220,7 @@ Planned Changes
 - [ ] Определять и единообразно показывать planned changes
 - [ ] Поддержать Applications, VS Code, Workspace и macOS Settings
 - [ ] Интегрировать Preview с Module Lifecycle, Logger и Summary
+- [ ] Отделять вычисление плана от CLI-представления там, где это практично
 - [ ] Проверить соответствие Preview фактическому Bootstrap
 
 Dry-run остаётся режимом существующего Bootstrap, а не отдельным

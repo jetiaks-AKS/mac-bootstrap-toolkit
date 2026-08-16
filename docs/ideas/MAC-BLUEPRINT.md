@@ -8,6 +8,8 @@
 > статус определены в [ARCHITECTURE.md](../toolkit/ARCHITECTURE.md) и
 > [ROADMAP.md](../../ROADMAP.md), а текущее поведение Blueprint — в
 > [CONFIGURATION.md](../toolkit/CONFIGURATION.md).
+> Современное долгосрочное развитие этой идеи описано в
+> [State Convergence](STATE-CONVERGENCE.ru.md).
 
 ---
 

@@ -122,3 +122,6 @@ config/generated/
 ```
 
 Именно эта схема является основной идеей Mac Bootstrap Toolkit.
+
+Возможное долгосрочное развитие этой модели описано в
+[State Convergence](ideas/STATE-CONVERGENCE.ru.md).

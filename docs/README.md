@@ -52,6 +52,15 @@
 
 ---
 
+## Ideas
+
+Долгосрочные и исторические концепции с явно указанным статусом.
+
+- [State Convergence](ideas/STATE-CONVERGENCE.md) / [Русский](ideas/STATE-CONVERGENCE.ru.md)
+- [Mac Blueprint — historical concept](ideas/MAC-BLUEPRINT.md)
+
+---
+
 # Принципы
 
 - Реализованный функционал документируется как реализованный.
