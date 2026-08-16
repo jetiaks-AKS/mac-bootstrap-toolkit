@@ -57,6 +57,17 @@ Bootstrap currently supports:
 Bootstrap modules are designed to check before applying changes and to skip
 work when the requested state is already present.
 
+On `develop`, Blueprint adds an optional local selection layer. After
+Discovery, `./bootstrap.sh --blueprint` can create or edit
+`config/blueprint.conf`; Bootstrap then processes only the selected categories
+and items. The file is private, ignored by Git, and keeps actual discovered
+values in `config/generated/`. Without a Blueprint, Bootstrap retains its
+all-inclusive behavior.
+
+When Blueprint is active, the final Bootstrap Summary shows compact
+selected/total counts and Enabled/Skipped setting categories without listing
+individual items.
+
 ## Quick start
 
 Clone the repository and enter its root directory:
@@ -83,6 +94,13 @@ On the source Mac, generate local configuration:
 
 ```bash
 ./bootstrap.sh --discover
+```
+
+On `develop`, optionally select which discovered components Bootstrap should
+restore:
+
+```bash
+./bootstrap.sh --blueprint
 ```
 
 After making the generated configuration available on the target Mac, run:
@@ -120,8 +138,10 @@ Version 2.0.1 provides the stable current workflow:
 Discovery → Generated Configuration → Bootstrap
 ```
 
-Dry-run, Blueprint, Verification, Restore, and AI Assistant are planned future
-stages. They are not available in the current CLI or stable functionality.
+The `develop` branch additionally contains the Blueprint format, parser,
+validation, interactive selector, and Bootstrap filtering. This work is
+complete and end-to-end verified on `develop`, but remains unreleased and is not
+part of the stable 2.0.1 release. Dry-run and Verification are not implemented.
 Development status and future stages are tracked in [ROADMAP.md](ROADMAP.md);
 near-term technical work is tracked in [TODO.md](TODO.md).
 

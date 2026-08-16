@@ -73,6 +73,7 @@ configure_git() {
     source config/generated/git.conf
 
     if check_git_configuration; then
+        success "Git configuration already configured"
         return 0
     fi
 

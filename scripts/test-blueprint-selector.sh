@@ -199,6 +199,53 @@ else
     fail "Enter changed existing partial Blueprint selection"
 fi
 
+{
+    echo 'Desktop|user'
+    echo 'Documents|user'
+    echo 'Projects|workspace'
+    echo 'Downloads|user'
+    echo 'Library|system'
+    echo 'Movies|user'
+    echo 'Music|user'
+    echo 'Pictures|user'
+    echo 'Public|system'
+    echo 'Screenshots|workspace'
+    echo 'Sources|workspace'
+    echo 'NewFolder|workspace'
+} > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+
+blueprint_selector_load_items workspace-folders
+workspace_output="$(blueprint_selector_select_items "Workspace Folders" <<< $'n\nd')"
+blueprint_selector_store_items workspace_selection
+if [[ "${BLUEPRINT_SELECTOR_ITEMS[*]}" == "Desktop Documents Projects Downloads Library Movies Music Pictures Public Screenshots Sources NewFolder" &&
+      "${BLUEPRINT_SELECTOR_LABELS[*]}" == "Desktop Documents Projects Downloads Library Movies Music Pictures Public Screenshots Sources NewFolder" &&
+      "${BLUEPRINT_SELECTOR_SELECTED[0]}" == false &&
+      "${BLUEPRINT_SELECTOR_SELECTED[2]}" == true &&
+      "${BLUEPRINT_SELECTOR_SELECTED[11]}" == false &&
+      "$workspace_selection" == "Projects" &&
+      "$(blueprint_selector_count_lines "$workspace_selection")" == 1 &&
+      "$workspace_output" == *'  1. [ ] Desktop'* &&
+      "$workspace_output" == *'  2. [ ] Documents'* &&
+      "$workspace_output" == *'  3. [x] Projects'* &&
+      "$workspace_output" == *' 11. [ ] Sources'* &&
+      "$workspace_output" == *' 12. [ ] NewFolder'* &&
+      "$workspace_output" != *'] user'* &&
+      "$workspace_output" != *'] workspace'* &&
+      "$workspace_output" != *'] system'* ]]; then
+    pass "Workspace folders render names with identifier-based selection and pagination"
+else
+    fail "Workspace folder labels, selection identifiers, counts, or pagination are incorrect"
+fi
+
+blueprint_selector_select_items "Workspace Folders" <<< $'2\nd' >/dev/null
+blueprint_selector_store_items workspace_selection
+if [[ "${BLUEPRINT_SELECTOR_SELECTED[1]}" == true &&
+      "$workspace_selection" == $'Documents\nProjects' ]]; then
+    pass "Workspace folder toggles store the displayed folder identifier"
+else
+    fail "Workspace folder toggle did not store the matching identifier"
+fi
+
 BLUEPRINT_GIT_CONFIGURATION=true
 blueprint_selector_prompt_category git-configuration "Git" BLUEPRINT_GIT_CONFIGURATION <<< "" >/dev/null
 [[ "$BLUEPRINT_GIT_CONFIGURATION" == false ]] && \

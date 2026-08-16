@@ -173,6 +173,7 @@ apply_macos_settings() {
 
 write_blueprint() {
     local include_items="${1:-true}"
+    local include_all_items="${2:-false}"
 
     {
         echo '[categories]'
@@ -186,21 +187,27 @@ write_blueprint() {
         echo
         echo '[homebrew-packages]'
         [[ "$include_items" == true ]] && echo 'selected-package'
+        [[ "$include_all_items" == true ]] && echo 'unselected-package'
         echo
         echo '[homebrew-casks]'
         [[ "$include_items" == true ]] && echo 'selected-cask'
+        [[ "$include_all_items" == true ]] && echo 'unselected-cask'
         echo
         echo '[app-store]'
         [[ "$include_items" == true ]] && echo '111'
+        [[ "$include_all_items" == true ]] && echo '222'
         echo
         echo '[vscode-extensions]'
         [[ "$include_items" == true ]] && echo 'selected.extension'
+        [[ "$include_all_items" == true ]] && echo 'unselected.extension'
         echo
         echo '[workspace-folders]'
         [[ "$include_items" == true ]] && echo 'SelectedFolder'
+        [[ "$include_all_items" == true ]] && echo 'UnselectedFolder'
         echo
         echo '[git-repositories]'
         [[ "$include_items" == true ]] && echo 'selected-repository'
+        [[ "$include_all_items" == true ]] && echo 'unselected-repository'
     } > "$BLUEPRINT_FILE"
 }
 
@@ -343,12 +350,21 @@ reset_orchestration
 run_bootstrap_orchestration >/dev/null
 toolkit_exit_code
 orchestration_status=$?
+MODE="--bootstrap"
+START_TIME=""
+summary_output="$(show_summary)"
+toolkit_exit_code
+summary_status=$?
 
 if [[ $ERROR_COUNT -eq 1 && $WARNING_COUNT -eq 0 &&
-      $orchestration_status -eq 2 && -z "$PROCESSED_ITEMS" ]]; then
-    pass "malformed Blueprint records error and blocks Bootstrap orchestration"
+      $orchestration_status -eq 2 && $summary_status -eq 2 &&
+      -z "$PROCESSED_ITEMS" &&
+      "$summary_output" == *'Modules Checked :'* &&
+      "$summary_output" != *'Applications'* &&
+      "$summary_output" != *'selected'* ]]; then
+    pass "malformed Blueprint records error, blocks consumers, and suppresses Blueprint Summary"
 else
-    fail "malformed Blueprint orchestration (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, status=$orchestration_status, processed='$PROCESSED_ITEMS')"
+    fail "malformed Blueprint Summary gating (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, orchestration_status=$orchestration_status, summary_status=$summary_status, processed='$PROCESSED_ITEMS')"
 fi
 
 write_blueprint
@@ -510,6 +526,167 @@ if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "mixed Blueprint categories apply macOS modules independently"
 else
     fail "mixed Blueprint macOS apply (processed='$PROCESSED_ITEMS')"
+fi
+
+write_generated_state
+write_blueprint true true
+MODE="--bootstrap"
+START_TIME=""
+BLUEPRINT_BOOTSTRAP_SUMMARY=true
+WARNING_COUNT=0
+ERROR_COUNT=0
+before_warnings=$WARNING_COUNT
+before_errors=$ERROR_COUNT
+toolkit_exit_code
+before_status=$?
+summary_output="$(show_summary)"
+toolkit_exit_code
+after_status=$?
+
+if [[ "$summary_output" == *'Homebrew packages      2 / 2 selected'* &&
+      "$summary_output" == *'Homebrew casks         2 / 2 selected'* &&
+      "$summary_output" == *'App Store              2 / 2 selected'* &&
+      "$summary_output" == *'VS Code extensions     2 / 2 selected'* &&
+      "$summary_output" == *'Folders                2 / 2 selected'* &&
+      "$summary_output" == *'Git repositories       2 / 2 selected'* &&
+      $WARNING_COUNT -eq $before_warnings &&
+      $ERROR_COUNT -eq $before_errors &&
+      $before_status -eq 0 && $after_status -eq 0 ]]; then
+    pass "Blueprint Bootstrap Summary reports full selections and preserves success status"
+else
+    fail "Blueprint full-selection Summary or success preservation failed"
+fi
+
+write_blueprint
+set_blueprint_category vscode-settings false
+set_blueprint_category macos-dock false
+set_blueprint_category macos-trackpad false
+MODE="--bootstrap"
+START_TIME=""
+BLUEPRINT_BOOTSTRAP_SUMMARY=true
+WARNING_COUNT=2
+ERROR_COUNT=1
+before_warnings=$WARNING_COUNT
+before_errors=$ERROR_COUNT
+toolkit_exit_code
+before_status=$?
+summary_output="$(show_summary)"
+toolkit_exit_code
+after_status=$?
+
+if [[ "$summary_output" == *'Homebrew packages      1 / 2 selected'* &&
+      "$summary_output" == *'Homebrew casks         1 / 2 selected'* &&
+      "$summary_output" == *'App Store              1 / 2 selected'* &&
+      "$summary_output" == *'VS Code extensions     1 / 2 selected'* &&
+      "$summary_output" == *'Folders                1 / 2 selected'* &&
+      "$summary_output" == *'Git repositories       1 / 2 selected'* &&
+      "$summary_output" == *'Git Configuration      Enabled'* &&
+      "$summary_output" == *'VS Code Settings       Skipped'* &&
+      "$summary_output" == *'Finder                 Enabled'* &&
+      "$summary_output" == *'Dock                   Skipped'* &&
+      "$summary_output" == *'Keyboard               Enabled'* &&
+      "$summary_output" == *'Trackpad               Skipped'* &&
+      "$summary_output" == *'Screenshots            Enabled'* &&
+      "$summary_output" == *'Warnings               2'* &&
+      "$summary_output" == *'Errors                 1'* &&
+      $WARNING_COUNT -eq $before_warnings &&
+      $ERROR_COUNT -eq $before_errors &&
+      $before_status -eq 2 && $after_status -eq 2 ]]; then
+    pass "Blueprint Bootstrap Summary reports partial selections and mixed categories without changing status"
+else
+    fail "Blueprint partial Summary or lifecycle preservation failed"
+fi
+
+write_blueprint false
+WARNING_COUNT=1
+ERROR_COUNT=0
+before_warnings=$WARNING_COUNT
+toolkit_exit_code
+before_status=$?
+summary_output="$(show_summary)"
+toolkit_exit_code
+after_status=$?
+
+if [[ "$summary_output" == *'Homebrew packages      0 / 2 selected'* &&
+      "$summary_output" == *'App Store              0 / 2 selected'* &&
+      "$summary_output" == *'Folders                0 / 2 selected'* &&
+      "$summary_output" == *'Git repositories       0 / 2 selected'* &&
+      $WARNING_COUNT -eq $before_warnings &&
+      $ERROR_COUNT -eq 0 &&
+      $before_status -eq 1 && $after_status -eq 1 ]]; then
+    pass "Blueprint Bootstrap Summary reports zero selections and preserves stale warning status"
+else
+    fail "Blueprint zero-selection Summary or warning preservation failed"
+fi
+
+rm -f "$BLUEPRINT_FILE"
+MODULES_CHECKED=7
+INSTALLED_COUNT=2
+SKIPPED_COUNT=5
+WARNING_COUNT=0
+ERROR_COUNT=0
+summary_output="$(show_summary)"
+
+if [[ "$summary_output" == *'Modules Checked : 7'* &&
+      "$summary_output" != *'Applications'* &&
+      "$summary_output" != *'selected'* ]]; then
+    pass "missing Blueprint retains the legacy Bootstrap Summary"
+else
+    fail "missing Blueprint showed a misleading Blueprint Summary"
+fi
+
+git_test_root="$TEST_ROOT/git-configuration"
+mkdir -p "$git_test_root/config/generated"
+{
+    echo 'GIT_USER_NAME="Test User"'
+    echo 'GIT_USER_EMAIL="test@example.com"'
+    echo 'GIT_DEFAULT_BRANCH="main"'
+    echo 'GIT_PULL_REBASE="false"'
+    echo 'GIT_EDITOR="code --wait"'
+} > "$git_test_root/config/generated/git.conf"
+
+source "$PROJECT_ROOT/modules/core/git/git.sh"
+success() { echo "[ OK ] $1"; }
+action() { echo "[....] $1"; }
+error() { echo "[ERROR] $1"; }
+
+check_git_configuration() { return 0; }
+git_output="$(cd "$git_test_root" && configure_git)"
+git_status=$?
+if [[ $git_status -eq 0 &&
+      "$git_output" == '[ OK ] Git configuration already configured' ]]; then
+    pass "already-correct Git configuration reports one success message"
+else
+    fail "already-correct Git configuration status or message is incorrect"
+fi
+
+git_check_calls=0
+check_git_configuration() {
+    ((git_check_calls++))
+    [[ $git_check_calls -gt 1 ]]
+}
+git() { return 0; }
+git_output="$(cd "$git_test_root" && configure_git)"
+git_status=$?
+if [[ $git_status -eq 0 &&
+      "$git_output" == *'[....] Configuring Git...'* &&
+      "$git_output" == *'[ OK ] Git configured successfully'* &&
+      "$git_output" != *'already configured'* ]]; then
+    pass "Git apply path preserves its existing success behavior"
+else
+    fail "Git apply path status or messages changed"
+fi
+
+check_git_configuration() { return 1; }
+git() { return 1; }
+git_output="$(cd "$git_test_root" && configure_git)"
+git_status=$?
+if [[ $git_status -eq 2 &&
+      "$git_output" == *'[ERROR] Failed to configure Git'* &&
+      "$git_output" != *'[ OK ]'* ]]; then
+    pass "Git failure path reports no false success"
+else
+    fail "Git failure path status or messaging is incorrect"
 fi
 
 if [[ $TEST_FAILURES -ne 0 ]]; then

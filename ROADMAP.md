@@ -181,8 +181,9 @@ Discovery → Generated Configuration → Bootstrap
 - [ ] Проверка использования Bootstrap всех уже обнаруживаемых данных
 - [ ] Единый Module Lifecycle и контракт exit codes
 - [ ] Проверка важных edge cases
-- [ ] Валидация конфигурации
-- [ ] Regression tests, ShellCheck и code quality work
+- [x] Валидация Blueprint-конфигурации
+- [x] Regression tests для Blueprint
+- [ ] ShellCheck и остальная code quality work
 
 Это этап проверки существующего фундамента, а не новый Engine.
 
@@ -190,18 +191,22 @@ Discovery → Generated Configuration → Bootstrap
 
 # Этап 5 — Blueprint Engine
 
-**Статус: Planned**
+**Статус: Completed (Stages 1–5 implemented)**
 
 Простой слой выбора между Discovery и Bootstrap. Discovery может
 обнаружить больше компонентов, чем пользователь хочет перенести;
 Blueprint определяет, какие из них действительно нужно восстановить.
 
-- [ ] Blueprint format
-- [ ] Выбор категорий и компонентов
-- [ ] Выбор отдельных обнаруженных компонентов
-- [ ] Component exclusions
-- [ ] Blueprint validation
-- [ ] Связь Blueprint с Generated Configuration и Bootstrap
+- [x] Blueprint format
+- [x] Parser и validation
+- [x] Приватный локальный `config/blueprint.conf`
+- [x] Выбор отдельных обнаруженных компонентов
+- [x] Выбор категорий и Bootstrap-модулей
+- [x] Связь Blueprint с Generated Configuration и Bootstrap
+- [x] Интерактивный `--blueprint` selector
+- [x] Редактирование существующего Blueprint и безопасные save/cancel
+- [x] Финальная E2E-проверка Blueprint workflow
+- [x] Финальное согласование документации Blueprint MVP
 
 Первый scope может охватывать Applications, Homebrew, VS Code,
 Workspace и macOS Settings. Required / Optional component model,
@@ -246,14 +251,14 @@ planner framework.
 
 # Этап 7 — Bootstrap through Blueprint
 
-**Статус: Planned**
+**Статус: Completed (implemented as part of Blueprint Stages 2–3)**
 
 Адаптация существующего Bootstrap Engine для применения только
 состояния, выбранного в Blueprint.
 
-- [ ] Передавать выбор Blueprint в Bootstrap
-- [ ] Не применять обнаруженные, но не выбранные компоненты
-- [ ] Сохранять безопасный и идемпотентный Bootstrap lifecycle
+- [x] Передавать выбор Blueprint в Bootstrap
+- [x] Не применять обнаруженные, но не выбранные компоненты
+- [x] Сохранять существующий безопасный и идемпотентный Bootstrap lifecycle
 
 ---
 

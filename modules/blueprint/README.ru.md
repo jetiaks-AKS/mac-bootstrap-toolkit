@@ -1,10 +1,11 @@
-# Основа Blueprint
+# Blueprint MVP
 
 [English version](README.md)
 
-Blueprint реализуется поэтапно как слой пользовательского выбора. Сейчас он
+Blueprint — слой пользовательского выбора между Discovery и Bootstrap. Он
 предоставляет parser, validation, item-level и category/module-level фильтрацию
-Bootstrap. Он не добавляет интерактивный CLI-режим.
+Bootstrap, а также интерактивный selector `--blueprint`. Stages 1–5 завершены и
+прошли полную E2E-проверку в `develop`; в стабильный релиз 2.0.1 они ещё не входят.
 
 Пользовательский файл — `config/blueprint.conf`. Он исключён из Git и никогда
 не создаётся автоматически. `config/blueprint.example.conf` содержит
@@ -61,5 +62,12 @@ Edit. Режим Edit показывает текущее состояние che
 `1,3,7-10`. Повторный запуск `--blueprint` загружает текущий выбор для
 редактирования.
 
+Selector записывает файл только после подтверждения. Отмена не изменяет
+существующий Blueprint и не создаёт новый.
+
 Blueprint остаётся локальным, приватным и исключённым из Git. Dry-run пока не
 реализован.
+
+При активном Blueprint итоговый Bootstrap Summary показывает selected/total
+counts для компонентов и Enabled/Skipped для категорий настроек. Детальный
+вывод компонентов остаётся в `--verbose`.

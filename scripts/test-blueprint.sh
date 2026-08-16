@@ -16,6 +16,7 @@ BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 
 WARNING_MESSAGES=""
 ERROR_MESSAGES=""
+SUCCESS_MESSAGES=""
 TEST_FAILURES=0
 
 warning() {
@@ -28,11 +29,17 @@ error() {
 }$1"
 }
 
+success() {
+    SUCCESS_MESSAGES="${SUCCESS_MESSAGES}${SUCCESS_MESSAGES:+
+}$1"
+}
+
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
 
 reset_messages() {
     WARNING_MESSAGES=""
     ERROR_MESSAGES=""
+    SUCCESS_MESSAGES=""
 }
 
 pass() {
@@ -141,6 +148,11 @@ expect_status "missing Blueprint item uses legacy behavior" 0 \
 write_blueprint "$BLUEPRINT_FILE"
 
 expect_status "valid Blueprint" 0 blueprint_validate "$BLUEPRINT_FILE"
+if [[ "$SUCCESS_MESSAGES" == "Blueprint configuration is valid" ]]; then
+    pass "valid Blueprint reports success"
+else
+    fail "valid Blueprint success message missing or duplicated"
+fi
 expect_status "example syntax" 0 blueprint_validate_syntax \
     "$PROJECT_ROOT/config/blueprint.example.conf"
 expect_status "selected item" 0 blueprint_item_selected \
@@ -162,6 +174,11 @@ expect_output "empty item section selects zero items" "" blueprint_selected_item
 write_blueprint "$BLUEPRINT_FILE"
 echo '[malformed' >> "$BLUEPRINT_FILE"
 expect_status "malformed section" 2 blueprint_validate "$BLUEPRINT_FILE"
+if [[ -z "$SUCCESS_MESSAGES" ]]; then
+    pass "malformed Blueprint does not report success"
+else
+    fail "malformed Blueprint reported false success"
+fi
 
 write_blueprint "$BLUEPRINT_FILE"
 {
@@ -207,6 +224,11 @@ expect_status "duplicate category key" 2 \
 
 write_blueprint "$BLUEPRINT_FILE" true stale-package
 expect_status "stale selected item" 1 blueprint_validate "$BLUEPRINT_FILE"
+if [[ -n "$WARNING_MESSAGES" && -z "$SUCCESS_MESSAGES" ]]; then
+    pass "stale Blueprint preserves warning without clean success"
+else
+    fail "stale Blueprint warning or success messaging is incorrect"
+fi
 
 write_blueprint "$BLUEPRINT_FILE"
 {

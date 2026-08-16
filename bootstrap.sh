@@ -256,6 +256,7 @@ case "$MODE" in
         if blueprint_exists; then
             run_module "Blueprint Validation" blueprint_validate
             blueprint_result=$?
+            [[ $blueprint_result -ne 2 ]] && BLUEPRINT_BOOTSTRAP_SUMMARY=true
         fi
 
         if [[ $blueprint_result -ne 2 ]]; then

@@ -1,11 +1,11 @@
-# Blueprint foundation
+# Blueprint MVP
 
 [Русская версия](README.ru.md)
 
-Blueprint is being implemented incrementally as the user-selection layer.
-It currently provides parsing, validation, item-level Bootstrap filtering, and
-category/module-level Bootstrap filtering. It does not add an interactive CLI
-mode.
+Blueprint is the user-selection layer between Discovery and Bootstrap. It
+provides parsing, validation, item-level and category/module-level Bootstrap
+filtering, plus the interactive `--blueprint` selector. Stages 1–5 are complete
+and end-to-end verified on `develop`; they are not part of stable release 2.0.1.
 
 The user-specific file is `config/blueprint.conf`. It is ignored by Git and is
 never generated automatically. `config/blueprint.example.conf` contains the
@@ -60,5 +60,12 @@ those checkboxes; they may be separated by commas or spaces and may include
 ranges such as `5-9` or mixed input such as `1,3,7-10`. Running `--blueprint`
 again loads the current choices for editing.
 
+The selector writes only after confirmation. Cancelling leaves an existing
+Blueprint unchanged and does not create a new one.
+
 The Blueprint remains local, private, and ignored by Git. Dry-run is not
 implemented yet.
+
+With Blueprint enabled, the final Bootstrap Summary reports selected/total
+item counts and Enabled/Skipped setting categories. Detailed item output
+remains available through `--verbose`.

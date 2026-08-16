@@ -6,6 +6,7 @@
 
 BLUEPRINT_FILE="${BLUEPRINT_FILE:-config/blueprint.conf}"
 BLUEPRINT_GENERATED_DIR="${BLUEPRINT_GENERATED_DIR:-config/generated}"
+BLUEPRINT_BOOTSTRAP_SUMMARY=false
 
 # ==========================================
 # Blueprint Exists
@@ -428,6 +429,115 @@ blueprint_validate() {
         validation_result=$result
     fi
 
+    if [[ $validation_result -eq 0 ]]; then
+        success "Blueprint configuration is valid"
+    fi
+
     return "$validation_result"
+
+}
+
+# ==========================================
+# Bootstrap Summary
+# ==========================================
+
+blueprint_generated_item_count() {
+
+    local section="$1"
+    local generated_file
+
+    generated_file="$(blueprint_generated_file "$section")" || return 1
+    [[ -f "$generated_file" ]] || {
+        echo 0
+        return 0
+    }
+
+    case "$section" in
+        git-repositories)
+            config_sections "$generated_file" | awk 'NF { count++ } END { print count + 0 }'
+            ;;
+        *)
+            awk 'NF && $0 !~ /^[[:space:]]*#/ { count++ } END { print count + 0 }' \
+                "$generated_file"
+            ;;
+    esac
+
+}
+
+blueprint_selected_item_count() {
+
+    blueprint_selected_items "$1" |
+        awk 'NF { count++ } END { print count + 0 }'
+
+}
+
+blueprint_summary_item() {
+
+    local label="$1"
+    local section="$2"
+    local line
+
+    printf -v line '  %-22s %s / %s selected' \
+        "$label" \
+        "$(blueprint_selected_item_count "$section")" \
+        "$(blueprint_generated_item_count "$section")"
+    echo "$line"
+    log "$line"
+
+}
+
+blueprint_summary_category() {
+
+    local label="$1"
+    local category="$2"
+    local state=Skipped
+    local line
+
+    blueprint_category_enabled "$category" && state=Enabled
+    printf -v line '  %-22s %s' "$label" "$state"
+    echo "$line"
+    log "$line"
+
+}
+
+blueprint_show_bootstrap_summary() {
+
+    echo "Applications"
+    log "Applications"
+    blueprint_summary_item "Homebrew packages" homebrew-packages
+    blueprint_summary_item "Homebrew casks" homebrew-casks
+    blueprint_summary_item "App Store" app-store
+    blueprint_summary_item "VS Code extensions" vscode-extensions
+
+    echo
+    log ""
+    echo "Workspace"
+    log "Workspace"
+    blueprint_summary_item "Folders" workspace-folders
+    blueprint_summary_item "Git repositories" git-repositories
+
+    echo
+    log ""
+    echo "Settings"
+    log "Settings"
+    blueprint_summary_category "Git Configuration" git-configuration
+    blueprint_summary_category "VS Code Settings" vscode-settings
+    blueprint_summary_category "Finder" macos-finder
+    blueprint_summary_category "Dock" macos-dock
+    blueprint_summary_category "Keyboard" macos-keyboard
+    blueprint_summary_category "Trackpad" macos-trackpad
+    blueprint_summary_category "Screenshots" macos-screenshots
+
+    echo
+    log ""
+    echo "Result"
+    log "Result"
+    local line
+    printf -v line '  %-22s %s' "Warnings" "$WARNING_COUNT"
+    echo "$line"
+    log "$line"
+    printf -v line '  %-22s %s' "Errors" "$ERROR_COUNT"
+    echo "$line"
+    log "$line"
 
 }

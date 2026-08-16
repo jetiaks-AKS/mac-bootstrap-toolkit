@@ -52,11 +52,18 @@ blueprint_selector_load_items() {
                 BLUEPRINT_SELECTOR_LABELS+=("$first")
             done < "$file"
             ;;
-        app-store|workspace-folders)
+        app-store)
             while IFS='|' read -r first second || [[ -n "$first" ]]; do
                 [[ -z "$first" || "$first" == \#* ]] && continue
                 BLUEPRINT_SELECTOR_ITEMS+=("$first")
                 BLUEPRINT_SELECTOR_LABELS+=("${second:-$first}")
+            done < "$file"
+            ;;
+        workspace-folders)
+            while IFS='|' read -r first second || [[ -n "$first" ]]; do
+                [[ -z "$first" || "$first" == \#* ]] && continue
+                BLUEPRINT_SELECTOR_ITEMS+=("$first")
+                BLUEPRINT_SELECTOR_LABELS+=("$first")
             done < "$file"
             ;;
         git-repositories)

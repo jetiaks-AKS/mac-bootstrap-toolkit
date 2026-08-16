@@ -78,6 +78,16 @@ Discovery автоматически анализирует существующ
 config/generated/
 ```
 
+В ветке `develop` Blueprint добавляет необязательный локальный слой выбора.
+После Discovery команда `./bootstrap.sh --blueprint` создаёт или изменяет
+`config/blueprint.conf`, а Bootstrap обрабатывает только выбранные категории и
+компоненты. Файл приватный, исключён из Git и не дублирует фактические значения
+из `config/generated/`. Без Blueprint сохраняется полный scope Bootstrap.
+
+При активном Blueprint итоговый Bootstrap Summary компактно показывает
+selected/total counts и категории настроек Enabled/Skipped без списка отдельных
+компонентов.
+
 ---
 
 ## Принципы
@@ -111,6 +121,12 @@ Bootstrap рабочего окружения:
 
 ```bash
 ./bootstrap.sh --bootstrap
+```
+
+Необязательный выбор компонентов в ветке `develop`:
+
+```bash
+./bootstrap.sh --blueprint
 ```
 
 Подробный вывод:
@@ -188,6 +204,7 @@ config/generated/
 * [x] `--check`
 * [x] `--discover`
 * [x] `--bootstrap`
+* [x] `--blueprint` (ветка `develop`, ещё не выпущено)
 * [x] `--verbose`
 * [x] `--help`
 * [x] `--version`
@@ -197,6 +214,10 @@ config/generated/
 ## Развитие проекта
 
 Текущая версия 2.0.1 формирует стабильную основу для дальнейшего развития Toolkit.
+В ветке `develop` уже реализованы формат Blueprint, parser, validation,
+интерактивный selector и фильтрация Bootstrap. Blueprint MVP завершён и прошёл
+полную E2E-проверку в `develop`, но эти изменения ещё не входят в стабильный
+релиз 2.0.1.
 
 Следующие архитектурные этапы:
 
@@ -206,13 +227,14 @@ Generated Configuration
      ↓
 Blueprint
      ↓
-Verification
+Dry-run / Preview
      ↓
 Bootstrap
      ↓
-Restore
+Verification
 
-Blueprint, Verification, Restore и AI Assistant являются следующими этапами развития проекта и не являются частью текущего стабильного функционала.
+Dry-run и Verification пока не реализованы. Restore и AI Assistant остаются
+возможными будущими направлениями.
 
 Подробный план развития описан в `ROADMAP.md`.
 
