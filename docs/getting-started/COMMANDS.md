@@ -63,6 +63,19 @@ config/generated/
 
 Показывает подробную информацию обо всех найденных компонентах и ходе анализа.
 
+## Blueprint
+
+Создать или отредактировать локальный выбор обнаруженных категорий и отдельных
+компонентов:
+
+```bash
+./bootstrap.sh --blueprint
+```
+
+Выбор сохраняется в приватном `config/blueprint.conf`. Используйте Blueprint
+после Discovery и перед Bootstrap, когда требуется выборочное восстановление.
+Если Blueprint отсутствует, Bootstrap сохраняет all-inclusive поведение.
+
 
 ## Bootstrap
 
@@ -80,7 +93,6 @@ config/generated/
 - настройку Terminal;
 - установку Homebrew Packages;
 - установку Homebrew Casks;
-- автоматическое восстановление отсутствующих Homebrew Casks;
 - установку приложений App Store;
 - установку расширений VS Code;
 - применение настроек VS Code;

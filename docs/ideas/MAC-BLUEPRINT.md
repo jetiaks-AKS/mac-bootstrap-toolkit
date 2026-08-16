@@ -2,6 +2,13 @@
 
 > Концепция развития Mac Bootstrap Toolkit.
 
+> **Исторический документ.** Здесь зафиксирован ранний, впоследствии заменённый
+> вариант дизайна Blueprint. Описанные ниже команды, этапы, профили, export и
+> restore не являются контрактом текущей реализации. Актуальные архитектура и
+> статус определены в [ARCHITECTURE.md](../toolkit/ARCHITECTURE.md) и
+> [ROADMAP.md](../../ROADMAP.md), а текущее поведение Blueprint — в
+> [CONFIGURATION.md](../toolkit/CONFIGURATION.md).
+
 ---
 
 # Идея
