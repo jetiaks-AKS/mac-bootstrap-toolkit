@@ -16,9 +16,14 @@ Discovery → Generated Configuration → Bootstrap
 - **Bootstrap** использует сформированную конфигурацию для восстановления
   поддерживаемых частей рабочего окружения.
 
-Не смешивай этот реализованный workflow с будущими этапами архитектуры:
-Dry-run, Blueprint, Verification, Restore и AI Assistant пока только
-запланированы, если прямо не реализованы в коде.
+В ветке `develop` реализован и E2E-проверен дополнительный слой выбора:
+
+```text
+Discovery → Generated Configuration → Blueprint → Bootstrap
+```
+
+Blueprint ещё не входит в стабильный релиз 2.0.1. Dry-run и Verification пока
+не реализованы и остаются запланированными возможностями.
 
 ## Рабочая директория и точка входа
 
@@ -27,6 +32,7 @@ Dry-run, Blueprint, Verification, Restore и AI Assistant пока только
 ```bash
 ./bootstrap.sh --check
 ./bootstrap.sh --discover
+./bootstrap.sh --blueprint
 ./bootstrap.sh --bootstrap
 ```
 
@@ -38,6 +44,7 @@ Dry-run, Blueprint, Verification, Restore и AI Assistant пока только
 
 - `--check`
 - `--discover`
+- `--blueprint`
 - `--bootstrap`
 - `--verbose`
 - `--help`
@@ -51,6 +58,7 @@ Dry-run, Blueprint, Verification, Restore и AI Assistant пока только
 ```text
 bootstrap.sh                 CLI, загрузка модулей и оркестрация
 modules/core/                общая инфраструктура Toolkit
+modules/blueprint/           выбор целевого scope и интерактивный selector
 modules/discovery/           сбор Observed State
 modules/bootstrap/           восстановление Workspace
 modules/apps/                пакеты Homebrew, cask и App Store
@@ -240,8 +248,16 @@ Discovery не должен копировать, архивировать ил�
 
 ## Проверка изменений
 
-В репозитории пока нет автоматических тестов, тестового фреймворка,
-CI или ShellCheck-конфигурации. Не утверждай, что они существуют.
+В репозитории есть focused regression harnesses для Blueprint:
+
+```bash
+scripts/test-blueprint.sh
+scripts/test-blueprint-bootstrap.sh
+scripts/test-blueprint-selector.sh
+```
+
+Они не являются полным автоматическим покрытием Toolkit. Единого test runner,
+CI и ShellCheck-конфигурации пока нет.
 
 Минимальная безопасная проверка после изменения Bash-кода:
 

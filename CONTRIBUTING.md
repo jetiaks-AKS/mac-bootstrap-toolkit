@@ -17,10 +17,17 @@ Before editing, confirm that the working tree is understood and that local
 
 ## Making changes
 
-Keep changes small and maintain the current public contract:
+Keep changes small. Stable 2.0.1 uses:
 
 ```text
 Discovery → config/generated/ → Bootstrap
+```
+
+The unreleased `develop` branch also implements the E2E-verified Blueprint
+selection layer:
+
+```text
+Discovery → config/generated/ → Blueprint → Bootstrap
 ```
 
 Discovery may write only its generated output and must not change the system.
@@ -28,8 +35,9 @@ Bootstrap changes must check current state, avoid unnecessary work, preserve
 existing user data, and verify applied state where practical. Never add
 destructive Git behavior such as reset, clean, force-push, or forced checkout.
 
-Dry-run, Blueprint, Verification, Restore, and AI Assistant remain planned.
-Do not document them as current functionality.
+Blueprint is implemented on `develop` but is not part of stable 2.0.1. Dry-run
+and Verification remain planned and unimplemented. Keep release and development
+status explicit when documenting these capabilities.
 
 Update relevant documentation when behavior changes. Architecture changes
 belong in `docs/toolkit/ARCHITECTURE.md`, near-term work in `TODO.md`, roadmap
@@ -37,8 +45,17 @@ status in `ROADMAP.md`, and completed user-visible changes in `CHANGELOG.md`.
 
 ## Validation
 
-The repository currently has no automated test suite, CI workflow, or
-ShellCheck configuration. For Bash changes, run at minimum:
+The repository has focused Blueprint regression harnesses, but not
+comprehensive Toolkit coverage, a CI workflow, or a ShellCheck configuration:
+
+```bash
+scripts/test-blueprint.sh
+scripts/test-blueprint-bootstrap.sh
+scripts/test-blueprint-selector.sh
+```
+
+Run the relevant harnesses for Blueprint changes. For Bash changes, run at
+minimum:
 
 ```bash
 find modules scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n

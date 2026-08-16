@@ -7,7 +7,7 @@ reproducing supported parts of a macOS working environment.
 
 ## Current architecture
 
-Version 2.0.1 implements this stable contract:
+Stable 2.0.1 implements:
 
 ```text
 Current Mac
@@ -15,6 +15,22 @@ Current Mac
 Discovery
     ↓
 config/generated/
+    ↓
+Bootstrap
+    ↓
+Target Mac
+```
+
+The current unreleased `develop` branch implements:
+
+```text
+Current Mac
+    ↓
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
     ↓
 Bootstrap
     ↓
@@ -34,18 +50,29 @@ but does not copy user documents or repository contents.
 
 ### Generated configuration
 
-Generated files form the boundary between Discovery and Bootstrap. Simple
-lists and shell-style configuration are used for application and Git data;
-sectioned configuration is read through the Configuration Engine for workspace
-repositories. Exporters and consumers must keep their formats compatible.
+Generated files are the observed-state data source for Blueprint and Bootstrap.
+Simple lists and shell-style configuration are used for application and Git
+data; sectioned configuration is read through the Configuration Engine for
+workspace repositories. Exporters and consumers must keep their formats
+compatible.
 
 Because generated files can contain personal paths, Git identity, repository
 URLs, and editor settings, they should be reviewed and transferred privately.
 
+### Blueprint
+
+Blueprint selects which discovered categories and items belong to the desired
+restoration scope. The private local `config/blueprint.conf` stores selection,
+while actual values remain in `config/generated/`.
+
+When Blueprint is absent, Bootstrap preserves the legacy all-inclusive
+behavior. Blueprint is complete and E2E-verified on `develop`, but is not part
+of stable 2.0.1.
+
 ### Bootstrap
 
-Bootstrap consumes generated configuration and applies supported state. Its
-normal module lifecycle is:
+Bootstrap consumes generated values through Blueprint selection and applies
+the selected supported state. Its normal module lifecycle is:
 
 ```text
 Check → Apply → Verify
@@ -86,6 +113,7 @@ Domain-specific discovery or bootstrap behavior remains outside Core.
 ```text
 bootstrap.sh                 CLI and orchestration
 modules/core/                shared infrastructure
+modules/blueprint/           selection, validation, and interactive selector
 modules/discovery/           observed-state exporters
 modules/bootstrap/           workspace bootstrap
 modules/apps/                Homebrew and App Store consumers
@@ -100,30 +128,28 @@ docs/                        project documentation
 
 ## Planned architecture
 
-The following stages describe future direction and are not implemented in
-version 2.0.1:
+Dry-run / Preview and Verification remain planned and unimplemented:
 
 ```text
-Observed State
+Discovery
+    ↓
+Generated Configuration
     ↓
 Blueprint
     ↓
+Dry-run / Preview
+    ↓
+Bootstrap
+    ↓
 Verification
-    ↓
-Bootstrap with Dry-run
-    ↓
-Restore
 ```
 
 - **Dry-run** will preview Bootstrap actions without applying them.
-- **Blueprint** will define desired state separately from discovered state.
-- **Verification** will compare current and desired state.
-- **Restore** will coordinate complete environment recovery and dependencies.
-- **AI Assistant** is a planned layer for analysis, explanations, and guided
-  workflows over these components.
+- **Verification** will confirm the result after Bootstrap.
 
-Until those stages are implemented, Bootstrap reads generated observed state
-directly. The current CLI has no `--dry-run` option.
+Dry-run is a Bootstrap mode, not a configuration source. Restore and AI
+Assistant remain optional future directions rather than required next stages.
+The current CLI has no `--dry-run` option.
 
 Implementation status is maintained in [ROADMAP.md](../../ROADMAP.md), with
 near-term work in [TODO.md](../../TODO.md).

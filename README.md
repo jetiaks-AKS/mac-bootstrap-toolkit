@@ -13,6 +13,8 @@ configuration to bootstrap another Mac.
 
 ## How it works
 
+Stable 2.0.1 uses:
+
 ```text
 Existing Mac
     ↓
@@ -23,6 +25,19 @@ config/generated/
 Bootstrap
     ↓
 Ready-to-work Mac
+```
+
+The current `develop` branch, planned as the major feature of a future 3.0.0
+release, uses:
+
+```text
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Bootstrap
 ```
 
 Discovery writes machine-specific data to `config/generated/`. The directory
@@ -141,9 +156,11 @@ Discovery → Generated Configuration → Bootstrap
 The `develop` branch additionally contains the Blueprint format, parser,
 validation, interactive selector, and Bootstrap filtering. This work is
 complete and end-to-end verified on `develop`, but remains unreleased and is not
-part of the stable 2.0.1 release. Dry-run and Verification are not implemented.
-Development status and future stages are tracked in [ROADMAP.md](ROADMAP.md);
-near-term technical work is tracked in [TODO.md](TODO.md).
+part of the stable 2.0.1 release. Blueprint is planned as the major feature of a
+future 3.0.0 release; 3.0.0 has not been released. Dry-run and Verification are
+not implemented. Development status and future stages are tracked in
+[ROADMAP.md](ROADMAP.md); near-term technical work is tracked in
+[TODO.md](TODO.md).
 
 ## Documentation
 

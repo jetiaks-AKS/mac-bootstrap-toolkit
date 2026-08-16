@@ -27,6 +27,7 @@ TODO содержит ближайшие задачи по улучшению и
 - [ ] Провести финальную проверку идемпотентности всех модулей
 - [ ] Проверить корректность повторного запуска
 - [ ] Зафиксировать единый Module Lifecycle и контракт exit codes
+- [ ] Проверить использование Bootstrap всех поддерживаемых generated-данных
 - [ ] Проверить existing-resource checks
 - [ ] Минимизировать дублирование там, где оно мешает сопровождению
 
@@ -37,7 +38,6 @@ TODO содержит ближайшие задачи по улучшению и
 - [ ] Провести ревизию generated-конфигураций
 - [ ] Проверить единый naming и style Discovery export-модулей
 - [ ] Добавить валидацию generated-конфигураций
-- [ ] Проверить цепочку Discovery → Generated Configuration → Bootstrap
 
 ---
 
@@ -75,6 +75,19 @@ TODO содержит ближайшие задачи по улучшению и
 # Project Structure
 
 - [ ] Рефакторить структуру только при появлении конкретной проблемы
+
+---
+
+# Post-Blueprint Review
+
+- [ ] Провести Logging Review после интеграции Blueprint
+- [ ] Проверить `--verbose` с Blueprint и полезность диагностического вывода
+- [ ] Провести Homebrew Discovery Review: сравнить `brew list --formula` и
+      `brew leaves` до изменения поведения
+- [ ] Провести Workspace Folders Review: определить продуктовую модель для
+      standard / system / user / workspace folders до изменения Discovery
+- [ ] Провести финальный Quality & Regression checkpoint перед следующим релизом
+- [ ] Проверить release graph `main` ↔ `develop` перед подготовкой релиза
 
 ---
 

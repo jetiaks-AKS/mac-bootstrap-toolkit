@@ -166,32 +166,9 @@ Roadmap не заменяет архитектурную документаци�
 
 ---
 
-# Текущий фокус после 2.0.1 — Foundation Review / Reliability
-
-**Статус: In Development**
-
-Проверка и стабилизация существующей цепочки:
-
-```text
-Discovery → Generated Configuration → Bootstrap
-```
-
-- [ ] Полная проверка идемпотентности и повторного запуска
-- [ ] Проверка согласованности Generated Configuration
-- [ ] Проверка использования Bootstrap всех уже обнаруживаемых данных
-- [ ] Единый Module Lifecycle и контракт exit codes
-- [ ] Проверка важных edge cases
-- [x] Валидация Blueprint-конфигурации
-- [x] Regression tests для Blueprint
-- [ ] ShellCheck и остальная code quality work
-
-Это этап проверки существующего фундамента, а не новый Engine.
-
----
-
 # Этап 5 — Blueprint Engine
 
-**Статус: Completed (Stages 1–5 implemented)**
+**Статус: Completed**
 
 Простой слой выбора между Discovery и Bootstrap. Discovery может
 обнаружить больше компонентов, чем пользователь хочет перенести;
@@ -203,15 +180,16 @@ Blueprint определяет, какие из них действительн�
 - [x] Выбор отдельных обнаруженных компонентов
 - [x] Выбор категорий и Bootstrap-модулей
 - [x] Связь Blueprint с Generated Configuration и Bootstrap
+- [x] Применение только выбранного состояния в Bootstrap
+- [x] Сохранение безопасного идемпотентного Bootstrap lifecycle
 - [x] Интерактивный `--blueprint` selector
 - [x] Редактирование существующего Blueprint и безопасные save/cancel
 - [x] Финальная E2E-проверка Blueprint workflow
 - [x] Финальное согласование документации Blueprint MVP
 
-Первый scope может охватывать Applications, Homebrew, VS Code,
+Реализованный scope охватывает Applications, Homebrew, VS Code,
 Workspace и macOS Settings. Required / Optional component model,
-parameter overrides, versioning и import / export не входят в
-обязательный первый scope.
+parameter overrides, versioning и import / export не входят в Blueprint MVP.
 
 Blueprint не должен превращаться в сложный configuration framework
 или требовать Profiles.
@@ -224,7 +202,7 @@ Blueprint не должен превращаться в сложный configura
 
 Безопасный предварительный просмотр действий Toolkit.
 
-Dry-run позволяет определить, какие изменения Toolkit
+Dry-run будет позволять определить, какие изменения Toolkit
 собирается выполнить, не изменяя состояние системы.
 
 Основная цель:
@@ -249,20 +227,7 @@ planner framework.
 
 ---
 
-# Этап 7 — Bootstrap through Blueprint
-
-**Статус: Completed (implemented as part of Blueprint Stages 2–3)**
-
-Адаптация существующего Bootstrap Engine для применения только
-состояния, выбранного в Blueprint.
-
-- [x] Передавать выбор Blueprint в Bootstrap
-- [x] Не применять обнаруженные, но не выбранные компоненты
-- [x] Сохранять существующий безопасный и идемпотентный Bootstrap lifecycle
-
----
-
-# Этап 8 — Verification
+# Этап 7 — Verification
 
 **Статус: Planned**
 
@@ -287,7 +252,7 @@ Verification
 
 ---
 
-# Этап 9 — Coverage Expansion
+# Этап 8 — Coverage Expansion
 
 **Статус: Planned**
 
@@ -355,6 +320,20 @@ Summary и вывод улучшаются только при выявлени�
 
 # Продуктовая модель
 
+Текущая модель в `develop`:
+
+```text
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Bootstrap
+```
+
+Будущая модель после реализации Preview и Verification:
+
 ```text
 Discovery
     ↓
@@ -371,8 +350,8 @@ Verification
 
 Discovery фиксирует текущее состояние, Generated Configuration хранит
 machine-specific результат, Blueprint выбирает нужное для переноса,
-Preview показывает действия без изменений, Bootstrap безопасно
-применяет выбранное состояние, а Verification подтверждает результат.
+Preview будет показывать действия без изменений, Bootstrap безопасно
+применяет выбранное состояние, а Verification будет подтверждать результат.
 
 Toolkit не должен становиться универсальным macOS configuration
 framework. Новая функция оправдана, если заметно улучшает обнаружение
@@ -393,13 +372,9 @@ Generated Configuration
   ↓
 Bootstrap
   ↓
-Foundation Review / Reliability
-  ↓
 Blueprint
   ↓
 Dry-run / Preview
-  ↓
-Bootstrap using Blueprint
   ↓
 Verification
   ↓

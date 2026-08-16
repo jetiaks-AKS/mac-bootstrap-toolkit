@@ -13,41 +13,40 @@ Mac Bootstrap Toolkit — модульная система для анализ�
 
 ---
 
-## Целевая архитектура
+## Текущая архитектура `develop`
 
 ```text
 Current Mac
-    │
-    ▼
+    ↓
 Discovery
-    │
-    ▼
+    ↓
 Generated Configuration
-    │
-    ▼
+    ↓
 Blueprint
-    │
-    ├──────────────► Verification
-    │
-    ▼
+    ↓
 Bootstrap
-    │
-    ├──────────────► Dry-run
-    │
-    ▼
-Restore
-    │
-    ▼
+    ↓
 Target Mac
 ```
 
-Дополнительный интеллектуальный слой:
+Это реализованная и E2E-проверенная архитектура ветки `develop`. Blueprint ещё
+не входит в стабильный релиз 2.0.1. Без `config/blueprint.conf` Bootstrap
+сохраняет legacy-поведение и применяет весь поддерживаемый generated scope.
+
+Будущая архитектура после реализации Dry-run / Preview и Verification:
 
 ```text
-AI Assistant
-      │
-      └── работает поверх Discovery / Blueprint /
-          Verification / Bootstrap / Restore
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Dry-run / Preview
+    ↓
+Bootstrap
+    ↓
+Verification
 ```
 
 ### Что означает каждый уровень
@@ -57,27 +56,22 @@ AI Assistant
 **Generated Configuration** — сохраняет обнаруженное состояние
 в воспроизводимом машинно-читаемом виде.
 
-**Blueprint** — определяет, каким должно быть целевое окружение.
+**Blueprint** — выбирает категории и отдельные обнаруженные компоненты,
+которые входят в целевой scope восстановления. Фактические значения остаются
+в Generated Configuration.
 
-**Verification** — сравнивает текущее состояние с целевым и определяет
-необходимые изменения.
+**Dry-run / Preview** — запланированный безопасный режим Bootstrap, который
+будет показывать предполагаемые изменения без их применения.
 
 **Bootstrap** — применяет необходимые изменения.
 
-**Dry-run** — безопасный режим Bootstrap, который определяет и
-показывает предполагаемые изменения без их применения.
-
-**Restore** — обеспечивает воспроизводимое восстановление всего
-окружения с учётом зависимостей между компонентами.
-
-**AI Assistant** — помогает анализировать окружение, формировать
-решения, объяснять различия и управлять процессом.
+**Verification** — запланированное подтверждение результата после Bootstrap.
 
 ---
 
 # Основные архитектурные принципы
 
-## Discovery → Generated Configuration → Bootstrap
+## Discovery → Generated Configuration → Blueprint → Bootstrap
 
 Это основной контракт Toolkit.
 
@@ -91,12 +85,16 @@ Discovery
 config/generated/
     │
     ▼
+Blueprint
+    │
+    ▼
 Bootstrap
 ```
 
 Discovery является источником фактического состояния.
 
-Bootstrap использует результаты Discovery и не должен содержать
+Blueprint хранит выбор, но не дублирует обнаруженные значения. Bootstrap
+использует результаты Discovery через этот выбор и не должен содержать
 дублирующие значения пользовательской конфигурации.
 
 Поэтому изменение обнаруженной настройки должно по возможности
@@ -124,11 +122,8 @@ Observed State
 Desired State
 ```
 
-До появления Blueprint существующий Bootstrap может использовать
-непосредственно Generated Configuration как источник восстановления.
-
-После появления Blueprint Generated Configuration будет описывать
-Observed State, а Blueprint — формировать Desired State.
+Generated Configuration описывает Observed State, а Blueprint формирует
+выбранный Desired State для Bootstrap.
 
 ---
 
@@ -161,8 +156,6 @@ Core предоставляет общую инфраструктуру и не 
 * приложения;
 * Homebrew;
 * Git;
-* SSH;
-* Terminal;
 * VS Code;
 * Workspace;
 * macOS Settings;
@@ -191,21 +184,21 @@ Git-состояния проекта.
 
 ## Blueprint Engine
 
-Формирует целевой профиль Mac на основе обнаруженного состояния.
+Формирует выбранный scope восстановления на основе обнаруженного состояния.
 
-Blueprint должен позволять:
+Реализованный Blueprint позволяет:
 
-* выбирать компоненты;
-* исключать компоненты;
-* изменять параметры;
-* задавать целевые значения;
-* определять обязательные и необязательные компоненты.
+* выбирать категории и отдельные обнаруженные компоненты;
+* валидировать сохранённый выбор;
+* фильтровать Bootstrap без дублирования generated-значений;
+* сохранять локальный приватный выбор в `config/blueprint.conf`.
 
 ---
 
 ## Verification Engine
 
-Определяет соответствие текущего Mac целевому состоянию.
+Verification запланирован и пока не реализован. После реализации он будет
+подтверждать соответствие результата Bootstrap выбранному состоянию.
 
 ```text
 Current State
@@ -217,8 +210,7 @@ Verification
 Differences
 ```
 
-Verification ничего не изменяет — он только определяет состояние
-и необходимые действия.
+Verification не должен изменять состояние.
 
 ---
 
@@ -256,10 +248,10 @@ Bootstrap должен быть идемпотентным:
 
 ## Dry-run Mode
 
-Dry-run является режимом работы Bootstrap Engine,
-а не отдельным архитектурным Engine.
+Dry-run запланирован и пока не реализован. Он будет режимом работы Bootstrap
+Engine, а не отдельным архитектурным Engine.
 
-Он позволяет предварительно определить, какие изменения
+Он будет позволять предварительно определить, какие изменения
 Bootstrap собирается выполнить, без фактического изменения системы.
 
 Основной принцип:
@@ -294,19 +286,17 @@ Dry-run не заменяет Bootstrap и не определяет Desired Sta
 
 ---
 
-## Restore Engine
+## Optional Restore Direction
 
-Обеспечивает воспроизводимое восстановление рабочего окружения.
-
-Restore объединяет результаты Blueprint, Verification и Bootstrap
-и отвечает за восстановление системы как единого окружения,
-а не отдельных независимых модулей.
+Отдельный Restore Engine не является обязательным следующим этапом. Он остаётся
+optional-направлением только для ответственности, которую нельзя покрыть
+цепочкой Blueprint → Bootstrap → Verification.
 
 ---
 
 ## AI Assistant
 
-AI Assistant является дополнительным уровнем автоматизации.
+AI Assistant остаётся optional-направлением автоматизации.
 
 Он не заменяет существующие компоненты, а использует их данные
 и результаты для:
@@ -342,10 +332,11 @@ Workspace State
     ↓
 Blueprint
     ↓
-Verification
-    ↓
-Bootstrap / Dry-run / Restore
+Bootstrap
 ```
+
+В будущем Dry-run / Preview будет выполняться перед Bootstrap, а Verification —
+после него.
 
 ---
 
@@ -360,13 +351,15 @@ Discovery
   ↓
 config/generated/macos/
   ↓
+Blueprint
+  ↓
 Bootstrap
   ↓
 macOS
 ```
 
-Dry-run для macOS Settings должен определять предполагаемые
-изменения до их применения.
+Будущий Dry-run для macOS Settings должен определять предполагаемые изменения
+до их применения.
 
 Новые настройки должны по возможности добавляться через generated
 configuration и общий механизм применения, а не через дублирование
@@ -376,8 +369,7 @@ configuration и общий механизм применения, а не че�
 
 # Расширяемость
 
-Новый компонент Toolkit должен по возможности проходить один и тот же
-жизненный цикл:
+Текущий жизненный цикл нового поддерживаемого компонента:
 
 ```text
 Discovery
@@ -386,22 +378,21 @@ Generated Configuration
     ↓
 Blueprint
     ↓
-Verification
-    ↓
 Bootstrap
-    ↓
-Restore
 ```
 
-Для Bootstrap-компонентов также должен поддерживаться безопасный
-предварительный режим:
+Будущий цикл после реализации Preview и Verification:
 
 ```text
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Dry-run / Preview
+    ↓
 Bootstrap
     ↓
-Dry-run
-    ↓
-Planned Changes
+Verification
 ```
 
 Добавление нового компонента не должно требовать переписывания
@@ -442,25 +433,20 @@ Verified
 
 # Главный принцип
 
-> **Discover → Describe → Define → Verify → Bootstrap → Restore**
+> **Discover → Describe → Select → Bootstrap**
 
-Toolkit должен превращать текущее рабочее окружение в воспроизводимое
-целевое состояние, которое можно проверить и восстановить на другом Mac.
+Toolkit должен превращать текущее рабочее окружение в воспроизводимый выбранный
+scope, который можно безопасно применить на другом Mac.
 
-Dry-run является безопасным режимом выполнения Bootstrap
-и позволяет предварительно увидеть предполагаемые изменения
-без изменения состояния системы.
+После реализации Dry-run будет безопасным режимом выполнения Bootstrap, а
+Verification будет подтверждать результат после применения.
 
 ```text
 Discover
     ↓
 Describe
     ↓
-Define
-    ↓
-Verify
+Select
     ↓
 Bootstrap
-    ↓
-Restore
 ```

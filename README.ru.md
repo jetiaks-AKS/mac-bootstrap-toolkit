@@ -26,6 +26,8 @@ Toolkit может:
 
 ## Основной workflow
 
+Стабильный релиз 2.0.1 использует:
+
 ```text
 Existing Mac
      ↓
@@ -36,6 +38,19 @@ Generated Configuration
  Bootstrap
      ↓
 Ready-to-Work Mac
+```
+
+Текущая ветка `develop`, в которой Blueprint планируется как главная функция
+будущего релиза 3.0.0, использует:
+
+```text
+Discovery
+     ↓
+Generated Configuration
+     ↓
+Blueprint
+     ↓
+Bootstrap
 ```
 
 Discovery автоматически анализирует существующее окружение и формирует конфигурацию, которую затем использует Bootstrap.
@@ -217,9 +232,10 @@ config/generated/
 В ветке `develop` уже реализованы формат Blueprint, parser, validation,
 интерактивный selector и фильтрация Bootstrap. Blueprint MVP завершён и прошёл
 полную E2E-проверку в `develop`, но эти изменения ещё не входят в стабильный
-релиз 2.0.1.
+релиз 2.0.1. Blueprint планируется как главная функция будущего релиза 3.0.0;
+версия 3.0.0 ещё не выпущена.
 
-Следующие архитектурные этапы:
+Целевая модель после реализации следующих архитектурных этапов:
 
 Discovery
      ↓
