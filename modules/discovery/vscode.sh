@@ -4,6 +4,21 @@
 # VS Code Discovery
 # ==========================================
 
+serialize_vscode_extensions() {
+
+    local output_file="$1"
+    local inventory="$2"
+
+    [[ -z "$inventory" ]] && return 0
+
+    sort > "$output_file" <<< "$inventory" || return 2
+
+    return 0
+
+}
+
+# ==========================================
+
 export_vscode_extensions() {
 
     if ! command -v code >/dev/null 2>&1; then
@@ -13,14 +28,20 @@ export_vscode_extensions() {
 
     fi
 
-    local output_dir="config/generated"
-    local output_file="$output_dir/vscode-extensions.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/vscode-extensions.conf"
 
     action "Exporting VS Code Extensions..."
 
-    code --list-extensions | sort > "$output_file"
+    local inventory
+    if ! inventory="$(code --list-extensions)"; then
+        error "Failed to inventory VS Code Extensions"
+        return 2
+    fi
+
+    if ! discovery_publish_file "$output_file" serialize_vscode_extensions "$inventory"; then
+        error "Failed to publish VS Code Extensions"
+        return 2
+    fi
 
     local extension_count
     extension_count=$(wc -l < "$output_file" | tr -d ' ')
