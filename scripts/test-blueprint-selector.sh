@@ -13,18 +13,27 @@ trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 TEST_FAILURES=0
+TOOLKIT_VERSION="test"
+MODE="--blueprint"
+VERBOSE=false
 
-warning() { :; }
+warning() { echo "[WARN] $1"; }
 error() { echo "[ERROR] $1"; }
 info() { :; }
 success() { echo "[ OK ] $1"; }
 
+source "$PROJECT_ROOT/modules/core/logger/logger.sh"
 source "$PROJECT_ROOT/modules/core/config/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
 source "$PROJECT_ROOT/modules/blueprint/selector.sh"
 
 pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1"; ((TEST_FAILURES++)); }
+
+reset_selector_log() {
+    LOG_FILE="$TEST_ROOT/selector.log"
+    : > "$LOG_FILE"
+}
 
 expect_parse() {
     local label="$1"
@@ -98,6 +107,19 @@ expect_parse "reversed range is invalid" "9-5" 10 invalid
 expect_parse "out-of-range number is invalid" "11" 10 invalid
 expect_parse "zero in numeric selection is invalid" "1,0" 10 invalid
 expect_parse "negative number is invalid" "-1" 10 invalid
+
+LOG_DIR="$TEST_ROOT/logs"
+LOG_HISTORY_DIR="$LOG_DIR/history"
+LATEST_LOG="$LOG_DIR/latest.log"
+init_logger
+if [[ "$LOG_PREFIX" == blueprint &&
+      "$(basename "$LOG_FILE")" == blueprint-*.log &&
+      $(grep -c 'Mode     : Blueprint' "$LOG_FILE") -eq 1 ]]; then
+    pass "Blueprint logger uses its own prefix and mode header"
+else
+    fail "Blueprint logger prefix or mode header is incorrect"
+fi
+close_logger
 
 BLUEPRINT_SELECTOR_SELECTED=(true true true)
 before="${BLUEPRINT_SELECTOR_SELECTED[*]}"
@@ -265,33 +287,74 @@ BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 BLUEPRINT_FILE="$TEST_ROOT/new/blueprint.conf"
 mkdir -p "$(dirname "$BLUEPRINT_FILE")"
 wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+reset_selector_log
 summary_output="$(blueprint_selector_run <<< "$wizard_defaults")"
 if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
    grep -q 'Homebrew packages.*12 / 12' <<< "$summary_output" &&
    grep -q 'Git Configuration.*Yes' <<< "$summary_output" &&
-   grep -q 'git-configuration="true"' "$BLUEPRINT_FILE"; then
-    pass "new Blueprint defaults, summary, and validated save"
+   grep -q 'git-configuration="true"' "$BLUEPRINT_FILE" &&
+   grep -q '\[BLUEPRINT\] START' "$LOG_FILE" &&
+   grep -q '\[BLUEPRINT\] Generated configuration: Ready' "$LOG_FILE" &&
+   grep -q '\[BLUEPRINT\] RESULT: SAVED' "$LOG_FILE"; then
+    pass "new Blueprint save preserves selection and records lifecycle"
 else
-    fail "new Blueprint default save failed"
+    fail "new Blueprint save or lifecycle logging failed"
 fi
 
 write_existing_blueprint
 before_checksum="$(cksum "$BLUEPRINT_FILE")"
 cancel_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+reset_selector_log
 cancel_output="$(blueprint_selector_run <<< "$cancel_input")"
 after_checksum="$(cksum "$BLUEPRINT_FILE")"
 if [[ "$before_checksum" == "$after_checksum" ]] &&
-   grep -q 'Blueprint changes cancelled; no file changes were saved' <<< "$cancel_output"; then
-    pass "declining save reports cancellation and preserves existing Blueprint"
+   grep -q 'Blueprint changes cancelled; no file changes were saved' <<< "$cancel_output" &&
+   grep -q '\[BLUEPRINT\] Existing configuration: Valid' "$LOG_FILE" &&
+   grep -q '\[BLUEPRINT\] RESULT: CANCELLED' "$LOG_FILE"; then
+    pass "cancel preserves existing Blueprint and records lifecycle"
 else
-    fail "declining save changed existing Blueprint or used unclear output"
+    fail "cancel changed existing Blueprint or lifecycle logging is incorrect"
+fi
+
+write_existing_blueprint
+sed -i.bak 's/package-1/stale-package/' "$BLUEPRINT_FILE"
+rm -f "$BLUEPRINT_FILE.bak"
+before_checksum="$(cksum "$BLUEPRINT_FILE")"
+reset_selector_log
+stale_output="$(blueprint_selector_run <<< "$cancel_input")"
+stale_status=$?
+after_checksum="$(cksum "$BLUEPRINT_FILE")"
+if [[ $stale_status -eq 0 && "$before_checksum" == "$after_checksum" ]] &&
+   grep -q 'Stale Blueprint item in homebrew-packages: stale-package' <<< "$stale_output" &&
+   ! grep -q '\[BLUEPRINT\] Existing configuration: Valid' "$LOG_FILE" &&
+   grep -q '\[BLUEPRINT\] RESULT: CANCELLED' "$LOG_FILE"; then
+    pass "stale Blueprint preserves warning, exit status, and cancellation"
+else
+    fail "stale Blueprint lifecycle changed warning or exit semantics"
+fi
+
+write_existing_blueprint
+echo '[malformed' >> "$BLUEPRINT_FILE"
+before_checksum="$(cksum "$BLUEPRINT_FILE")"
+reset_selector_log
+blueprint_selector_run </dev/null >/dev/null 2>&1
+malformed_status=$?
+after_checksum="$(cksum "$BLUEPRINT_FILE")"
+if [[ $malformed_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
+   ! grep -q '\[BLUEPRINT\] Existing configuration: Valid' "$LOG_FILE" &&
+   ! grep -q '\[BLUEPRINT\] RESULT:' "$LOG_FILE"; then
+    pass "malformed Blueprint blocks without false validation or result logging"
+else
+    fail "malformed Blueprint lifecycle changed validation or exit semantics"
 fi
 
 rm -f "$BLUEPRINT_FILE"
+reset_selector_log
 cancel_output="$(blueprint_selector_run <<< "$cancel_input")"
 if [[ ! -e "$BLUEPRINT_FILE" ]] &&
    [[ -z "$(find "$(dirname "$BLUEPRINT_FILE")" -name 'blueprint.conf.tmp.*' -print)" ]] &&
-   grep -q 'Blueprint changes cancelled; no file changes were saved' <<< "$cancel_output"; then
+   grep -q 'Blueprint changes cancelled; no file changes were saved' <<< "$cancel_output" &&
+   grep -q '\[BLUEPRINT\] RESULT: CANCELLED' "$LOG_FILE"; then
     pass "declining new Blueprint leaves no file or partial temporary file"
 else
     fail "cancelled Blueprint left output behind"

@@ -333,12 +333,18 @@ blueprint_selector_write() {
 }
 
 blueprint_selector_run() {
+    log "[BLUEPRINT] START"
+
     blueprint_selector_generated_ready || return 2
+    log "[BLUEPRINT] Generated configuration: Ready"
 
     if blueprint_exists; then
         blueprint_validate
         local validation_result=$?
         [[ $validation_result -ne 2 ]] || return 2
+        if [[ $validation_result -eq 0 ]]; then
+            log "[BLUEPRINT] Existing configuration: Valid"
+        fi
     fi
 
     echo
@@ -428,6 +434,7 @@ blueprint_selector_run() {
             [nN]|[nN][oO])
                 blueprint_selector_cleanup
                 trap - INT TERM
+                log "[BLUEPRINT] RESULT: CANCELLED"
                 success "Blueprint changes cancelled; no file changes were saved"
                 return 0
                 ;;
@@ -447,5 +454,6 @@ blueprint_selector_run() {
     fi
     BLUEPRINT_SELECTOR_TEMP_FILE=""
     trap - INT TERM
+    log "[BLUEPRINT] RESULT: SAVED"
     success "Blueprint saved to $BLUEPRINT_FILE"
 }
