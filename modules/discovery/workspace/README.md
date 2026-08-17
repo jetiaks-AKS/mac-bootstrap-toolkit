@@ -52,6 +52,21 @@ config/generated/workspace/
 
 ---
 
+## Безопасная публикация
+
+`workspace.conf` публикуется независимо как Workspace metadata. Файлы
+`folders.conf`, `repositories.conf`, `vscode-workspaces.conf` и
+`inventory.conf` формируются как один связанный snapshot: производные файлы
+используют `folders.conf` той же staged-генерации, а inventory — staged-файлы
+folders и repositories.
+
+Production-файлы изменяются только после успешного формирования всего
+snapshot. Ошибка наблюдения, сериализации или публикации возвращает ошибку и
+сохраняет предыдущую группу generated-файлов; частично сформированный snapshot
+не считается успешным Discovery.
+
+---
+
 ## Основная идея
 
 Toolkit восстанавливает не данные пользователя, а его рабочее окружение.
