@@ -127,7 +127,12 @@ write_generated_state() {
     echo 'firefox' > "$BLUEPRINT_GENERATED_DIR/brew-casks.conf"
     echo '123456789|Example Application' > "$BLUEPRINT_GENERATED_DIR/appstore.conf"
     echo 'publisher.extension-a' > "$BLUEPRINT_GENERATED_DIR/vscode-extensions.conf"
-    echo 'Projects|workspace' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+    {
+        echo 'Desktop|user'
+        echo 'Projects|workspace'
+        echo 'Library|system'
+        echo 'CustomRoot|workspace'
+    } > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
 
     {
         echo '[project-a]'
@@ -144,6 +149,15 @@ expect_status "missing Blueprint category uses legacy behavior" 0 \
     blueprint_category_enabled git-configuration "$BLUEPRINT_FILE"
 expect_status "missing Blueprint item uses legacy behavior" 0 \
     blueprint_item_selected homebrew-packages anything "$BLUEPRINT_FILE"
+expect_status "missing Blueprint keeps broad workspace folder behavior" 0 \
+    blueprint_item_selected workspace-folders Desktop "$BLUEPRINT_FILE"
+
+expect_output "workspace candidates use generated classification" \
+    $'Projects\nCustomRoot' blueprint_workspace_folder_candidates
+expect_status "workspace classification drives candidate eligibility" 0 \
+    blueprint_workspace_folder_candidate CustomRoot
+expect_status "folder name does not override non-workspace classification" 1 \
+    blueprint_workspace_folder_candidate Desktop
 
 write_blueprint "$BLUEPRINT_FILE"
 
@@ -165,6 +179,37 @@ expect_status "category false" 1 blueprint_category_enabled \
     vscode-settings "$BLUEPRINT_FILE"
 expect_output "selected items" "git" blueprint_selected_items \
     homebrew-packages "$BLUEPRINT_FILE"
+expect_status "selected workspace candidate remains active" 0 \
+    blueprint_item_selected workspace-folders Projects "$BLUEPRINT_FILE"
+
+awk '
+    { print }
+    $0 == "[workspace-folders]" { print "Desktop"; print "Library" }
+' "$BLUEPRINT_FILE" > "$TEST_ROOT/legacy-workspace.conf"
+reset_messages
+blueprint_validate "$TEST_ROOT/legacy-workspace.conf" >/dev/null
+legacy_validation_status=$?
+if [[ $legacy_validation_status -eq 0 && -z "$WARNING_MESSAGES" ]]; then
+    pass "observed legacy user/system selections are normalization, not stale"
+else
+    fail "legacy user/system selections produced incorrect validation semantics"
+fi
+expect_status "legacy user folder selection is inactive with Blueprint" 1 \
+    blueprint_item_selected workspace-folders Desktop "$TEST_ROOT/legacy-workspace.conf"
+
+awk '
+    { print }
+    $0 == "[workspace-folders]" { print "MissingWorkspace" }
+' "$BLUEPRINT_FILE" > "$TEST_ROOT/stale-workspace.conf"
+reset_messages
+blueprint_validate "$TEST_ROOT/stale-workspace.conf" >/dev/null
+stale_workspace_status=$?
+if [[ $stale_workspace_status -eq 1 &&
+      "$WARNING_MESSAGES" == *'Stale Blueprint item in workspace-folders: MissingWorkspace'* ]]; then
+    pass "genuinely missing workspace selection remains stale"
+else
+    fail "genuinely stale workspace selection lost warning semantics"
+fi
 
 write_blueprint "$BLUEPRINT_FILE" true ""
 expect_status "empty item section" 0 blueprint_validate "$BLUEPRINT_FILE"

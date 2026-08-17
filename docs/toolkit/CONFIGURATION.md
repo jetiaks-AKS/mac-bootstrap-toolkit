@@ -143,6 +143,12 @@ Blueprint MVP реализован и прошёл полную E2E-провер
 item-секциям. Без Blueprint сохраняется прежняя обработка всех компонентов из
 Generated Configuration.
 
+Для `[workspace-folders]` обычными Blueprint-кандидатами являются только записи
+`folders.conf` с классификацией `workspace`. Наблюдаемые каталоги `user` и
+`system` остаются в Generated Configuration, но не входят в обычный выбор
+Blueprint. При отсутствии Blueprint сохраняется broad legacy-обработка всех
+наблюдаемых записей.
+
 Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
 и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Interactive CLI
 доступен через последовательный workflow:

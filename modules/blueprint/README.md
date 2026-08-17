@@ -42,6 +42,13 @@ When a Blueprint exists, Bootstrap filters Homebrew packages, Homebrew casks,
 App Store applications, VS Code extensions, workspace folders, and Git
 repositories by their corresponding item sections.
 
+Workspace Discovery keeps observed `system`, `user`, and `workspace` folder
+records in `folders.conf`. Blueprint exposes only records classified exactly as
+`workspace` as normal Workspace Folder candidates. Saving an existing
+Blueprint normalizes legacy `user` and `system` selections away; cancelling
+preserves the original file. Without Blueprint, Bootstrap retains its broad
+legacy behavior.
+
 The `[categories]` section independently controls Git Configuration, VS Code
 Settings, and the Finder, Dock, Keyboard, Trackpad, and Screenshots macOS
 modules. VS Code extensions remain controlled separately by their item section.

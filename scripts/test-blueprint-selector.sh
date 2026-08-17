@@ -90,7 +90,9 @@ write_existing_blueprint() {
         echo 'publisher.extension'
         echo
         echo '[workspace-folders]'
+        echo 'Desktop'
         echo 'Projects'
+        echo 'Library'
         echo
         echo '[git-repositories]'
         echo 'project-one'
@@ -237,32 +239,45 @@ fi
 } > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
 
 blueprint_selector_load_items workspace-folders
+blueprint_selector_choose_items workspace-folders "Workspace Folders" <<< "N" >/dev/null
+blueprint_selector_store_items workspace_selection
+if [[ -z "$workspace_selection" ]]; then
+    pass "Workspace candidate selection supports None"
+else
+    fail "Workspace candidate None selection retained items"
+fi
+blueprint_selector_choose_items workspace-folders "Workspace Folders" <<< "A" >/dev/null
+blueprint_selector_store_items workspace_selection
+if [[ "$workspace_selection" == $'Projects\nScreenshots\nSources\nNewFolder' ]]; then
+    pass "Workspace candidate selection supports All"
+else
+    fail "Workspace candidate All selection is incomplete"
+fi
+
+blueprint_selector_load_items workspace-folders
 workspace_output="$(blueprint_selector_select_items "Workspace Folders" <<< $'n\nd')"
 blueprint_selector_store_items workspace_selection
-if [[ "${BLUEPRINT_SELECTOR_ITEMS[*]}" == "Desktop Documents Projects Downloads Library Movies Music Pictures Public Screenshots Sources NewFolder" &&
-      "${BLUEPRINT_SELECTOR_LABELS[*]}" == "Desktop Documents Projects Downloads Library Movies Music Pictures Public Screenshots Sources NewFolder" &&
-      "${BLUEPRINT_SELECTOR_SELECTED[0]}" == false &&
-      "${BLUEPRINT_SELECTOR_SELECTED[2]}" == true &&
-      "${BLUEPRINT_SELECTOR_SELECTED[11]}" == false &&
+if [[ "${BLUEPRINT_SELECTOR_ITEMS[*]}" == "Projects Screenshots Sources NewFolder" &&
+      "${BLUEPRINT_SELECTOR_LABELS[*]}" == "Projects Screenshots Sources NewFolder" &&
+      "${BLUEPRINT_SELECTOR_SELECTED[0]}" == true &&
+      "${BLUEPRINT_SELECTOR_SELECTED[1]}" == false &&
+      "${BLUEPRINT_SELECTOR_SELECTED[3]}" == false &&
       "$workspace_selection" == "Projects" &&
       "$(blueprint_selector_count_lines "$workspace_selection")" == 1 &&
-      "$workspace_output" == *'  1. [ ] Desktop'* &&
-      "$workspace_output" == *'  2. [ ] Documents'* &&
-      "$workspace_output" == *'  3. [x] Projects'* &&
-      "$workspace_output" == *' 11. [ ] Sources'* &&
-      "$workspace_output" == *' 12. [ ] NewFolder'* &&
-      "$workspace_output" != *'] user'* &&
-      "$workspace_output" != *'] workspace'* &&
-      "$workspace_output" != *'] system'* ]]; then
-    pass "Workspace folders render names with identifier-based selection and pagination"
+      "$workspace_output" == *'  1. [x] Projects'* &&
+      "$workspace_output" == *'  2. [ ] Screenshots'* &&
+      "$workspace_output" == *'  4. [ ] NewFolder'* &&
+      "$workspace_output" != *'Desktop'* &&
+      "$workspace_output" != *'Library'* ]]; then
+    pass "Workspace selector exposes only classification-driven candidates"
 else
-    fail "Workspace folder labels, selection identifiers, counts, or pagination are incorrect"
+    fail "Workspace candidate filtering, labels, or existing selection are incorrect"
 fi
 
 blueprint_selector_select_items "Workspace Folders" <<< $'2\nd' >/dev/null
 blueprint_selector_store_items workspace_selection
 if [[ "${BLUEPRINT_SELECTOR_SELECTED[1]}" == true &&
-      "$workspace_selection" == $'Documents\nProjects' ]]; then
+      "$workspace_selection" == $'Projects\nScreenshots' ]]; then
     pass "Workspace folder toggles store the displayed folder identifier"
 else
     fail "Workspace folder toggle did not store the matching identifier"
@@ -291,6 +306,8 @@ reset_selector_log
 summary_output="$(blueprint_selector_run <<< "$wizard_defaults")"
 if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
    grep -q 'Homebrew packages.*12 / 12' <<< "$summary_output" &&
+   grep -q 'Workspace folders.*4 / 4' <<< "$summary_output" &&
+   [[ "$(blueprint_selected_items workspace-folders "$BLUEPRINT_FILE")" == $'Projects\nScreenshots\nSources\nNewFolder' ]] &&
    grep -q 'Git Configuration.*Yes' <<< "$summary_output" &&
    grep -q 'git-configuration="true"' "$BLUEPRINT_FILE" &&
    grep -q '\[BLUEPRINT\] START' "$LOG_FILE" &&
@@ -299,6 +316,20 @@ if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
     pass "new Blueprint save preserves selection and records lifecycle"
 else
     fail "new Blueprint save or lifecycle logging failed"
+fi
+
+BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
+write_existing_blueprint
+reset_selector_log
+normalization_output="$(blueprint_selector_run <<< "$wizard_defaults")"
+normalized_workspace="$(blueprint_selected_items workspace-folders "$BLUEPRINT_FILE")"
+if [[ "$normalized_workspace" == "Projects" ]] &&
+   grep -q 'Workspace folders.*1 / 4' <<< "$normalization_output" &&
+   ! grep -q '^Desktop$' <<< "$normalized_workspace" &&
+   ! grep -q '^Library$' <<< "$normalized_workspace"; then
+    pass "save normalizes legacy folders and preserves partial workspace selection"
+else
+    fail "Workspace selection normalization or candidate count is incorrect"
 fi
 
 write_existing_blueprint

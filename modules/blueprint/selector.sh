@@ -60,11 +60,11 @@ blueprint_selector_load_items() {
             done < "$file"
             ;;
         workspace-folders)
-            while IFS='|' read -r first second || [[ -n "$first" ]]; do
+            while IFS= read -r first || [[ -n "$first" ]]; do
                 [[ -z "$first" || "$first" == \#* ]] && continue
                 BLUEPRINT_SELECTOR_ITEMS+=("$first")
                 BLUEPRINT_SELECTOR_LABELS+=("$first")
-            done < "$file"
+            done < <(blueprint_workspace_folder_candidates "$file")
             ;;
         git-repositories)
             while IFS= read -r first; do
@@ -408,7 +408,7 @@ blueprint_selector_run() {
     printf '  VS Code extensions    %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_VSCODE_EXTENSIONS") / $(wc -l < "$(blueprint_generated_file vscode-extensions)" | tr -d ' ')"
     echo
     echo "Workspace"
-    printf '  Workspace folders     %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_WORKSPACE_FOLDERS") / $(wc -l < "$(blueprint_generated_file workspace-folders)" | tr -d ' ')"
+    printf '  Workspace folders     %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_WORKSPACE_FOLDERS") / $(blueprint_generated_item_count workspace-folders)"
     printf '  Git repositories      %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_GIT_REPOSITORIES") / $(config_sections "$(blueprint_generated_file git-repositories)" | wc -l | tr -d ' ')"
     echo
     echo "Settings"

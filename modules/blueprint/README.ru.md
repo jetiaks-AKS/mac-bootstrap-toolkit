@@ -43,6 +43,13 @@ Discovery по-прежнему сканирует все поддерживае
 packages, Homebrew casks, приложения App Store, расширения VS Code, папки
 Workspace и Git-репозитории по соответствующим item-секциям.
 
+Workspace Discovery сохраняет в `folders.conf` наблюдаемые записи `system`,
+`user` и `workspace`. Blueprint предлагает как обычные Workspace Folder
+кандидаты только записи с точной классификацией `workspace`. При сохранении
+существующего Blueprint legacy-выбор `user` и `system` удаляется; отмена
+сохраняет исходный файл. Без Blueprint Bootstrap сохраняет широкое
+legacy-поведение.
+
 Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
 и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Расширения
 VS Code по-прежнему управляются отдельно своей item-секцией.

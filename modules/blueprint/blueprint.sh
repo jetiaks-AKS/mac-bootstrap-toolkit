@@ -136,6 +136,11 @@ blueprint_item_selected() {
         return 0
     fi
 
+    if [[ "$section" == "workspace-folders" ]] &&
+       ! blueprint_workspace_folder_candidate "$item"; then
+        return 1
+    fi
+
     blueprint_selected_items "$section" "$blueprint_file" |
         grep -Fxq -- "$item"
 
@@ -314,6 +319,30 @@ blueprint_generated_file() {
 
 }
 
+blueprint_workspace_folder_candidates() {
+
+    local generated_file="${1:-$BLUEPRINT_GENERATED_DIR/workspace/folders.conf}"
+
+    [[ -f "$generated_file" ]] || return 1
+
+    awk -F '|' '$2 == "workspace" { print $1 }' "$generated_file"
+
+}
+
+blueprint_workspace_folder_candidate() {
+
+    local item="$1"
+    local generated_file="${2:-$BLUEPRINT_GENERATED_DIR/workspace/folders.conf}"
+
+    [[ -f "$generated_file" ]] || return 1
+
+    awk -F '|' -v item="$item" '
+        $1 == item && $2 == "workspace" { found = 1 }
+        END { exit(found ? 0 : 1) }
+    ' "$generated_file"
+
+}
+
 blueprint_generated_has_item() {
 
     local section="$1"
@@ -387,6 +416,12 @@ blueprint_validate_selected_items() {
         while IFS= read -r item; do
             [[ -z "$item" ]] && continue
 
+            if [[ "$section" == "workspace-folders" ]] &&
+               blueprint_generated_has_item "$section" "$item" &&
+               ! blueprint_workspace_folder_candidate "$item"; then
+                continue
+            fi
+
             if ! blueprint_generated_has_item "$section" "$item"; then
                 warning "Stale Blueprint item in $section: $item"
                 validation_result=1
@@ -456,6 +491,10 @@ blueprint_generated_item_count() {
         git-repositories)
             config_sections "$generated_file" | awk 'NF { count++ } END { print count + 0 }'
             ;;
+        workspace-folders)
+            blueprint_workspace_folder_candidates "$generated_file" |
+                awk 'NF { count++ } END { print count + 0 }'
+            ;;
         *)
             awk 'NF && $0 !~ /^[[:space:]]*#/ { count++ } END { print count + 0 }' \
                 "$generated_file"
@@ -466,7 +505,22 @@ blueprint_generated_item_count() {
 
 blueprint_selected_item_count() {
 
-    blueprint_selected_items "$1" |
+    local section="$1"
+
+    if [[ "$section" == "workspace-folders" ]]; then
+        local item
+        local count=0
+
+        while IFS= read -r item; do
+            [[ -n "$item" ]] || continue
+            blueprint_workspace_folder_candidate "$item" && ((count++))
+        done < <(blueprint_selected_items "$section")
+
+        echo "$count"
+        return 0
+    fi
+
+    blueprint_selected_items "$section" |
         awk 'NF { count++ } END { print count + 0 }'
 
 }

@@ -204,6 +204,8 @@ write_blueprint() {
         echo '[workspace-folders]'
         [[ "$include_items" == true ]] && echo 'SelectedFolder'
         [[ "$include_all_items" == true ]] && echo 'UnselectedFolder'
+        [[ "$include_items" == true ]] && echo 'LegacyUserFolder'
+        [[ "$include_items" == true ]] && echo 'LegacySystemFolder'
         echo
         echo '[git-repositories]'
         [[ "$include_items" == true ]] && echo 'selected-repository'
@@ -232,7 +234,11 @@ write_generated_state() {
         "$BLUEPRINT_GENERATED_DIR/appstore.conf"
     printf '%s\n' selected.extension unselected.extension > \
         "$BLUEPRINT_GENERATED_DIR/vscode-extensions.conf"
-    printf '%s\n' 'SelectedFolder|workspace' 'UnselectedFolder|workspace' > \
+    printf '%s\n' \
+        'SelectedFolder|workspace' \
+        'UnselectedFolder|workspace' \
+        'LegacyUserFolder|user' \
+        'LegacySystemFolder|system' > \
         "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
 
     {
@@ -259,7 +265,8 @@ expect_processed "missing Blueprint keeps all App Store IDs eligible" \
 expect_processed "missing Blueprint keeps all VS Code extensions eligible" \
     "selected.extension unselected.extension" install_vscode_extensions
 bootstrap_workspace_folders >/dev/null
-if [[ -d "$HOME/SelectedFolder" && -d "$HOME/UnselectedFolder" ]]; then
+if [[ -d "$HOME/SelectedFolder" && -d "$HOME/UnselectedFolder" &&
+      -d "$HOME/LegacyUserFolder" && -d "$HOME/LegacySystemFolder" ]]; then
     pass "missing Blueprint keeps all workspace folders eligible"
 else
     fail "missing Blueprint did not keep all workspace folders eligible"
@@ -267,7 +274,8 @@ fi
 expect_processed "missing Blueprint keeps all repositories eligible" \
     "selected-repository unselected-repository" bootstrap_workspace_repositories
 
-rm -rf "$HOME/SelectedFolder" "$HOME/UnselectedFolder"
+rm -rf "$HOME/SelectedFolder" "$HOME/UnselectedFolder" \
+    "$HOME/LegacyUserFolder" "$HOME/LegacySystemFolder"
 write_blueprint
 
 expect_processed "Blueprint filters Homebrew packages" \
@@ -279,15 +287,19 @@ expect_processed "Blueprint filters App Store applications by ID" \
 expect_processed "Blueprint filters VS Code extensions" \
     "selected.extension" install_vscode_extensions
 bootstrap_workspace_folders >/dev/null
-if [[ -d "$HOME/SelectedFolder" && ! -d "$HOME/UnselectedFolder" ]]; then
-    pass "Blueprint filters workspace folders"
+if [[ -d "$HOME/SelectedFolder" &&
+      ! -d "$HOME/UnselectedFolder" &&
+      ! -d "$HOME/LegacyUserFolder" &&
+      ! -d "$HOME/LegacySystemFolder" ]]; then
+    pass "Blueprint filters candidates and ignores hidden legacy folder selections"
 else
     fail "Blueprint workspace folder filtering failed"
 fi
 expect_processed "Blueprint filters repositories by identifier" \
     "selected-repository" bootstrap_workspace_repositories
 
-rm -rf "$HOME/SelectedFolder" "$HOME/UnselectedFolder"
+rm -rf "$HOME/SelectedFolder" "$HOME/UnselectedFolder" \
+    "$HOME/LegacyUserFolder" "$HOME/LegacySystemFolder"
 write_blueprint false
 
 expect_processed "empty Homebrew package section processes zero items" \
