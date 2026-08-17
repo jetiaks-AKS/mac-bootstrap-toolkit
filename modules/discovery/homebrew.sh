@@ -13,6 +13,12 @@ export_brew_packages() {
 
     action "Exporting Homebrew Formulae..."
 
+    local inventory
+    if ! inventory="$(brew list --formula --installed-on-request)"; then
+        error "Failed to inventory Homebrew Formulae"
+        return 2
+    fi
+
     > "$output_file"
 
     local package_count=0
@@ -27,7 +33,7 @@ export_brew_packages() {
 
         detail "$package"
 
-    done < <(brew list --formula)
+    done <<< "$inventory"
 
     success "$package_count Formulae exported"
 
@@ -44,6 +50,12 @@ export_brew_casks() {
 
     action "Exporting Homebrew Casks..."
 
+    local inventory
+    if ! inventory="$(brew list --cask)"; then
+        error "Failed to inventory Homebrew Casks"
+        return 2
+    fi
+
     > "$output_file"
 
     local cask_count=0
@@ -58,7 +70,7 @@ export_brew_casks() {
 
         detail "$cask"
 
-    done < <(brew list --cask)
+    done <<< "$inventory"
 
     success "$cask_count Casks exported"
 
