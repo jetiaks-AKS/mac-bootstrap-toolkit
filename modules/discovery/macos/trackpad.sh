@@ -4,24 +4,36 @@
 # Trackpad Discovery
 # ==========================================
 
+serialize_trackpad_settings() {
+
+    local output_file="$1"
+
+    : > "$output_file" || return 2
+
+    macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad Clicking bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain com.apple.trackpad.scaling int || return 2
+    macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad TrackpadRightClick bool || return 2
+
+    return 0
+
+}
+
 export_trackpad_settings() {
 
-    local output_dir="config/generated/macos"
-    local output_file="$output_dir/trackpad.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/macos/trackpad.conf"
 
     action "Exporting Trackpad configuration..."
 
-    cat > "$output_file" <<EOF
-com.apple.AppleMultitouchTrackpad|Clicking|bool|$(defaults read com.apple.AppleMultitouchTrackpad Clicking 2>/dev/null)
-NSGlobalDomain|com.apple.trackpad.scaling|int|$(defaults read NSGlobalDomain com.apple.trackpad.scaling 2>/dev/null)
-com.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|$(defaults read com.apple.AppleMultitouchTrackpad TrackpadRightClick 2>/dev/null)
-EOF
+    if ! discovery_publish_file "$output_file" serialize_trackpad_settings; then
+        error "Failed to export Trackpad configuration"
+        return 2
+    fi
 
 if [[ "$VERBOSE" == true ]]; then
     detail "Configuration saved to: $output_file"
 fi
     success "Trackpad configuration exported"
+
+    return 0
 
 }
