@@ -650,11 +650,15 @@ fi
 git_test_root="$TEST_ROOT/git-configuration"
 mkdir -p "$git_test_root/config/generated"
 {
-    echo 'GIT_USER_NAME="Test User"'
-    echo 'GIT_USER_EMAIL="test@example.com"'
-    echo 'GIT_DEFAULT_BRANCH="main"'
-    echo 'GIT_PULL_REBASE="false"'
-    echo 'GIT_EDITOR="code --wait"'
+    echo '[user]'
+    echo '    name = Test User'
+    echo '    email = test@example.com'
+    echo '[init]'
+    echo '    defaultBranch = main'
+    echo '[pull]'
+    echo '    rebase = false'
+    echo '[core]'
+    echo '    editor = code --wait'
 } > "$git_test_root/config/generated/git.conf"
 
 source "$PROJECT_ROOT/modules/core/git/git.sh"
@@ -677,7 +681,7 @@ check_git_configuration() {
     ((git_check_calls++))
     [[ $git_check_calls -gt 1 ]]
 }
-git() { return 0; }
+apply_git_configuration() { return 0; }
 git_output="$(cd "$git_test_root" && configure_git)"
 git_status=$?
 if [[ $git_status -eq 0 &&
@@ -690,7 +694,10 @@ else
 fi
 
 check_git_configuration() { return 1; }
-git() { return 1; }
+apply_git_configuration() {
+    error "Failed to configure Git"
+    return 2
+}
 git_output="$(cd "$git_test_root" && configure_git)"
 git_status=$?
 if [[ $git_status -eq 2 &&

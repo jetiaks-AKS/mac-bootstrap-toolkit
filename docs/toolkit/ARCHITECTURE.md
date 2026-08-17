@@ -51,9 +51,9 @@ but does not copy user documents or repository contents.
 ### Generated configuration
 
 Generated files are the observed-state data source for Blueprint and Bootstrap.
-Simple lists and shell-style configuration are used for application and Git
-data; sectioned configuration is read through the Configuration Engine for
-workspace repositories. Exporters and consumers must keep their formats
+Simple lists are used for application data, native non-executable Git config for
+global Git state, and sectioned configuration through the Configuration Engine
+for workspace repositories. Exporters and consumers must keep their formats
 compatible.
 
 Because generated files can contain personal paths, Git identity, repository
