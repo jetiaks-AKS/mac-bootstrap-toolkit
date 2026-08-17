@@ -18,6 +18,7 @@ SUCCESS_MESSAGES=""
 ERROR_MESSAGES=""
 
 source "$PROJECT_ROOT/modules/core/common/common.sh"
+source "$PROJECT_ROOT/modules/discovery/discovery.sh"
 
 log() { :; }
 action() { :; }
@@ -73,6 +74,14 @@ reset_fixture() {
     ERROR_MESSAGES=""
 }
 
+restore_serializer() {
+    source "$PROJECT_ROOT/modules/discovery/homebrew.sh"
+}
+
+helper_temporary_files() {
+    find config/generated -type f -name '*.conf.tmp.*' -print 2>/dev/null
+}
+
 cd "$TEST_ROOT" || exit 1
 
 reset_fixture
@@ -113,10 +122,54 @@ failure_status=$?
 after_checksum="$(cksum config/generated/brew-packages.conf)"
 if [[ $failure_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
    [[ "$ERROR_MESSAGES" == *'Failed to inventory Homebrew Formulae'* ]] &&
-   [[ "$SUCCESS_MESSAGES" != *'Formulae exported'* ]]; then
+   [[ "$SUCCESS_MESSAGES" != *'Formulae exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
     pass "formula failure returns 2 without replacing or falsely exporting"
 else
     fail "formula failure did not preserve output or propagate status 2"
+fi
+
+
+reset_fixture
+FORMULA_MODE=normal
+mkdir -p config/generated
+printf 'existing-formula\n' > config/generated/brew-packages.conf
+before_checksum="$(cksum config/generated/brew-packages.conf)"
+serialize_brew_inventory() {
+    printf 'partial-formula\n' > "$1"
+    return 2
+}
+export_brew_packages >/dev/null
+formula_serialization_status=$?
+after_checksum="$(cksum config/generated/brew-packages.conf)"
+restore_serializer
+if [[ $formula_serialization_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
+   [[ "$ERROR_MESSAGES" == *'Failed to publish Homebrew Formulae'* ]] &&
+   [[ "$SUCCESS_MESSAGES" != *'Formulae exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
+    pass "formula serialization failure preserves output and cleans temporary files"
+else
+    fail "formula serialization failure changed output, leaked a temporary file, or reported success"
+fi
+
+
+reset_fixture
+FORMULA_MODE=normal
+mkdir -p config/generated
+printf 'existing-formula\n' > config/generated/brew-packages.conf
+before_checksum="$(cksum config/generated/brew-packages.conf)"
+mv() { return 1; }
+export_brew_packages >/dev/null
+formula_publication_status=$?
+unset -f mv
+after_checksum="$(cksum config/generated/brew-packages.conf)"
+if [[ $formula_publication_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
+   [[ "$ERROR_MESSAGES" == *'Failed to publish Homebrew Formulae'* ]] &&
+   [[ "$SUCCESS_MESSAGES" != *'Formulae exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
+    pass "formula publication failure preserves output and cleans temporary files"
+else
+    fail "formula publication failure changed output, leaked a temporary file, or reported success"
 fi
 
 reset_fixture
@@ -190,10 +243,54 @@ cask_failure_status=$?
 after_checksum="$(cksum config/generated/brew-casks.conf)"
 if [[ $cask_failure_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
    [[ "$ERROR_MESSAGES" == *'Failed to inventory Homebrew Casks'* ]] &&
-   [[ "$SUCCESS_MESSAGES" != *'Casks exported'* ]]; then
+   [[ "$SUCCESS_MESSAGES" != *'Casks exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
     pass "cask failure returns 2 without replacing or falsely exporting"
 else
     fail "cask failure did not preserve output or propagate status 2"
+fi
+
+
+reset_fixture
+CASK_MODE=normal
+mkdir -p config/generated
+printf 'existing-cask\n' > config/generated/brew-casks.conf
+before_checksum="$(cksum config/generated/brew-casks.conf)"
+serialize_brew_inventory() {
+    printf 'partial-cask\n' > "$1"
+    return 2
+}
+export_brew_casks >/dev/null
+cask_serialization_status=$?
+after_checksum="$(cksum config/generated/brew-casks.conf)"
+restore_serializer
+if [[ $cask_serialization_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
+   [[ "$ERROR_MESSAGES" == *'Failed to publish Homebrew Casks'* ]] &&
+   [[ "$SUCCESS_MESSAGES" != *'Casks exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
+    pass "cask serialization failure preserves output and cleans temporary files"
+else
+    fail "cask serialization failure changed output, leaked a temporary file, or reported success"
+fi
+
+
+reset_fixture
+CASK_MODE=normal
+mkdir -p config/generated
+printf 'existing-cask\n' > config/generated/brew-casks.conf
+before_checksum="$(cksum config/generated/brew-casks.conf)"
+mv() { return 1; }
+export_brew_casks >/dev/null
+cask_publication_status=$?
+unset -f mv
+after_checksum="$(cksum config/generated/brew-casks.conf)"
+if [[ $cask_publication_status -eq 2 && "$before_checksum" == "$after_checksum" ]] &&
+   [[ "$ERROR_MESSAGES" == *'Failed to publish Homebrew Casks'* ]] &&
+   [[ "$SUCCESS_MESSAGES" != *'Casks exported'* ]] &&
+   [[ -z "$(helper_temporary_files)" ]]; then
+    pass "cask publication failure preserves output and cleans temporary files"
+else
+    fail "cask publication failure changed output, leaked a temporary file, or reported success"
 fi
 
 reset_fixture
@@ -208,6 +305,27 @@ if [[ $cask_controller_status -eq 2 ]] &&
     pass "cask failure stops Homebrew Discovery with status 2"
 else
     fail "cask failure was not propagated through Homebrew Discovery"
+fi
+
+
+reset_fixture
+FORMULA_MODE=normal
+CASK_MODE=normal
+MODULES_CHECKED=0
+INSTALLED_COUNT=0
+SKIPPED_COUNT=0
+WARNING_COUNT=0
+ERROR_COUNT=0
+run_module "Homebrew Discovery" discover_homebrew >/dev/null
+homebrew_lifecycle_status=$?
+if [[ $homebrew_lifecycle_status -eq 0 &&
+      $MODULES_CHECKED -eq 1 &&
+      $ERROR_COUNT -eq 0 &&
+      $WARNING_COUNT -eq 0 &&
+      "$SUCCESS_MESSAGES" == *'Homebrew Discovery completed'* ]]; then
+    pass "successful Homebrew Discovery reaches the existing module lifecycle"
+else
+    fail "successful Homebrew Discovery did not preserve lifecycle status 0"
 fi
 
 if [[ $TEST_FAILURES -ne 0 ]]; then

@@ -4,12 +4,29 @@
 # Homebrew Discovery
 # ==========================================
 
+serialize_brew_inventory() {
+
+    local output_file="$1"
+    local inventory="$2"
+    local entry
+
+    while IFS= read -r entry; do
+
+        [[ -z "$entry" ]] && continue
+
+        printf '%s\n' "$entry" >> "$output_file" || return 2
+
+    done <<< "$inventory"
+
+    return 0
+
+}
+
+# ==========================================
+
 export_brew_packages() {
 
-    local output_dir="config/generated"
-    local output_file="$output_dir/brew-packages.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/brew-packages.conf"
 
     action "Exporting Homebrew Formulae..."
 
@@ -19,15 +36,16 @@ export_brew_packages() {
         return 2
     fi
 
-    > "$output_file"
+    if ! discovery_publish_file "$output_file" serialize_brew_inventory "$inventory"; then
+        error "Failed to publish Homebrew Formulae"
+        return 2
+    fi
 
     local package_count=0
 
     while IFS= read -r package; do
 
         [[ -z "$package" ]] && continue
-
-        echo "$package" >> "$output_file"
 
         ((package_count++))
 
@@ -43,10 +61,7 @@ export_brew_packages() {
 
 export_brew_casks() {
 
-    local output_dir="config/generated"
-    local output_file="$output_dir/brew-casks.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/brew-casks.conf"
 
     action "Exporting Homebrew Casks..."
 
@@ -56,15 +71,16 @@ export_brew_casks() {
         return 2
     fi
 
-    > "$output_file"
+    if ! discovery_publish_file "$output_file" serialize_brew_inventory "$inventory"; then
+        error "Failed to publish Homebrew Casks"
+        return 2
+    fi
 
     local cask_count=0
 
     while IFS= read -r cask; do
 
         [[ -z "$cask" ]] && continue
-
-        echo "$cask" >> "$output_file"
 
         ((cask_count++))
 

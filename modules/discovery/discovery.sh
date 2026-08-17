@@ -4,6 +4,37 @@
 # Discovery Controller
 # ==========================================
 
+discovery_publish_file() {
+
+    local output_file="$1"
+    local serializer="$2"
+    shift 2
+
+    local output_dir
+    local temporary_file
+
+    output_dir="$(dirname "$output_file")" || return 2
+
+    mkdir -p "$output_dir" || return 2
+
+    temporary_file="$(mktemp "${output_file}.tmp.XXXXXX")" || return 2
+
+    if ! "$serializer" "$temporary_file" "$@"; then
+        rm -f "$temporary_file"
+        return 2
+    fi
+
+    if ! mv "$temporary_file" "$output_file"; then
+        rm -f "$temporary_file"
+        return 2
+    fi
+
+    return 0
+
+}
+
+# ==========================================
+
 run_discovery() {
 
     run_module "Homebrew Discovery" discover_homebrew
