@@ -19,6 +19,19 @@ serialize_vscode_extensions() {
 
 # ==========================================
 
+serialize_vscode_settings() {
+
+    local output_file="$1"
+    local source_file="$2"
+
+    cp "$source_file" "$output_file" 2>/dev/null || return 2
+
+    return 0
+
+}
+
+# ==========================================
+
 export_vscode_extensions() {
 
     if ! command -v code >/dev/null 2>&1; then
@@ -65,21 +78,21 @@ export_vscode_extensions() {
 export_vscode_settings() {
 
     local source_file="$HOME/Library/Application Support/Code/User/settings.json"
-    local output_dir="config/generated/vscode"
-    local output_file="$output_dir/settings.json"
+    local output_file="config/generated/vscode/settings.json"
 
-    if [[ ! -f "$source_file" ]]; then
+    if [[ ! -e "$source_file" ]]; then
 
         warning "VS Code settings not found"
         return 1
 
     fi
 
-    mkdir -p "$output_dir"
-
     action "Exporting VS Code Settings..."
 
-    cp "$source_file" "$output_file"
+    if ! discovery_publish_file "$output_file" serialize_vscode_settings "$source_file"; then
+        error "Failed to publish VS Code Settings"
+        return 2
+    fi
 
     if [[ "$VERBOSE" == true ]]; then
 
@@ -89,6 +102,8 @@ export_vscode_settings() {
     fi
 
     success "VS Code Settings exported"
+
+    return 0
 
 }
 

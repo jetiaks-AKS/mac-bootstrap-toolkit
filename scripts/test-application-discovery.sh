@@ -16,7 +16,6 @@ MAS_AVAILABLE=true
 MAS_MODE=normal
 CODE_AVAILABLE=true
 CODE_MODE=normal
-SETTINGS_STATUS=0
 SUCCESS_MESSAGES=""
 WARNING_MESSAGES=""
 ERROR_MESSAGES=""
@@ -94,6 +93,8 @@ code() {
 source "$PROJECT_ROOT/modules/discovery/appstore.sh"
 source "$PROJECT_ROOT/modules/discovery/vscode.sh"
 
+HOME="$TEST_ROOT/home"
+
 pass() { echo "PASS: $1"; }
 fail() {
     echo "FAIL: $1"
@@ -101,14 +102,14 @@ fail() {
 }
 
 reset_fixture() {
-    rm -rf "$TEST_ROOT/config"
+    rm -rf "$TEST_ROOT/config" "$HOME"
+    mkdir -p "$HOME"
     : > "$MAS_CALLS"
     : > "$CODE_CALLS"
     MAS_AVAILABLE=true
     MAS_MODE=normal
     CODE_AVAILABLE=true
     CODE_MODE=normal
-    SETTINGS_STATUS=0
     SUCCESS_MESSAGES=""
     WARNING_MESSAGES=""
     ERROR_MESSAGES=""
@@ -123,11 +124,7 @@ reset_counters() {
 }
 
 publication_temporary_files() {
-    find config/generated -type f -name '*.conf.tmp.*' -print 2>/dev/null
-}
-
-export_vscode_settings() {
-    return "$SETTINGS_STATUS"
+    find config/generated -type f -name '*.tmp.*' -print 2>/dev/null
 }
 
 cd "$TEST_ROOT" || exit 1
@@ -350,24 +347,157 @@ else
     fail "VS Code publication failure changed state or leaked temporary output"
 fi
 
-for settings_result in 0 1; do
+# ==========================================
+# VS Code Settings Discovery
+# ==========================================
+
+settings_source="$HOME/Library/Application Support/Code/User/settings.json"
+settings_output="config/generated/vscode/settings.json"
+
+reset_fixture
+mkdir -p "$(dirname "$settings_source")"
+printf '{"editor.fontFamily":"Quoted \\"Font\\"", "literal":"$HOME"}' > "$settings_source"
+export_vscode_settings >/dev/null
+settings_status=$?
+if [[ $settings_status -eq 0 && -f "$settings_output" ]] &&
+   cmp -s "$settings_source" "$settings_output" &&
+   [[ "$SUCCESS_MESSAGES" == *'VS Code Settings exported'* ]]; then
+    pass "VS Code Settings publishes a byte-for-byte opaque copy"
+else
+    fail "VS Code Settings populated copy or success behavior changed"
+fi
+
+reset_fixture
+mkdir -p "$(dirname "$settings_source")"
+: > "$settings_source"
+export_vscode_settings >/dev/null
+settings_status=$?
+if [[ $settings_status -eq 0 && -f "$settings_output" && ! -s "$settings_output" &&
+      "$SUCCESS_MESSAGES" == *'VS Code Settings exported'* ]]; then
+    pass "empty VS Code Settings source publishes a valid zero-byte destination"
+else
+    fail "empty VS Code Settings source behavior changed"
+fi
+
+reset_fixture
+mkdir -p "$(dirname "$settings_output")"
+printf 'previous settings bytes\n' > "$settings_output"
+before_checksum="$(cksum "$settings_output")"
+export_vscode_settings >/dev/null
+settings_status=$?
+after_checksum="$(cksum "$settings_output")"
+if [[ $settings_status -eq 1 && "$before_checksum" == "$after_checksum" &&
+      "$WARNING_MESSAGES" == *'VS Code settings not found'* &&
+      "$SUCCESS_MESSAGES" != *'VS Code Settings exported'* &&
+      -z "$(publication_temporary_files)" ]]; then
+    pass "missing VS Code Settings source warns and preserves generated state"
+else
+    fail "missing VS Code Settings source changed state or success semantics"
+fi
+
+reset_fixture
+mkdir -p "$settings_source" "$(dirname "$settings_output")"
+printf 'previous settings bytes\n' > "$settings_output"
+before_checksum="$(cksum "$settings_output")"
+export_vscode_settings >/dev/null
+settings_status=$?
+after_checksum="$(cksum "$settings_output")"
+if [[ $settings_status -eq 2 && "$before_checksum" == "$after_checksum" &&
+      "$ERROR_MESSAGES" == *'Failed to publish VS Code Settings'* &&
+      "$SUCCESS_MESSAGES" != *'VS Code Settings exported'* &&
+      -z "$(publication_temporary_files)" ]]; then
+    pass "uncopyable existing VS Code Settings source returns 2 and preserves state"
+else
+    fail "uncopyable VS Code Settings source was destructive or falsely successful"
+fi
+
+reset_fixture
+mkdir -p "$(dirname "$settings_source")" "$(dirname "$settings_output")"
+printf 'new settings bytes\n' > "$settings_source"
+printf 'previous settings bytes\n' > "$settings_output"
+before_checksum="$(cksum "$settings_output")"
+serialize_vscode_settings() { return 2; }
+export_vscode_settings >/dev/null
+settings_status=$?
+unset -f serialize_vscode_settings
+source "$PROJECT_ROOT/modules/discovery/vscode.sh"
+after_checksum="$(cksum "$settings_output")"
+if [[ $settings_status -eq 2 && "$before_checksum" == "$after_checksum" &&
+      "$ERROR_MESSAGES" == *'Failed to publish VS Code Settings'* &&
+      "$SUCCESS_MESSAGES" != *'VS Code Settings exported'* &&
+      -z "$(publication_temporary_files)" ]]; then
+    pass "VS Code Settings serializer failure preserves state and cleans temporary files"
+else
+    fail "VS Code Settings serializer failure changed state or leaked temporary output"
+fi
+
+reset_fixture
+mkdir -p "$(dirname "$settings_source")" "$(dirname "$settings_output")"
+printf 'new settings bytes\n' > "$settings_source"
+printf 'previous settings bytes\n' > "$settings_output"
+before_checksum="$(cksum "$settings_output")"
+mv() { return 1; }
+export_vscode_settings >/dev/null
+settings_status=$?
+unset -f mv
+after_checksum="$(cksum "$settings_output")"
+if [[ $settings_status -eq 2 && "$before_checksum" == "$after_checksum" &&
+      "$ERROR_MESSAGES" == *'Failed to publish VS Code Settings'* &&
+      "$SUCCESS_MESSAGES" != *'VS Code Settings exported'* &&
+      -z "$(publication_temporary_files)" ]]; then
+    pass "VS Code Settings publication failure preserves state and cleans temporary files"
+else
+    fail "VS Code Settings publication failure changed state or leaked temporary output"
+fi
+
+# ==========================================
+# VS Code Controller and Lifecycle
+# ==========================================
+
+for controller_case in settings_success settings_warning settings_error extensions_warning extensions_error; do
     reset_fixture
-    CODE_MODE=failure
-    SETTINGS_STATUS=$settings_result
+    expected_status=0
+
+    case "$controller_case" in
+        settings_success)
+            mkdir -p "$(dirname "$settings_source")"
+            printf '{}\n' > "$settings_source"
+            ;;
+        settings_warning)
+            expected_status=1
+            ;;
+        settings_error)
+            mkdir -p "$settings_source"
+            expected_status=2
+            ;;
+        extensions_warning)
+            mkdir -p "$(dirname "$settings_source")"
+            printf '{}\n' > "$settings_source"
+            CODE_AVAILABLE=false
+            expected_status=1
+            ;;
+        extensions_error)
+            mkdir -p "$(dirname "$settings_source")"
+            printf '{}\n' > "$settings_source"
+            CODE_MODE=failure
+            expected_status=2
+            ;;
+    esac
+
     discover_vscode >/dev/null
     vscode_controller_status=$?
-    if [[ $vscode_controller_status -eq 2 &&
-          "$ERROR_MESSAGES" == *'VS Code Discovery completed with errors'* &&
-          "$SUCCESS_MESSAGES" != *'VS Code Discovery completed'* ]]; then
-        pass "VS Code controller preserves extension error with Settings $settings_result"
+    if [[ $vscode_controller_status -eq $expected_status ]]; then
+        pass "VS Code controller aggregates $controller_case as $expected_status"
     else
-        fail "VS Code controller masked extension error with Settings $settings_result"
+        fail "VS Code controller failed to aggregate $controller_case"
     fi
 done
 
 for lifecycle_case in success warning error; do
     reset_fixture
     reset_counters
+    mkdir -p "$(dirname "$settings_source")"
+    printf '{}\n' > "$settings_source"
     case "$lifecycle_case" in
         success) expected_status=0; expected_warnings=0; expected_errors=0 ;;
         warning) CODE_AVAILABLE=false; expected_status=1; expected_warnings=1; expected_errors=0 ;;
