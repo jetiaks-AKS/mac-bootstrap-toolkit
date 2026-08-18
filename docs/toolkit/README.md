@@ -1,42 +1,18 @@
 # Toolkit Documentation
 
-Документация по внутреннему устройству **Mac Bootstrap Toolkit**.
+Техническая документация Mac Bootstrap Toolkit.
 
----
+## Основные документы
 
-## Содержание
+- [Architecture](ARCHITECTURE.md) — архитектура и границы ответственности.
+- [Configuration](CONFIGURATION.md) — Generated Configuration и Blueprint.
+- [CLI](CLI.md) — пользовательский вывод, Summary и logging.
 
-### ARCHITECTURE.md
+## Дополнительно
 
-Описание общей архитектуры Mac Bootstrap Toolkit.
+- [Roadmap](../../ROADMAP.md) — этапы развития.
+- [TODO](../../TODO.md) — ближайшие технические задачи.
+- [Changelog](../../CHANGELOG.md) — история изменений.
 
----
-
-### MODULES.md
-
-Описание всех модулей Toolkit и их назначения.
-
----
-
-### CONFIGURATION.md
-
-Описание структуры и принципов работы конфигурационных файлов.
-
----
-
-### OUTPUT.md
-
-Описание формата вывода Toolkit.
-
----
-
-### LOGGING.md
-
-Описание единой системы логирования.
-
-
-## Назначение
-
-Данный раздел предназначен для разработчиков Toolkit.
-
-Он содержит документацию по внутреннему устройству проекта и принципам его работы.
+Документация отдельных компонентов находится рядом с их реализацией
+в `modules/*/README.md`.

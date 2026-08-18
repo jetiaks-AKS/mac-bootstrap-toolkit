@@ -1,0 +1,396 @@
+# CLI, Output and Logging
+
+## Назначение
+
+Этот документ определяет единый контракт пользовательского CLI-вывода и
+диагностического логирования Mac Bootstrap Toolkit.
+
+Обе части используют общий Logger, но имеют разные задачи:
+
+- **CLI Output** показывает пользователю текущее действие и итог выполнения;
+- **History Logging** сохраняет диагностическую историю запуска.
+
+Бизнес-логика Toolkit не должна зависеть от способа отображения или сохранения
+сообщений.
+
+---
+
+# Основные принципы
+
+- Quiet by Default;
+- Verbose When Needed;
+- единый формат сообщений;
+- понятные секции и статусы;
+- обязательный итоговый Summary;
+- диагностические подробности сохраняются в history log;
+- один результат не должен многократно сообщаться пользователю;
+- Logger представляет и сохраняет информацию, но не принимает domain-решения.
+
+---
+
+# Типы сообщений
+
+```text
+[....] Action
+[ OK ] Success
+[WARN] Warning
+[ERROR] Error
+[INFO] Information
+```
+
+## Action
+
+Показывает выполняемое действие.
+
+```text
+[....] Installing Homebrew packages...
+```
+
+## Success
+
+Показывает успешное завершение операции.
+
+```text
+[ OK ] Homebrew already installed
+```
+
+## Warning
+
+Показывает ситуацию, которая требует внимания, но не обязательно останавливает
+работу Toolkit.
+
+```text
+[WARN] Configuration file not found
+```
+
+## Error
+
+Показывает ошибку, из-за которой операция не может быть нормально завершена.
+Сообщение должно по возможности объяснять причину проблемы.
+
+```text
+[ERROR] Bootstrap failed
+```
+
+## Info и Detail
+
+`info()` показывает информационное сообщение пользователю и записывает его в
+лог.
+
+Для диагностических подробностей, которые должны появляться на экране только с
+`--verbose`, используется `detail()`.
+
+History log сохраняет диагностическую информацию независимо от того, была ли
+каждая подробность показана в стандартном CLI-выводе.
+
+---
+
+# Режимы CLI-вывода
+
+## Standard / Quiet
+
+Стандартный режим показывает только информацию, необходимую для понимания
+выполнения:
+
+- основные действия;
+- успешные результаты;
+- предупреждения;
+- ошибки;
+- итоговый Summary.
+
+Пример:
+
+```text
+==========================================
+ Homebrew Packages
+==========================================
+[ OK ] All Homebrew packages are installed.
+```
+
+Интерактивный Blueprint selector является отдельным workflow: selection state и
+prompts необходимы пользователю для принятия решений, поэтому его интерфейс не
+обязан быть таким же кратким, как неинтерактивный вывод.
+
+## Verbose
+
+`--verbose` дополняет обычный вывод диагностическими подробностями, контекстом
+ошибок и внутренними этапами выполнения там, где это полезно.
+
+Verbose не меняет семантику выполнения Toolkit. Blueprint selector может иметь
+мало видимых отличий в verbose-режиме, поскольку уже показывает необходимую
+пользователю информацию.
+
+---
+
+# Секции
+
+Основные компоненты Toolkit по возможности используют единый формат секций:
+
+```text
+==========================================
+ Homebrew
+==========================================
+[ OK ] Homebrew already installed
+```
+
+Секция помогает быстро определить текущий или уже обработанный компонент.
+
+---
+
+# Результаты выполнения
+
+Toolkit различает следующие состояния:
+
+- **Success** — операция успешно завершена;
+- **Changed / Installed** — существующий lifecycle фактически изменил состояние;
+- **Unchanged / Skipped** — изменение не требовалось;
+- **Warning** — работа продолжена, но требуется внимание;
+- **Error** — операция не была успешно завершена.
+
+`Planned` может стать состоянием будущего Dry-run / Preview, но сейчас не
+является реализованным статусом.
+
+---
+
+# Summary
+
+Summary зависит от режима и контекста запуска и не должен дублировать детальный
+lifecycle из history log.
+
+## Lifecycle/count Summary
+
+Check, Discovery и Bootstrap без Blueprint используют существующий Summary
+жизненного цикла. Он может включать:
+
+```text
+Modules Checked
+Installed
+Skipped
+Warnings
+Errors
+Duration
+```
+
+Пример:
+
+```text
+==========================================
+ Summary
+==========================================
+[ OK ] Bootstrap completed successfully
+
+------------------------------------------
+Modules Checked : 11
+Installed       : 0
+Skipped         : 11
+Warnings        : 0
+Errors          : 0
+------------------------------------------
+Duration        : 15s
+```
+
+Headline определяется lifecycle-счётчиками с приоритетом:
+
+```text
+ERROR_COUNT > 0
+→ <Mode> completed with errors
+
+иначе WARNING_COUNT > 0
+→ <Mode> completed with warnings
+
+иначе
+→ <Mode> completed successfully
+```
+
+Ошибки имеют приоритет над предупреждениями. Success-only выполнение сохраняет
+exit status `0`, warning-only — `1`, выполнение с ошибкой — `2`. Отрисовка
+Summary не меняет счётчики или итоговый lifecycle status.
+
+## Blueprint selector Summary
+
+Интерактивный selector перед Save показывает selection Summary: selected / total
+для item-категорий и Yes / No для категорий настроек. Это подтверждение выбора,
+а не Summary выполнения Bootstrap.
+
+## Blueprint-aware Bootstrap Summary
+
+Bootstrap с Blueprint показывает выбранный scope и результат выполнения.
+Например:
+
+```text
+Applications
+  Homebrew packages      28 / 28 selected
+  Homebrew casks          3 / 16 selected
+
+Workspace
+  Folders                 2 / 4 selected
+
+Settings
+  Git Configuration      Enabled
+  VS Code Settings       Skipped
+
+Result
+  Warnings               0
+  Errors                 0
+
+Duration                 15s
+```
+
+`Enabled` означает «выбрано в Blueprint», а не «изменено в текущем запуске».
+
+---
+
+# History Logging
+
+Каждый запуск Toolkit сохраняет историю в:
+
+```text
+logs/
+    latest.log
+    history/
+```
+
+`logs/latest.log` содержит последний запуск, а `logs/history/` — отдельные
+исторические логи.
+
+Имена history-файлов соответствуют режиму:
+
+```text
+check-YYYY-MM-DD_HH-MM-SS.log
+bootstrap-YYYY-MM-DD_HH-MM-SS.log
+discover-YYYY-MM-DD_HH-MM-SS.log
+blueprint-YYYY-MM-DD_HH-MM-SS.log
+```
+
+Логи являются локальными рабочими файлами Toolkit и не должны попадать в Git.
+
+Каждая запись содержит timestamp, например:
+
+```text
+2026-08-10 19:16:45 [ OK ] Bootstrap completed successfully
+```
+
+---
+
+# Module Lifecycle в логах
+
+Основные модули могут фиксировать диагностический lifecycle:
+
+```text
+[MODULE] START: Homebrew
+[MODULE] Changed: No
+[MODULE] RESULT: SUCCESS
+```
+
+При изменении:
+
+```text
+[MODULE] Changed: Yes
+```
+
+Другие результаты:
+
+```text
+[MODULE] RESULT: WARNING
+[MODULE] RESULT: ERROR
+[MODULE] RESULT: UNKNOWN
+```
+
+`UNKNOWN` используется для неожиданного кода завершения.
+
+Эти записи предназначены прежде всего для диагностики и не должны перегружать
+стандартный CLI-вывод.
+
+## Blueprint Lifecycle
+
+Blueprint использует минимальный lifecycle:
+
+```text
+[BLUEPRINT] START
+[BLUEPRINT] Generated configuration: Ready
+[BLUEPRINT] Existing configuration: Valid
+[BLUEPRINT] RESULT: SAVED
+```
+
+При отмене:
+
+```text
+[BLUEPRINT] RESULT: CANCELLED
+```
+
+`Existing configuration: Valid` записывается только после успешной валидации.
+При stale или malformed Blueprint сохраняются существующие warning/error
+семантики без ложной записи `Valid`.
+
+Выбранные элементы, checkbox-операции, ответы по категориям и содержимое
+`config/blueprint.conf` намеренно не копируются в lifecycle log. Источником
+состояния выбора остаётся сам Blueprint.
+
+---
+
+# Прерывание Toolkit
+
+Logging System обрабатывает `INT` и `TERM`.
+
+При прерывании в лог записывается:
+
+```text
+[WARN] Toolkit interrupted
+Finished : YYYY-MM-DD HH:MM:SS
+Duration : Ns
+Status   : Interrupted
+```
+
+После этого текущий лог сохраняется как `latest.log`. Это позволяет отличать
+успешное, ошибочное и прерванное завершение и сохранять диагностический контекст.
+
+---
+
+# Future Dry-run / Preview
+
+Dry-run / Preview запланирован и пока не реализован.
+
+Будущий режим должен показывать планируемые изменения без их применения и
+следовать тем же принципам разделения компактного пользовательского вывода и
+диагностической истории.
+
+```text
+Desired State
+    ↓
+Plan
+    ↓
+Presentation
+```
+
+Конкретные CLI-статусы, schema и Summary будущего режима ещё не спроектированы.
+Plan computation и presentation следует разделять там, где это практично,
+сохраняя общую change-plan semantics для Preview и Apply.
+
+---
+
+# Архитектурное правило
+
+```text
+Module
+   ↓
+Result
+   ├── CLI Presentation
+   └── History Logging
+```
+
+CLI объясняет пользователю, что происходит и чем завершилась операция.
+Logging сохраняет необходимый диагностический контекст и историю.
+
+Logger не содержит бизнес-логику. Решения о состоянии системы, конфигурации и
+необходимых действиях принимают соответствующие модули.
+
+Реализованные режимы:
+
+```text
+Check
+Discovery
+Blueprint
+Bootstrap
+```
+
+Dry-run / Preview остаётся запланированной возможностью.

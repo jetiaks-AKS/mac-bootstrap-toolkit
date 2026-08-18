@@ -30,14 +30,19 @@ classify_folder() {
 
 export_workspace_folders() {
 
-    local output_dir="config/generated/workspace"
-    local output_file="$output_dir/folders.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="$1"
 
     action "Exporting Workspace Folders..."
 
-    > "$output_file"
+    if [[ ! -d "$HOME" || ! -r "$HOME" || ! -x "$HOME" ]]; then
+        error "Workspace root is unavailable for folder discovery"
+        return 2
+    fi
+
+    : > "$output_file" || {
+        error "Failed to prepare Workspace Folders"
+        return 2
+    }
 
     for folder in "$HOME"/*; do
 
@@ -46,10 +51,16 @@ export_workspace_folders() {
         local name
         local type
 
-        name="$(basename "$folder")"
-        type="$(classify_folder "$name")"
+        if ! name="$(basename "$folder")" ||
+           ! type="$(classify_folder "$name")"; then
+            error "Failed to classify Workspace folder"
+            return 2
+        fi
 
-        echo "$name|$type" >> "$output_file"
+        if ! printf '%s|%s\n' "$name" "$type" >> "$output_file"; then
+            error "Failed to serialize Workspace Folders"
+            return 2
+        fi
 
         if [[ "$VERBOSE" == true ]]; then
             detail "$name ($type)"
@@ -57,9 +68,6 @@ export_workspace_folders() {
 
     done
 
-    local folder_count
-    folder_count=$(wc -l < "$output_file" | tr -d ' ')
-
-    success "$folder_count folder(s) exported"
+    return 0
 
 }

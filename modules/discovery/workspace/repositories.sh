@@ -6,29 +6,53 @@
 
 get_repository_remote() {
 
-    git -C "$1" remote get-url origin 2>/dev/null
+    local repository_path="$1"
+    local remotes
+
+    remotes="$(git -C "$repository_path" remote 2>/dev/null)" || return 2
+
+    if ! grep -Fxq origin <<< "$remotes"; then
+        return 1
+    fi
+
+    git -C "$repository_path" remote get-url origin 2>/dev/null || return 2
 
 }
 
 get_repository_current_branch() {
 
-    git -C "$1" branch --show-current 2>/dev/null
+    git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null
+
+    local result=$?
+    [[ $result -eq 1 ]] && return 1
+    [[ $result -eq 0 ]] && return 0
+    return 2
 
 }
 
 get_repository_default_branch() {
 
+    local repository_path="$1"
     local head_ref
 
-    head_ref="$(git -C "$1" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)"
+    head_ref="$(git -C "$repository_path" symbolic-ref --quiet --short \
+        refs/remotes/origin/HEAD 2>/dev/null)"
 
-    basename "$head_ref"
+    local result=$?
+    [[ $result -eq 1 ]] && return 1
+    [[ $result -eq 0 ]] || return 2
+
+    printf '%s\n' "${head_ref#origin/}"
 
 }
 
 get_repository_status() {
 
-    if [[ -n "$(git -C "$1" status --porcelain 2>/dev/null)" ]]; then
+    local status_output
+
+    status_output="$(git -C "$1" status --porcelain 2>/dev/null)" || return 2
+
+    if [[ -n "$status_output" ]]; then
         echo "true"
     else
         echo "false"
@@ -44,15 +68,24 @@ export_workspace_repositories() {
 
     action "Exporting Git Repositories..."
 
-    local output_dir="config/generated/workspace"
-    local output_file="$output_dir/repositories.conf"
-    local folders_file="$output_dir/folders.conf"
+    local output_file="$1"
+    local folders_file="$2"
+    local working_dir="$3"
 
-    mkdir -p "$output_dir"
+    if [[ ! -f "$folders_file" || ! -r "$folders_file" ]]; then
+        error "Workspace Folders are unavailable for repository discovery"
+        return 2
+    fi
 
-    > "$output_file"
+    : > "$output_file" || {
+        error "Failed to prepare Git Repositories"
+        return 2
+    }
 
     local repo_count=0
+    local identifiers_file="$working_dir/repository-identifiers"
+
+    : > "$identifiers_file" || return 2
 
     while IFS="|" read -r folder type; do
 
@@ -62,19 +95,65 @@ export_workspace_repositories() {
 
         [[ ! -d "$workspace_path" ]] && continue
 
+        local repositories_list="$working_dir/repositories.$repo_count"
+
+        if ! find "$workspace_path" -type d -name ".git" > "$repositories_list" 2>/dev/null; then
+            error "Failed to scan Git repositories in: $folder"
+            return 2
+        fi
+
         while IFS= read -r git_dir; do
+
+            [[ -z "$git_dir" ]] && continue
 
             local repo_path repo_name
             local remote current_branch default_branch has_changes
             local has_vscode_folder has_settings has_tasks has_launch has_extensions
 
-            repo_path="$(dirname "$git_dir")"
-            repo_name="$(basename "$repo_path")"
+            if ! repo_path="$(dirname "$git_dir")" ||
+               ! repo_name="$(basename "$repo_path")"; then
+                error "Failed to identify Git repository"
+                return 2
+            fi
+
+            if grep -Fxq -- "$repo_name" "$identifiers_file"; then
+                error "Duplicate Workspace repository identifier: $repo_name"
+                return 2
+            fi
+
+            printf '%s\n' "$repo_name" >> "$identifiers_file" || return 2
 
             remote="$(get_repository_remote "$repo_path")"
+            local metadata_result=$?
+            if [[ $metadata_result -eq 1 ]]; then
+                remote=""
+            elif [[ $metadata_result -ne 0 ]]; then
+                error "Failed to read Git repository origin: $repo_name"
+                return 2
+            fi
+
             current_branch="$(get_repository_current_branch "$repo_path")"
+            metadata_result=$?
+            if [[ $metadata_result -eq 1 ]]; then
+                current_branch=""
+            elif [[ $metadata_result -ne 0 ]]; then
+                error "Failed to read Git repository branch: $repo_name"
+                return 2
+            fi
+
             default_branch="$(get_repository_default_branch "$repo_path")"
-            has_changes="$(get_repository_status "$repo_path")"
+            metadata_result=$?
+            if [[ $metadata_result -eq 1 ]]; then
+                default_branch=""
+            elif [[ $metadata_result -ne 0 ]]; then
+                error "Failed to read Git repository default branch: $repo_name"
+                return 2
+            fi
+
+            has_changes="$(get_repository_status "$repo_path")" || {
+                error "Failed to read Git repository status: $repo_name"
+                return 2
+            }
 
             has_vscode_folder="false"
             has_settings="false"
@@ -93,7 +172,7 @@ export_workspace_repositories() {
 
             fi
 
-            cat >> "$output_file" <<EOF
+            if ! cat >> "$output_file" <<EOF
 [$repo_name]
 NAME="$repo_name"
 PATH="$repo_path"
@@ -108,6 +187,10 @@ HAS_LAUNCH="$has_launch"
 HAS_EXTENSIONS="$has_extensions"
 
 EOF
+            then
+                error "Failed to serialize Git Repositories"
+                return 2
+            fi
 
             if [[ "$VERBOSE" == true ]]; then
 
@@ -123,10 +206,10 @@ EOF
 
             ((repo_count++))
 
-        done < <(find "$workspace_path" -type d -name ".git" 2>/dev/null)
+        done < "$repositories_list"
 
     done < "$folders_file"
 
-    success "$repo_count repositor$( [[ $repo_count -eq 1 ]] && echo "y" || echo "ies") exported"
+    return 0
 
 }

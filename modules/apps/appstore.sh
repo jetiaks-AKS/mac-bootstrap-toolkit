@@ -39,6 +39,12 @@ return 2
 
 install_appstore_apps() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items app-store)" ]]; then
+        success "No App Store applications selected by Blueprint"
+        return 0
+    fi
+
     if ! command -v mas >/dev/null 2>&1; then
 
         warning "mas is not installed"
@@ -46,7 +52,8 @@ install_appstore_apps() {
 
     fi
 
-    local config_file="config/generated/appstore.conf"
+    local config_file
+    config_file="$(blueprint_generated_file app-store)"
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -55,7 +62,11 @@ install_appstore_apps() {
 
     fi
 
-    MAS_INSTALLED_APPS="$(MAS_NO_AUTO_INDEX=1 mas list >/dev/null 2>&1 && MAS_NO_AUTO_INDEX=1 mas list)"
+    local installed_apps
+    if ! installed_apps="$(MAS_NO_AUTO_INDEX=1 mas list)"; then
+        error "Failed to inspect installed App Store applications"
+        return 2
+    fi
 
     local missing_apps=0
 
@@ -63,8 +74,9 @@ install_appstore_apps() {
 
         [[ -z "$app_id" ]] && continue
         [[ "$app_id" =~ ^# ]] && continue
+        blueprint_item_selected app-store "$app_id" || continue
 
-        if grep -Fq "$app_name" <<< "$MAS_INSTALLED_APPS"; then
+        if grep -Fq "$app_name" <<< "$installed_apps"; then
 
             detail "$app_name is already installed"
             continue
@@ -72,8 +84,6 @@ install_appstore_apps() {
         fi
 
         ((missing_apps++))
-
-        MODULE_CHANGED=true
 
         if [[ $missing_apps -eq 1 ]]; then
 
@@ -87,6 +97,8 @@ install_appstore_apps() {
         if [[ $? -ne 0 ]]; then
             return 2
         fi
+
+        MODULE_CHANGED=true
 
     done < "$config_file"
 

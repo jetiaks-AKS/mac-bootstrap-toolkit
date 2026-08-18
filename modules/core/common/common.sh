@@ -275,25 +275,7 @@ show_summary() {
 
     section "Summary"
 
-    if [[ $ERROR_COUNT -eq 0 ]]; then
-
-        case "$MODE" in
-
-            --discover)
-                success "Discovery completed successfully"
-                ;;
-
-            --bootstrap)
-                success "Bootstrap completed successfully"
-                ;;
-
-            --check)
-                success "System check completed successfully"
-                ;;
-
-        esac
-
-    else
+    if [[ $ERROR_COUNT -gt 0 ]]; then
 
         case "$MODE" in
 
@@ -311,6 +293,42 @@ show_summary() {
 
         esac
 
+    elif [[ $WARNING_COUNT -gt 0 ]]; then
+
+        case "$MODE" in
+
+            --discover)
+                warning "Discovery completed with warnings"
+                ;;
+
+            --bootstrap)
+                warning "Bootstrap completed with warnings"
+                ;;
+
+            --check)
+                warning "System check completed with warnings"
+                ;;
+
+        esac
+
+    else
+
+        case "$MODE" in
+
+            --discover)
+                success "Discovery completed successfully"
+                ;;
+
+            --bootstrap)
+                success "Bootstrap completed successfully"
+                ;;
+
+            --check)
+                success "System check completed successfully"
+                ;;
+
+        esac
+
     fi
 
     echo
@@ -319,17 +337,24 @@ show_summary() {
     echo "------------------------------------------"
     log "------------------------------------------"
 
-    echo "Modules Checked : $MODULES_CHECKED"
-    echo "Installed       : $INSTALLED_COUNT"
-    echo "Skipped         : $SKIPPED_COUNT"
-    echo "Warnings        : $WARNING_COUNT"
-    echo "Errors          : $ERROR_COUNT"
+    if [[ "$MODE" == "--bootstrap" &&
+          "${BLUEPRINT_BOOTSTRAP_SUMMARY:-false}" == true ]] &&
+       blueprint_exists &&
+       command -v blueprint_show_bootstrap_summary >/dev/null 2>&1; then
+        blueprint_show_bootstrap_summary
+    else
+        echo "Modules Checked : $MODULES_CHECKED"
+        echo "Installed       : $INSTALLED_COUNT"
+        echo "Skipped         : $SKIPPED_COUNT"
+        echo "Warnings        : $WARNING_COUNT"
+        echo "Errors          : $ERROR_COUNT"
 
-    log "Modules Checked : $MODULES_CHECKED"
-    log "Installed       : $INSTALLED_COUNT"
-    log "Skipped         : $SKIPPED_COUNT"
-    log "Warnings        : $WARNING_COUNT"
-    log "Errors          : $ERROR_COUNT"
+        log "Modules Checked : $MODULES_CHECKED"
+        log "Installed       : $INSTALLED_COUNT"
+        log "Skipped         : $SKIPPED_COUNT"
+        log "Warnings        : $WARNING_COUNT"
+        log "Errors          : $ERROR_COUNT"
+    fi
 
     if [[ -n "$START_TIME" ]]; then
 

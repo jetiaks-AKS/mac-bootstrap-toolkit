@@ -2,136 +2,142 @@
 
 English | [Русский](README.ru.md)
 
-Mac Bootstrap Toolkit is a Bash toolkit for reproducibly preparing a macOS
-development environment. It discovers supported parts of an existing Mac,
-stores the observed state as local generated configuration, and uses that
-configuration to bootstrap another Mac.
+A modular Bash toolkit for reproducibly preparing and restoring a macOS
+working environment.
 
-- **Current release:** 2.0.1 Stable
-- **Platform:** macOS 15 or later
-- **License:** MIT
+**Current version: 3.0.0 Stable**
 
-## How it works
+---
+
+## Overview
+
+Mac Bootstrap Toolkit can:
+
+- discover supported components of an existing macOS environment;
+- generate machine-specific configuration automatically;
+- optionally select which discovered components should be restored;
+- bootstrap the selected environment on another Mac;
+- verify supported state before and after applying changes.
+
+The project focuses on reproducing the **user working environment**, rather
+than cloning the entire operating system.
+
+---
+
+## Workflow
 
 ```text
 Existing Mac
-    ↓
-Discovery
-    ↓
-config/generated/
-    ↓
-Bootstrap
-    ↓
-Ready-to-work Mac
+     ↓
+ Discovery
+     ↓
+Generated Configuration
+     ↓
+ Blueprint
+     ↓
+ Bootstrap
+     ↓
+Ready-to-Work Mac
 ```
 
-Discovery writes machine-specific data to `config/generated/`. The directory
-is intentionally excluded from Git. Bootstrap reads those generated files and
-restores the supported parts of the environment.
+Discovery captures the current environment in `config/generated/`.
 
-Run all commands from the repository root because the entry point uses
-relative paths.
+Blueprint is an optional local selection layer that controls which discovered
+components Bootstrap should process. Without a Blueprint, Bootstrap processes
+the full supported scope.
 
-## Current functionality
+---
 
-Discovery currently captures:
+## Features
 
-- Homebrew formulae and casks;
-- Mac App Store applications;
-- global Git configuration;
-- VS Code extensions and user settings;
-- Finder, Dock, keyboard, trackpad, and screenshot settings;
-- top-level workspace folders, Git repository metadata, `.code-workspace`
-  inventory, and workspace inventory.
+### Discovery
 
-Bootstrap currently supports:
+- Homebrew Packages and Casks
+- App Store applications
+- Git Configuration
+- VS Code Extensions and Settings
+- macOS Settings
+- Workspace structure and Git Repositories
 
-- Homebrew setup, formulae, and casks;
-- Mac App Store applications through `mas`;
-- global Git configuration;
-- workspace folder creation and cloning of missing Git repositories;
-- repository origin checks and branch restoration for clean repositories;
-- VS Code extensions and user settings;
-- Finder, Dock, keyboard, trackpad, and screenshot settings.
+### Blueprint
 
-Bootstrap modules are designed to check before applying changes and to skip
-work when the requested state is already present.
+- interactive component selection;
+- item-level and category-level filtering;
+- editing of existing selections;
+- safe cancellation without changing the saved Blueprint.
 
-## Quick start
+### Bootstrap
 
-Clone the repository and enter its root directory:
+- Applications
+- Git Configuration
+- VS Code Extensions and Settings
+- macOS Settings
+- Workspace Folders
+- Git Repository and Branch restoration
 
-```bash
-git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
-cd mac-bootstrap-toolkit
-```
+Toolkit operations are designed to be idempotent and verify supported state
+before and after changes where applicable.
 
-Inspect the available commands:
+---
 
-```bash
-./bootstrap.sh --help
-./bootstrap.sh --version
-```
+## Quick Start
 
-Check prerequisites and core tools:
+Check the system:
 
 ```bash
 ./bootstrap.sh --check
 ```
 
-On the source Mac, generate local configuration:
+Discover the current environment:
 
 ```bash
 ./bootstrap.sh --discover
 ```
 
-After making the generated configuration available on the target Mac, run:
+Optionally create or edit a Blueprint:
+
+```bash
+./bootstrap.sh --blueprint
+```
+
+Restore the environment:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
-Add `--verbose` to `--check`, `--discover`, or `--bootstrap` for diagnostic
-output. See the [Quick Start](docs/getting-started/QUICKSTART.md) for the
-complete first-run workflow.
+Use `--verbose` with Check, Discovery, or Bootstrap for detailed output.
 
-## Safety
+See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.
 
-- Review generated configuration before using it on another Mac. It may
-  contain personal paths, repository URLs, Git identity, and other
-  machine-specific data; do not commit it.
-- `--discover` reads the current environment but creates or overwrites files
-  under `config/generated/`.
-- `--check` performs preflight checks, requests administrator authentication,
-  and may offer to install Homebrew if it is missing.
-- `--bootstrap` changes the system. It may install software, update global Git
-  configuration, create directories, clone repositories, copy VS Code settings
-  after backing up an existing file, apply macOS defaults, and restart affected
-  macOS services.
-- Workspace bootstrap does not overwrite existing directories, change remotes,
-  or switch branches in repositories with uncommitted tracked changes. It
-  reports conflicts for manual attention.
-
-## Project status and roadmap
-
-Version 2.0.1 provides the stable current workflow:
-
-```text
-Discovery → Generated Configuration → Bootstrap
-```
-
-Dry-run, Blueprint, Verification, Restore, and AI Assistant are planned future
-stages. They are not available in the current CLI or stable functionality.
-Development status and future stages are tracked in [ROADMAP.md](ROADMAP.md);
-near-term technical work is tracked in [TODO.md](TODO.md).
+---
 
 ## Documentation
 
 - [Quick Start](docs/getting-started/QUICKSTART.md)
 - [Architecture](docs/toolkit/ARCHITECTURE.md)
-- [Contribution guide](CONTRIBUTING.md)
-- [Internal documentation index](docs/README.md) (Russian)
-- [Changelog](CHANGELOG.md) (Russian)
+- [Configuration](docs/toolkit/CONFIGURATION.md)
+- [CLI](docs/toolkit/CLI.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+
+---
+
+## Project Status
+
+**3.0.0 Stable**
+
+Current architecture:
+
+```text
+Discovery → Generated Configuration → Blueprint → Bootstrap
+```
+
+Dry-run / Preview and global Verification are planned future capabilities.
+
+See [ROADMAP.md](ROADMAP.md) for further development.
+
+---
 
 ## Support
 
@@ -140,6 +146,8 @@ Mac Bootstrap Toolkit is free and open source.
 If the project saves you time and you would like to support its continued
 development, you can make a voluntary donation via
 [Boosty](https://boosty.to/jetiaks/donate).
+
+---
 
 ## License
 

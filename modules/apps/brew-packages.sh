@@ -6,6 +6,12 @@
 
 install_brew_packages() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items homebrew-packages)" ]]; then
+        success "No Homebrew packages selected by Blueprint"
+        return 0
+    fi
+
     if ! command -v brew >/dev/null 2>&1; then
 
         error "Homebrew is not installed"
@@ -13,7 +19,8 @@ install_brew_packages() {
 
     fi
 
-    local config_file="config/generated/brew-packages.conf"
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-packages)"
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -28,6 +35,7 @@ install_brew_packages() {
 
         [[ -z "$package" ]] && continue
         [[ "$package" =~ ^# ]] && continue
+        blueprint_item_selected homebrew-packages "$package" || continue
 
         if brew list "$package" >/dev/null 2>&1; then
 

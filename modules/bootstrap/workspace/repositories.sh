@@ -6,9 +6,16 @@
 
 bootstrap_workspace_repositories() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items git-repositories)" ]]; then
+        success "No Git repositories selected by Blueprint"
+        return 0
+    fi
+
     action "Restoring Git repositories..."
 
-    local config_file="config/generated/workspace/repositories.conf"
+    local config_file
+    config_file="$(blueprint_generated_file git-repositories)"
 
     if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
         warning "Workspace repositories configuration not found"
@@ -29,6 +36,8 @@ bootstrap_workspace_repositories() {
     local has_warnings=false
 
     for repository in $repositories; do
+
+        blueprint_item_selected git-repositories "$repository" || continue
 
     local path
     local remote

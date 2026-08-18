@@ -31,6 +31,9 @@ init_logger() {
         --discover)
             LOG_PREFIX="discover"
             ;;
+        --blueprint)
+            LOG_PREFIX="blueprint"
+            ;;
         --check)
             LOG_PREFIX="check"
             ;;
@@ -57,6 +60,9 @@ init_logger() {
             ;;
         --discover)
             log "Mode     : Discovery"
+            ;;
+        --blueprint)
+            log "Mode     : Blueprint"
             ;;
         --check)
             log "Mode     : Check"

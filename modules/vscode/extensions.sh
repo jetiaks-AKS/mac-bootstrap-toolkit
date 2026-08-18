@@ -53,9 +53,16 @@ return 2
 
 install_vscode_extensions() {
 
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items vscode-extensions)" ]]; then
+        success "No VS Code extensions selected by Blueprint"
+        return 0
+    fi
+
     check_vscode_cli || return 1
 
-    local config_file="config/generated/vscode-extensions.conf"
+    local config_file
+    config_file="$(blueprint_generated_file vscode-extensions)"
 
     if [[ ! -f "$config_file" ]]; then
 
@@ -65,7 +72,10 @@ install_vscode_extensions() {
     fi
 
     local installed_extensions
-    installed_extensions="$(code --list-extensions)"
+    if ! installed_extensions="$(code --list-extensions)"; then
+        error "Failed to inspect installed VS Code extensions"
+        return 2
+    fi
 
     local missing_extensions=0
 
@@ -73,6 +83,7 @@ install_vscode_extensions() {
 
         [[ -z "$extension" ]] && continue
         [[ "$extension" =~ ^# ]] && continue
+        blueprint_item_selected vscode-extensions "$extension" || continue
 
         if grep -Fxq "$extension" <<< "$installed_extensions"; then
 
@@ -82,8 +93,6 @@ install_vscode_extensions() {
         fi
 
         ((missing_extensions++))
-
-        MODULE_CHANGED=true
 
         if [[ $missing_extensions -eq 1 ]]; then
 
@@ -97,6 +106,8 @@ install_vscode_extensions() {
         if [[ $? -ne 0 ]]; then
             return 2
         fi
+
+        MODULE_CHANGED=true
 
     done < "$config_file"
 

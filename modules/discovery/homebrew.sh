@@ -4,16 +4,42 @@
 # Homebrew Discovery
 # ==========================================
 
+serialize_brew_inventory() {
+
+    local output_file="$1"
+    local inventory="$2"
+    local entry
+
+    while IFS= read -r entry; do
+
+        [[ -z "$entry" ]] && continue
+
+        printf '%s\n' "$entry" >> "$output_file" || return 2
+
+    done <<< "$inventory"
+
+    return 0
+
+}
+
+# ==========================================
+
 export_brew_packages() {
 
-    local output_dir="config/generated"
-    local output_file="$output_dir/brew-packages.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/brew-packages.conf"
 
     action "Exporting Homebrew Formulae..."
 
-    > "$output_file"
+    local inventory
+    if ! inventory="$(brew list --formula --installed-on-request)"; then
+        error "Failed to inventory Homebrew Formulae"
+        return 2
+    fi
+
+    if ! discovery_publish_file "$output_file" serialize_brew_inventory "$inventory"; then
+        error "Failed to publish Homebrew Formulae"
+        return 2
+    fi
 
     local package_count=0
 
@@ -21,13 +47,11 @@ export_brew_packages() {
 
         [[ -z "$package" ]] && continue
 
-        echo "$package" >> "$output_file"
-
         ((package_count++))
 
         detail "$package"
 
-    done < <(brew list --formula)
+    done <<< "$inventory"
 
     success "$package_count Formulae exported"
 
@@ -37,14 +61,20 @@ export_brew_packages() {
 
 export_brew_casks() {
 
-    local output_dir="config/generated"
-    local output_file="$output_dir/brew-casks.conf"
-
-    mkdir -p "$output_dir"
+    local output_file="config/generated/brew-casks.conf"
 
     action "Exporting Homebrew Casks..."
 
-    > "$output_file"
+    local inventory
+    if ! inventory="$(brew list --cask)"; then
+        error "Failed to inventory Homebrew Casks"
+        return 2
+    fi
+
+    if ! discovery_publish_file "$output_file" serialize_brew_inventory "$inventory"; then
+        error "Failed to publish Homebrew Casks"
+        return 2
+    fi
 
     local cask_count=0
 
@@ -52,13 +82,11 @@ export_brew_casks() {
 
         [[ -z "$cask" ]] && continue
 
-        echo "$cask" >> "$output_file"
-
         ((cask_count++))
 
         detail "$cask"
 
-    done < <(brew list --cask)
+    done <<< "$inventory"
 
     success "$cask_count Casks exported"
 

@@ -14,6 +14,13 @@ source modules/core/preflight/preflight.sh
 source modules/core/config/config.sh
 
 # ==========================================
+# Blueprint
+# ==========================================
+
+source modules/blueprint/blueprint.sh
+source modules/blueprint/selector.sh
+
+# ==========================================
 # Applications
 # ==========================================
 
@@ -84,6 +91,11 @@ for arg in "$@"; do
             MODE="--discover"
             ;;
 
+        --blueprint)
+
+            MODE="--blueprint"
+            ;;
+
         -v|--verbose)
 
             VERBOSE=true
@@ -114,6 +126,9 @@ Usage:
 
   ./bootstrap.sh --discover
       Analyze current Mac and generate Bootstrap configuration
+
+  ./bootstrap.sh --blueprint
+      Select what Bootstrap should restore
 
 
 Options:
@@ -163,6 +178,10 @@ case "$MODE" in
         MODE_NAME="Discovery"
         ;;
 
+    --blueprint)
+        MODE_NAME="Blueprint"
+        ;;
+
 esac
 
 # ==========================================
@@ -185,6 +204,13 @@ echo
 echo "Version : $TOOLKIT_VERSION"
 echo "Mode    : $MODE_NAME"
 echo
+
+if [[ "$MODE" == "--blueprint" ]]; then
+    blueprint_selector_run
+    blueprint_result=$?
+    close_logger
+    exit "$blueprint_result"
+fi
 
 
 # ==========================================
@@ -225,23 +251,45 @@ case "$MODE" in
 
     --bootstrap)
 
-        run_module "Workspace" bootstrap_workspace
+        blueprint_result=0
 
-        echo
+        if blueprint_exists; then
+            run_module "Blueprint Validation" blueprint_validate
+            blueprint_result=$?
+            [[ $blueprint_result -ne 2 ]] && BLUEPRINT_BOOTSTRAP_SUMMARY=true
+        fi
 
-        run_module "Git Configuration" configure_git
+        if [[ $blueprint_result -ne 2 ]]; then
 
-        run_module "Homebrew Packages" install_brew_packages
+            run_module "Workspace" bootstrap_workspace
 
-        run_module "Homebrew Casks" install_brew_casks
+            echo
 
-        run_module "App Store" install_appstore_apps
+            if blueprint_category_enabled git-configuration; then
+                run_module "Git Configuration" configure_git
+            fi
 
-        run_module "VS Code Extensions" install_vscode_extensions
+            run_module "Homebrew Packages" install_brew_packages
 
-        run_module "VS Code Settings" apply_vscode_settings
+            run_module "Homebrew Casks" install_brew_casks
 
-        apply_macos_settings
+            run_module "App Store" install_appstore_apps
+
+            run_module "VS Code Extensions" install_vscode_extensions
+
+            if blueprint_category_enabled vscode-settings; then
+                run_module "VS Code Settings" apply_vscode_settings
+            fi
+
+            if blueprint_category_enabled macos-finder ||
+               blueprint_category_enabled macos-dock ||
+               blueprint_category_enabled macos-keyboard ||
+               blueprint_category_enabled macos-trackpad ||
+               blueprint_category_enabled macos-screenshots; then
+                apply_macos_settings
+            fi
+
+        fi
 
         ;;
 

@@ -2,130 +2,181 @@
 
 English | [Русский](ARCHITECTURE.ru.md)
 
+## Purpose
+
 Mac Bootstrap Toolkit is a modular Bash system for discovering and
-reproducing supported parts of a macOS working environment.
+reproducing supported parts of a macOS working environment. This document
+defines the current architectural responsibilities and their planned
+extension; implementation scheduling belongs in the Roadmap.
 
 ## Current architecture
 
-Version 2.0.1 implements this stable contract:
+The implemented architecture is:
 
 ```text
 Current Mac
     ↓
 Discovery
     ↓
-config/generated/
+Generated Configuration
+    ↓
+Blueprint
     ↓
 Bootstrap
     ↓
 Target Mac
 ```
 
+Discovery records supported current state, Generated Configuration stores the
+observed values, Blueprint selects the desired restoration scope, and
+Bootstrap applies the selected supported values.
+
+## State and responsibility model
+
+Toolkit separates observed values from desired selection:
+
+```text
+Observed State
+    ↓
+Generated Configuration
+    +
+Blueprint Desired Selection
+    ↓
+Selected supported state
+    ↓
+Bootstrap
+```
+
+- **Observed State** is the supported state detected on the source Mac.
+- **Generated Configuration** stores machine-specific observed values.
+- **Blueprint** stores Desired Selection: categories and items included in the
+  restoration scope.
+- **Bootstrap** consumes generated values through that selection and applies
+  the selected supported state.
+
+Blueprint does not own, copy, or rewrite discovered values. Observed State and
+Desired Selection remain separate responsibilities.
+
+## Current architectural contracts
+
 ### Discovery
 
-Discovery reads supported state from the current Mac and exports it to
-`config/generated/`. Its modules cover Homebrew, App Store applications,
-global Git configuration, VS Code, selected macOS settings, and workspace
-metadata.
+Discovery observes supported state without modifying that observed domain. Its
+export lifecycle is:
 
-Generated configuration is machine-specific local data and is excluded from
-Git. Discovery is not a backup system: it records configuration and metadata,
-but does not copy user documents or repository contents.
+```text
+Collect → Validate → Serialize → Safe Publication
+```
 
-### Generated configuration
+Generated output is replaced only after the new state has been collected,
+validated, and serialized successfully. A handled collection, serialization,
+or publication failure preserves the previous valid generated state.
 
-Generated files form the boundary between Discovery and Bootstrap. Simple
-lists and shell-style configuration are used for application and Git data;
-sectioned configuration is read through the Configuration Engine for workspace
-repositories. Exporters and consumers must keep their formats compatible.
+Discovery is not a backup system: it records configuration and metadata but
+does not copy user documents or repository contents.
 
-Because generated files can contain personal paths, Git identity, repository
-URLs, and editor settings, they should be reviewed and transferred privately.
+### Generated Configuration
+
+`config/generated/` contains private, local, machine-specific derived state and
+is excluded from Git. Producer and consumer formats must remain compatible.
+
+Application data uses simple formats, global Git state uses native
+non-executable Git configuration, and sectioned Workspace repository data uses
+the existing Configuration Engine. Git generated state is parsed as data and
+must never be consumed through `source` or `eval`.
+
+Most generated files publish independently. Workspace metadata in
+`workspace.conf` also publishes independently, while `folders.conf`,
+`repositories.conf`, `vscode-workspaces.conf`, and `inventory.conf` form one
+grouped snapshot and publish together.
+
+Generated state can contain personal paths, Git identity, repository URLs, and
+editor settings, so it should be reviewed and transferred privately.
+
+### Blueprint
+
+Blueprint validates and stores Desired Selection in the private local
+`config/blueprint.conf`. It selects discovered categories and items without
+duplicating their values from Generated Configuration.
+
+When Blueprint is absent, Bootstrap preserves the compatible legacy
+all-inclusive behavior for the supported generated scope.
 
 ### Bootstrap
 
-Bootstrap consumes generated configuration and applies supported state. Its
-normal module lifecycle is:
+Bootstrap applies selected supported values through the current module-level
+lifecycle:
 
 ```text
 Check → Apply → Verify
 ```
 
-Modules are intended to be idempotent: they first inspect existing state,
-apply only needed changes, and verify the result where supported. The current
-execution order is:
+This **Verify** is current local post-apply verification performed by a module
+when the resulting state is observable with its existing mechanisms. It is not
+the future aggregate Global Verification capability.
 
-1. preflight checks;
-2. Homebrew, Git, SSH, and Terminal checks;
-3. workspace folders and Git repositories;
-4. global Git configuration;
-5. Homebrew formulae and casks;
-6. App Store applications;
-7. VS Code extensions and user settings;
-8. Finder, Dock, keyboard, trackpad, and screenshot settings.
+Bootstrap modules remain idempotent: they inspect current state, apply only
+needed changes, and locally verify results where supported. Required generated
+input is validated before mutation where applicable. Observation failure
+remains distinct from legitimate absence or mismatch and must not be converted
+into “apply required.” Unsafe existing state is reported rather than corrected
+destructively.
 
-Workspace restoration creates missing directories and clones missing
-repositories. For existing repositories it verifies `origin`; it only restores
-a configured branch when tracked and staged changes are absent. Conflicts are
-reported rather than resolved destructively.
+Discovery of VS Code Workspace metadata and generation of
+`vscode-workspaces.conf` are implemented. Bootstrap restoration of
+`.code-workspace` is not implemented and is disconnected from production
+Bootstrap orchestration.
 
-### Core services
+### Core boundary
 
-`modules/core/` provides shared infrastructure:
+`modules/core/` provides shared output, logging, module lifecycle, preflight,
+configuration, and common environment services. Domain-specific Discovery and
+Bootstrap behavior remains outside Core.
 
-- compact and verbose output, module execution, statistics, and summary;
-- per-run and latest logging with interruption handling;
-- preflight checks;
-- configuration parsing;
-- common Homebrew, Git, SSH, and Terminal checks.
+## Planned architecture extension
 
-Domain-specific discovery or bootstrap behavior remains outside Core.
-
-### Project layout
+The planned extension is:
 
 ```text
-bootstrap.sh                 CLI and orchestration
-modules/core/                shared infrastructure
-modules/discovery/           observed-state exporters
-modules/bootstrap/           workspace bootstrap
-modules/apps/                Homebrew and App Store consumers
-modules/vscode/              VS Code consumers
-modules/settings/macos/      macOS settings consumers
-config/                      static Toolkit configuration
-config/generated/            local machine-specific configuration
-settings/                    static settings sources
-scripts/                     supporting analysis/export scripts
-docs/                        project documentation
-```
-
-## Planned architecture
-
-The following stages describe future direction and are not implemented in
-version 2.0.1:
-
-```text
-Observed State
+Discovery
+    ↓
+Generated Configuration
     ↓
 Blueprint
     ↓
-Verification
+Dry-run / Preview
     ↓
-Bootstrap with Dry-run
+Bootstrap
     ↓
-Restore
+Global Verification
 ```
 
-- **Dry-run** will preview Bootstrap actions without applying them.
-- **Blueprint** will define desired state separately from discovered state.
-- **Verification** will compare current and desired state.
-- **Restore** will coordinate complete environment recovery and dependencies.
-- **AI Assistant** is a planned layer for analysis, explanations, and guided
-  workflows over these components.
+Dry-run / Preview and Global Verification remain planned and unimplemented.
 
-Until those stages are implemented, Bootstrap reads generated observed state
-directly. The current CLI has no `--dry-run` option.
+### Dry-run / Preview
 
-Implementation status is maintained in [ROADMAP.md](../../ROADMAP.md), with
-near-term work in [TODO.md](../../TODO.md).
+Dry-run / Preview is a future non-mutating mode of the existing Bootstrap
+model. It will show planned changes from the selected supported state. It is
+not a configuration source or a separately required planning engine.
+
+### Global Verification
+
+Global Verification is a future post-Bootstrap capability that will evaluate
+the resulting selected state and produce an aggregate confirmation. It is
+distinct from the current local module-level Verify step and does not require
+a separate complex engine to be defined in advance.
+
+## Optional future directions
+
+A separate Restore Engine and an AI Assistant remain optional directions, not
+required stages of the architecture. They should be considered only if a clear
+responsibility emerges that the established model cannot cover cleanly.
+
+## Architecture and implementation status
+
+This document defines architectural responsibilities and boundaries.
+Implementation stages and release gates are maintained in
+[ROADMAP.md](../../ROADMAP.md), near-term work in [TODO.md](../../TODO.md), and
+completed release history in `CHANGELOG.md`.
 
 Return to the [main README](../../README.md).
