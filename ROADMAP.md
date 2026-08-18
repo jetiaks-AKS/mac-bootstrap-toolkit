@@ -144,7 +144,32 @@ MVP.
 
 **Статус: Completed**
 
-Финальная подготовка уже реализованного `develop` к выпуску 3.0.0.
+Усиление надёжности уже реализованных Discovery, Blueprint и Bootstrap
+перед release gate 3.0.0.
+
+- [x] Discovery safe-publication lifecycle
+- [x] Сохранение предыдущего generated-состояния при обработанных ошибках
+- [x] Tri-state observation semantics для Bootstrap consumers
+- [x] Upfront validation обязательного generated-ввода до mutation
+- [x] Application consumer safety
+- [x] Workspace Bootstrap validation до первой mutation
+- [x] Typed macOS consumer validation и post-write verification
+- [x] Корректная propagation статусов `0 / 1 / 2`
+- [x] Warning-aware Summary без false success
+- [x] Focused regression harnesses для критических Discovery, Blueprint,
+      Bootstrap, Git, Workspace и macOS сценариев
+- [x] Актуализация архитектурных и safety contracts документации
+
+ShellCheck, единый test runner и CI не являются условиями выпуска 3.0.0
+и могут развиваться отдельно после релиза.
+
+---
+
+# Этап 7 — Release 3.0.0
+
+**Статус: In Progress**
+
+Конечный release gate для ещё не выпущенной версии 3.0.0.
 
 - [ ] Завершить финальное согласование документации
 - [ ] Провести единый финальный release validation
@@ -156,36 +181,6 @@ MVP.
 - [ ] Проверить состояние `main` после merge
 - [ ] Создать tag `v3.0.0`
 - [ ] Завершить release verification
-
-ShellCheck, единый test runner и CI не являются условиями завершённости этого
-этапа и могут развиваться как отдельные будущие quality-инструменты.
-
----
-
-# Этап 7 — Release 3.0.0
-
-**Статус: In Progress**
-
-Конечный release gate для ещё не выпущенной версии 3.0.0.
-
-- [ ] Завершить оставшийся documentation alignment и audit
-- [ ] Запустить финальный focused regression suite
-- [ ] Выполнить полный поддерживаемый Bash syntax/static sanity check
-- [ ] Выполнить `git diff --check`
-- [ ] Провести контролируемую реальную Discovery-проверку
-- [ ] Проверить generated state после реального Discovery
-- [ ] Провести smoke test Blueprint selector и validation
-- [ ] Провести контролируемую реальную Bootstrap-проверку
-- [ ] Повторить Bootstrap для проверки идемпотентности
-- [ ] Провести финальный audit репозитория и working tree
-- [ ] Разрешить оставшийся вопрос release graph / release history
-- [ ] Установить Toolkit version 3.0.0
-- [ ] Подготовить и финализировать CHANGELOG и release notes 3.0.0
-- [ ] Обновить документацию с develop/pre-release wording на released 3.0.0
-- [ ] Проверить и выполнить merge `develop` → `main`
-- [ ] Проверить `main` после merge
-- [ ] Создать tag `v3.0.0`
-- [ ] Выполнить финальную release verification
 
 Ни один из этих незавершённых пунктов не означает, что 3.0.0 уже выпущена.
 

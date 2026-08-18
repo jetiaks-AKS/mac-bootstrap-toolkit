@@ -18,8 +18,7 @@ documented only where it has a clear and stable responsibility.
   the architecture document.
 - [Configuration](toolkit/CONFIGURATION.md) — Generated Configuration,
   Blueprint, configuration ownership, formats, and publication rules.
-- [Output and Logging](toolkit/OUTPUT.md) — CLI output, logging, Summary, and
-  status behavior.
+- [CLI](toolkit/CLI.md) — CLI output, logging, Summary, and status behavior.
 
 ## Development and Releases
 
@@ -44,8 +43,7 @@ When behavior changes:
 - update Architecture only when architectural responsibilities or contracts
   change;
 - update Configuration when configuration ownership or formats change;
-- update Output and Logging when user-visible lifecycle or logging behavior
-  changes;
+- update CLI when user-visible lifecycle or logging behavior changes;
 - update Quick Start when the supported user workflow changes;
 - update Roadmap or TODO when implementation status or near-term work changes;
 - record completed release-visible changes in the Changelog.
