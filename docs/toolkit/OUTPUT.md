@@ -168,6 +168,23 @@ Duration        : 15s
 Summary показывает общий результат выполнения и позволяет
 быстро оценить состояние системы без анализа всего вывода.
 
+Headline определяется существующими lifecycle-счётчиками с таким приоритетом:
+
+```text
+ERROR_COUNT > 0
+→ <Mode> completed with errors
+
+иначе WARNING_COUNT > 0
+→ <Mode> completed with warnings
+
+иначе
+→ <Mode> completed successfully
+```
+
+Ошибки имеют приоритет над предупреждениями. Success-only выполнение сохраняет
+exit status `0`, warning-only — `1`, а выполнение с ошибкой — `2`. Отрисовка
+Summary не меняет счётчики или итоговый lifecycle status.
+
 Summary адаптируется под режим выполнения Toolkit:
 
 ```text

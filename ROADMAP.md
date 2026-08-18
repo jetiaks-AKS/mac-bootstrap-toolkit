@@ -2,20 +2,12 @@
 
 ## Назначение
 
-Roadmap описывает последовательность развития
-Mac Bootstrap Toolkit.
+Roadmap описывает последовательность развития Mac Bootstrap Toolkit.
+Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`, ближайшие
+технические задачи — в `TODO.md`, а история изменений — в `CHANGELOG.md`.
 
-Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`.
-
-Roadmap определяет:
-
-- какие этапы уже завершены;
-- что находится в текущем развитии;
-- что планируется дальше;
-- в каком порядке развивается система.
-
-Roadmap не заменяет архитектурную документацию и не описывает
-детали реализации отдельных модулей.
+Roadmap показывает завершённые крупные этапы, текущий release gate и
+утверждённое направление дальнейшего развития без деталей реализации модулей.
 
 ---
 
@@ -25,16 +17,10 @@ Roadmap не заменяет архитектурную документаци�
 
 Фундамент Toolkit.
 
-- [x] Common utilities
-- [x] Logger
-- [x] Preflight
-- [x] Homebrew
-- [x] Git
-- [x] SSH
-- [x] Terminal
+- [x] Common utilities, Logger и Preflight
+- [x] Homebrew, Git, SSH и Terminal Core
 - [x] Configuration Engine
-- [x] базовая структура модулей
-- [x] единый Bootstrap Engine
+- [x] Модульная структура и единый Bootstrap Engine
 
 ---
 
@@ -42,27 +28,21 @@ Roadmap не заменяет архитектурную документаци�
 
 **Статус: Completed**
 
-Автоматическое исследование текущего Mac.
+Автоматическое исследование поддерживаемого состояния текущего Mac.
 
-## Applications
+## Applications и Development Environment
 
-- [x] Homebrew Packages
-- [x] Homebrew Casks
-- [x] App Store
-
-## Development Environment
-
-- [x] Git
-- [x] VS Code Extensions
-- [x] VS Code Settings
+- [x] Homebrew packages, установленные пользователем
+- [x] Homebrew casks
+- [x] App Store applications
+- [x] Git configuration
+- [x] VS Code extensions и settings
 
 ## Workspace
 
 - [x] Workspace folders
-- [x] Git repositories
-- [x] Repository metadata
-- [ ] VS Code Projects
-- [ ] VS Code Workspaces
+- [x] Git repositories и repository metadata
+- [x] VS Code Workspace discovery и `vscode-workspaces.conf`
 
 ## macOS
 
@@ -71,26 +51,16 @@ Roadmap не заменяет архитектурную документаци�
 - [x] Keyboard
 - [x] Trackpad
 - [x] Screenshots
-- [ ] SSH
-- [ ] Terminal
-- [ ] Shell
-- [ ] Aliases
-- [ ] Menu Bar
-- [ ] Mission Control
-- [ ] Login Items
-- [ ] Power Management
 
-## Discovery Infrastructure
+## Discovery lifecycle
 
-- [x] Generated configuration
-- [x] Discovery modules
-- [x] Configuration export
-- [x] базовый Discovery workflow
-- [ ] Discovery Report
-- [ ] расширенная валидация Discovery
-
-Незавершённые пункты являются расширением Discovery Engine,
-а не препятствием для его базового завершения.
+- [x] Generated configuration publication
+- [x] Collect → Validate → Serialize → Safe Publication
+- [x] Сохранение предыдущего generated-состояния при обработанной ошибке
+- [x] Различение допустимого отсутствия и ошибки наблюдения
+- [x] Lifecycle/status propagation `0 / 1 / 2`
+- [x] Независимый `workspace.conf` и grouped snapshot из четырёх производных
+      Workspace-файлов
 
 ---
 
@@ -98,18 +68,20 @@ Roadmap не заменяет архитектурную документаци�
 
 **Статус: Completed**
 
-Формирование воспроизводимого описания обнаруженного окружения.
+Локальное machine-specific описание обнаруженного окружения.
 
 - [x] `config/generated/`
-- [x] Applications configuration
-- [x] Git configuration
-- [x] VS Code configuration
-- [x] Workspace configuration
-- [x] macOS Settings configuration
-- [x] единый принцип Discovery → Generated Configuration → Bootstrap
-- [x] устранение дублирования пользовательских настроек в Bootstrap-коде
-- [x] machine-specific Generated Configuration
-- [x] исключение `config/generated/` из публичного Git-репозитория
+- [x] Applications, Git, VS Code, Workspace и macOS configuration
+- [x] Приватное generated-состояние, исключённое из публичного Git-репозитория
+- [x] Связь Discovery → Generated Configuration → Blueprint → Bootstrap
+- [x] Safe publication и сохранение предыдущего валидного результата при
+      обработанной ошибке
+- [x] Валидация обязательного generated-ввода до потребления и мутации
+- [x] Native non-executable Git configuration format
+- [x] Grouped snapshot для `folders.conf`, `repositories.conf`,
+      `vscode-workspaces.conf` и `inventory.conf`
+- [x] Поддержка допустимого пустого состояния там, где оно определено
+      контрактом компонента
 
 ---
 
@@ -117,52 +89,31 @@ Roadmap не заменяет архитектурную документаци�
 
 **Статус: Completed**
 
-Восстановление рабочего окружения на основе Generated Configuration.
+Идемпотентное применение поддерживаемого Generated Configuration.
 
-## Core
+## Implemented scope
 
-- [x] Homebrew
-- [x] Git
-- [x] SSH
-- [x] Terminal
+- [x] Core: Homebrew, Git, SSH и Terminal
+- [x] Homebrew packages и casks
+- [x] App Store applications
+- [x] VS Code extensions и settings
+- [x] Workspace folders и Git repositories
+- [x] Global Git configuration
+- [x] Finder, Dock, Keyboard, Trackpad и Screenshots
 
-## Applications
+## Consumer safety
 
-- [x] Homebrew Packages
-- [x] Homebrew Casks
-- [x] App Store
+- [x] Локальный Check → Apply → Verify lifecycle там, где состояние наблюдаемо
+- [x] Различение ошибки наблюдения, отсутствия и несовпадения
+- [x] Валидация обязательного generated-ввода до первой мутации
+- [x] Отсутствие false success после ошибки mutation или verification
+- [x] Workspace upfront validation до создания папок, clone или checkout
+- [x] Application observation safety
+- [x] Typed macOS observation, checked writes и post-write verification
+- [x] Lifecycle/status propagation `0 / 1 / 2`
 
-## VS Code
-
-- [x] Extensions
-- [x] Settings
-- [ ] Projects
-- [ ] Workspaces
-- [ ] Keybindings
-- [ ] Snippets
-- [ ] Profiles
-
-## Workspace
-
-- [x] Folders
-- [x] Git repositories
-- [x] Remote verification
-- [x] Branch verification
-- [x] Repository restoration
-- [ ] VS Code Projects
-- [ ] VS Code Workspaces
-
-## macOS Settings
-
-- [x] Finder
-- [x] Dock
-- [x] Keyboard
-- [x] Trackpad
-- [x] Screenshots
-- [ ] дополнительные системные настройки
-
-Незавершённые пункты являются расширением Bootstrap Engine
-и не меняют завершённость базового Bootstrap workflow.
+VS Code Workspace metadata обнаруживается, но Bootstrap-восстановление
+`.code-workspace` не реализовано и отключено от production-оркестрации.
 
 ---
 
@@ -170,116 +121,143 @@ Roadmap не заменяет архитектурную документаци�
 
 **Статус: Completed**
 
-Простой слой выбора между Discovery и Bootstrap. Discovery может
-обнаружить больше компонентов, чем пользователь хочет перенести;
-Blueprint определяет, какие из них действительно нужно восстановить.
+Слой Desired Selection между Generated Configuration и Bootstrap.
 
-- [x] Blueprint format
-- [x] Parser и validation
+- [x] Blueprint format, parser и validation
 - [x] Приватный локальный `config/blueprint.conf`
-- [x] Выбор отдельных обнаруженных компонентов
-- [x] Выбор категорий и Bootstrap-модулей
-- [x] Связь Blueprint с Generated Configuration и Bootstrap
-- [x] Применение только выбранного состояния в Bootstrap
-- [x] Сохранение безопасного идемпотентного Bootstrap lifecycle
+- [x] Выбор отдельных компонентов и категорий
 - [x] Интерактивный `--blueprint` selector
-- [x] Редактирование существующего Blueprint и безопасные save/cancel
-- [x] Финальная E2E-проверка Blueprint workflow
-- [x] Финальное согласование документации Blueprint MVP
+- [x] Безопасные edit, atomic save и cancel
+- [x] Интеграция с Generated Configuration и Bootstrap
+- [x] No-Blueprint all-inclusive compatibility
+- [x] Warning `1` для stale selection
+- [x] Error `2` и блокировка consumers для malformed Blueprint
+- [x] Blueprint-aware Bootstrap Summary
+- [x] E2E-проверка Blueprint workflow
 
-Реализованный scope охватывает Applications, Homebrew, VS Code,
-Workspace и macOS Settings. Required / Optional component model,
-parameter overrides, versioning и import / export не входят в Blueprint MVP.
-
-Blueprint не должен превращаться в сложный configuration framework
-или требовать Profiles.
+Profiles, overrides, import/export и schema frameworks не входят в Blueprint
+MVP.
 
 ---
 
-# Этап 6 — Dry-run / Preview
+# Этап 6 — Reliability & Release Hardening
+
+**Статус: Completed**
+
+Финальная подготовка уже реализованного `develop` к выпуску 3.0.0.
+
+- [ ] Завершить финальное согласование документации
+- [ ] Провести единый финальный release validation
+- [ ] Разрешить вопрос release graph / release history
+- [ ] Установить Toolkit version 3.0.0
+- [ ] Финализировать CHANGELOG и release notes 3.0.0
+- [ ] Обновить release-specific документацию для 3.0.0
+- [ ] Выполнить merge `develop` → `main`
+- [ ] Проверить состояние `main` после merge
+- [ ] Создать tag `v3.0.0`
+- [ ] Завершить release verification
+
+ShellCheck, единый test runner и CI не являются условиями завершённости этого
+этапа и могут развиваться как отдельные будущие quality-инструменты.
+
+---
+
+# Этап 7 — Release 3.0.0
+
+**Статус: In Progress**
+
+Конечный release gate для ещё не выпущенной версии 3.0.0.
+
+- [ ] Завершить оставшийся documentation alignment и audit
+- [ ] Запустить финальный focused regression suite
+- [ ] Выполнить полный поддерживаемый Bash syntax/static sanity check
+- [ ] Выполнить `git diff --check`
+- [ ] Провести контролируемую реальную Discovery-проверку
+- [ ] Проверить generated state после реального Discovery
+- [ ] Провести smoke test Blueprint selector и validation
+- [ ] Провести контролируемую реальную Bootstrap-проверку
+- [ ] Повторить Bootstrap для проверки идемпотентности
+- [ ] Провести финальный audit репозитория и working tree
+- [ ] Разрешить оставшийся вопрос release graph / release history
+- [ ] Установить Toolkit version 3.0.0
+- [ ] Подготовить и финализировать CHANGELOG и release notes 3.0.0
+- [ ] Обновить документацию с develop/pre-release wording на released 3.0.0
+- [ ] Проверить и выполнить merge `develop` → `main`
+- [ ] Проверить `main` после merge
+- [ ] Создать tag `v3.0.0`
+- [ ] Выполнить финальную release verification
+
+Ни один из этих незавершённых пунктов не означает, что 3.0.0 уже выпущена.
+
+---
+
+# Этап 8 — Dry-run / Preview
 
 **Статус: Planned**
 
-Безопасный предварительный просмотр действий Toolkit.
-
-Dry-run будет позволять определить, какие изменения Toolkit
-собирается выполнить, не изменяя состояние системы.
-
-Основная цель:
-
-```text
-Current State
-      ↓
-Bootstrap Checks
-      ↓
-Planned Changes
-```
+Неизменяющий предварительный просмотр поведения существующего Bootstrap.
 
 - [ ] Добавить `--dry-run`
-- [ ] Выполнять проверки без изменений состояния
-- [ ] Определять и единообразно показывать planned changes
-- [ ] Поддержать Applications, VS Code, Workspace и macOS Settings
-- [ ] Интегрировать Preview с Module Lifecycle, Logger и Summary
+- [ ] Выполнять checks без mutation
+- [ ] Формировать и показывать planned changes
+- [ ] Интегрировать Preview с текущими lifecycle, Logger и Summary
+- [ ] Поддержать Applications, VS Code, Workspace и macOS consumers
+- [ ] Сохранять соответствие Preview фактическому Bootstrap
 - [ ] Отделять вычисление плана от CLI-представления там, где это практично
-- [ ] Проверить соответствие Preview фактическому Bootstrap
 
-Dry-run остаётся режимом существующего Bootstrap, а не отдельным
-planner framework.
+Dry-run остаётся capability существующей Bootstrap-модели, а не новым planner
+framework.
 
 ---
 
-# Этап 7 — Verification
+# Этап 9 — Global Verification
 
 **Статус: Planned**
 
-Подтверждение результата Bootstrap с использованием существующей
-модели Check → Apply → Verify.
+Локальная post-apply verification уже используется текущими Bootstrap-модулями
+там, где она реализована. Этот будущий этап относится к общей post-Bootstrap
+проверке выбранного Desired State.
 
-- [ ] Component verification
-- [ ] Configuration verification
+- [ ] Selected-state verification
 - [ ] Missing component detection
 - [ ] Mismatch detection
-- [ ] Итоговый verification status / report
+- [ ] Aggregate verification status и report
 
-Основная цель:
-
-```text
-Selected State
-      ↓
- Bootstrap
-      ↓
-Verification
-```
+Отдельный сложный Verification Engine не является заранее установленным
+требованием.
 
 ---
 
-# Этап 8 — Coverage Expansion
+# Этап 10 — Coverage Expansion
 
 **Статус: Planned**
 
-Разумное расширение покрытия после завершения основного цикла.
+Расширение покрытия после выпуска 3.0.0 при наличии ясной продуктовой пользы.
 
-## macOS Settings
+## macOS и system environment
 
-- [ ] Добавлять только полезные и стабильные настройки
-- [ ] Оценить Menu Bar, Mission Control, Login Items и Power Management
-
-Кандидаты не являются обязательным полным списком; цель этапа — не
-поддержка сотен `defaults`.
+- [ ] Дополнительные полезные Finder, Dock и system preferences
+- [ ] Menu Bar, Mission Control, Login Items и Power Management
+- [ ] Shell, Aliases, Terminal и SSH discovery/restoration, если они будут
+      признаны полезными
 
 ## VS Code
 
-- [ ] Projects
-- [ ] Workspaces
+- [ ] Bootstrap-восстановление `.code-workspace`
 - [ ] Keybindings
-- [ ] Snippets — при подтверждённой пользе
+- [ ] Snippets при подтверждённой пользе
+- [ ] Projects после определения конкретной продуктовой модели
 
-Profiles не относятся к ближайшему обязательному покрытию.
+## Discovery и quality tooling
 
-## Discovery
+- [ ] Discovery Report, если он даст самостоятельную пользовательскую ценность
+- [ ] ShellCheck/static analysis, единый test runner и CI по мере необходимости
 
-Новый Discovery-модуль приоритетен, когда его результат можно
-использовать при восстановлении.
+Discovery expansion приоритетен, когда обнаруженное состояние имеет реальный
+restoration consumer или ясную продуктовую ценность. Не следует создавать
+preference registry/schema framework только ради потенциального роста macOS
+coverage; scalable catalog стоит рассматривать лишь тогда, когда реальный рост
+сделает текущий explicit-подход существенно сложным в сопровождении.
 
 ---
 
@@ -287,8 +265,8 @@ Profiles не относятся к ближайшему обязательно�
 
 **Статус: Optional**
 
-- Restore Engine — только если появится чёткая ответственность,
-  принципиально не покрываемая цепочкой Blueprint → Bootstrap → Verification
+- Restore Engine — только если появится ответственность, которую нельзя чисто
+  покрыть цепочкой Blueprint → Bootstrap → Global Verification
 - AI Assistant
 - Profiles
 - Machine Diff
@@ -296,26 +274,7 @@ Profiles не относятся к ближайшему обязательно�
 - Plugins
 - GUI
 
-Эти идеи не являются обязательными утверждёнными этапами. Отдельный
-Restore Engine не исключён, но больше не считается обязательным
-следующим звеном архитектуры.
-
----
-
-# Quality & Reliability
-
-**Статус: In Development (параллельное направление)**
-
-Повышение надёжности и качества всей системы:
-
-- [ ] Idempotency и error handling
-- [ ] Configuration validation
-- [ ] Regression tests
-- [ ] ShellCheck и code quality
-- [ ] Согласованность документации
-
-Summary и вывод улучшаются только при выявлении конкретных проблем,
-а не как самостоятельные стратегические цели.
+Эти идеи не являются утверждёнными roadmap stages.
 
 ---
 
@@ -333,7 +292,7 @@ Blueprint
 Bootstrap
 ```
 
-Будущая модель после реализации Preview и Verification:
+Будущая post-3.0 модель:
 
 ```text
 Discovery
@@ -346,19 +305,12 @@ Dry-run / Preview
     ↓
 Bootstrap
     ↓
-Verification
+Global Verification
 ```
 
-Discovery фиксирует текущее состояние, Generated Configuration хранит
-machine-specific результат, Blueprint выбирает нужное для переноса,
-Preview будет показывать действия без изменений, Bootstrap безопасно
-применяет выбранное состояние, а Verification будет подтверждать результат.
-
-Toolkit не должен становиться универсальным macOS configuration
-framework. Новая функция оправдана, если заметно улучшает обнаружение
-состояния, выбор нужного, безопасное применение или проверку результата.
-Внутренняя сложность не должна без необходимости переходить в
-пользовательский workflow.
+Preview будет неизменяющей capability вокруг существующей Bootstrap planning
+и check-логики. Global Verification станет общей post-Bootstrap проверкой; ни
+одна из возможностей не требует заранее вводить heavyweight framework.
 
 ---
 
@@ -375,43 +327,23 @@ Bootstrap
   ↓
 Blueprint
   ↓
+Reliability & Release Hardening
+  ↓
+Release 3.0.0
+  ↓
 Dry-run / Preview
   ↓
-Verification
+Global Verification
   ↓
 Coverage Expansion
   ↓
 Optional / Future Evolution
 ```
 
-Quality & Reliability развивается параллельно всем этапам.
-
 ---
 
 # Правило Roadmap
 
-Roadmap показывает **путь реализации**, а не полный список
-архитектурных возможностей.
-
-Архитектура проекта определяется в:
-
-```text
-docs/toolkit/ARCHITECTURE.md
-```
-
-Конкретные ближайшие технические задачи находятся в:
-
-```text
-TODO.md
-```
-
-История завершённых изменений находится в:
-
-```text
-CHANGELOG.md
-```
-
-При добавлении новой функции Roadmap обновляется только в части
-её статуса и этапа реализации.
-
-Структура целевой архитектуры при этом не изменяется.
+Completed stages содержат только реализованный baseline. Нереализованные
+возможности остаются в planned или optional scope, а история завершённых
+изменений хранится в `CHANGELOG.md`.
