@@ -72,7 +72,10 @@ install_vscode_extensions() {
     fi
 
     local installed_extensions
-    installed_extensions="$(code --list-extensions)"
+    if ! installed_extensions="$(code --list-extensions)"; then
+        error "Failed to inspect installed VS Code extensions"
+        return 2
+    fi
 
     local missing_extensions=0
 
@@ -91,8 +94,6 @@ install_vscode_extensions() {
 
         ((missing_extensions++))
 
-        MODULE_CHANGED=true
-
         if [[ $missing_extensions -eq 1 ]]; then
 
             action "Installing VS Code Extensions..."
@@ -105,6 +106,8 @@ install_vscode_extensions() {
         if [[ $? -ne 0 ]]; then
             return 2
         fi
+
+        MODULE_CHANGED=true
 
     done < "$config_file"
 
