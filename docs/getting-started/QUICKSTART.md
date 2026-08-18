@@ -1,24 +1,33 @@
 # Quick Start
 
-English | [Русский](QUICKSTART.ru.md)
-
-This guide covers the implemented Mac Bootstrap Toolkit 2.0.1 workflow:
+This guide covers the Mac Bootstrap Toolkit 3.0.0 workflow:
 
 ```text
-Discovery → config/generated/ → Bootstrap
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Bootstrap
 ```
 
 ## Requirements
 
-- macOS 15 or later;
-- Xcode Command Line Tools;
-- an internet connection;
-- an administrator account;
-- Git.
+- macOS 15 or later
+- Xcode Command Line Tools
+- Internet connection
+- Administrator account
+- Git
 
 Homebrew can be installed interactively by the Toolkit when it is missing.
-Some optional areas also require their command-line tools: `mas` for Mac App
-Store applications and `code` for VS Code extensions.
+
+Some optional components require their command-line tools:
+
+- `mas` for Mac App Store applications
+- `code` for VS Code extensions
+
+---
 
 ## 1. Clone the repository
 
@@ -27,110 +36,201 @@ git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
 cd mac-bootstrap-toolkit
 ```
 
-Run every Toolkit command from the repository root. `bootstrap.sh` loads files
-through relative paths.
+Run Toolkit commands from the repository root.
 
-## 2. Review the CLI
+To review the available CLI:
 
 ```bash
 ./bootstrap.sh --help
 ./bootstrap.sh --version
 ```
 
-The implemented modes are `--check`, `--discover`, and `--bootstrap`.
-`--verbose` can be combined with any of them.
+---
 
-## 3. Check the Mac
+## 2. Check the Mac
+
+Before Discovery or Bootstrap, check the current system:
 
 ```bash
 ./bootstrap.sh --check
 ```
 
-For diagnostic details:
+For additional diagnostics:
 
 ```bash
 ./bootstrap.sh --check --verbose
 ```
 
-The command checks internet access, Xcode Command Line Tools, the macOS
-version, administrator privileges, Homebrew, Git, SSH, and Terminal. It asks
-for administrator authentication and may offer to install Homebrew.
+The check validates the supported prerequisites and core environment before
+continuing with Toolkit workflows.
 
-## 4. Discover the source environment
+---
+
+## 3. Discover the source environment
+
+Run Discovery on the Mac whose environment you want to reproduce:
 
 ```bash
 ./bootstrap.sh --discover
 ```
 
-Or use verbose output:
+Discovery observes supported areas including:
 
-```bash
-./bootstrap.sh --discover --verbose
-```
+- Homebrew packages and casks
+- Mac App Store applications
+- Git configuration
+- VS Code extensions and settings
+- Workspace folders and Git repositories
+- VS Code Workspace metadata
+- supported macOS settings
 
-Discovery inspects supported Homebrew, App Store, Git, VS Code, macOS settings,
-and workspace state. It creates or overwrites machine-specific files in:
+The observed machine-specific state is written locally to:
 
 ```text
 config/generated/
 ```
 
-That directory is excluded from Git. Treat its contents as sensitive local
-configuration: it may include personal paths, Git identity, repository URLs,
-and editor settings. Review the generated files and transfer them to a target
-Mac through an appropriately private method.
+Generated Configuration is excluded from Git and may contain personal paths,
+Git identity, repository URLs, editor settings, and other machine-specific
+information.
 
-Discovery does not install applications or apply system settings. Its expected
-side effect is writing generated configuration; the common preflight and core
-checks still run first and can request administrator authentication or offer to
-install Homebrew.
+Review it before transferring it to another Mac.
 
-## 5. Bootstrap the target environment
+Discovery does not install discovered applications or apply discovered system
+settings. Its expected state-changing side effect is publication of local
+Generated Configuration.
 
-Place the reviewed generated configuration under `config/generated/` on the
-target Mac, then run from the repository root:
+---
+
+## 4. Select the restoration scope
+
+After Discovery, create or edit the local Blueprint:
+
+```bash
+./bootstrap.sh --blueprint
+```
+
+Blueprint determines which supported parts of Generated Configuration should
+be restored.
+
+The interactive selector supports item-level selection for areas such as
+applications, Homebrew packages and casks, VS Code extensions, Workspace
+folders, and Git repositories, as well as category-level selection for
+supported settings.
+
+The resulting local selection is stored in:
+
+```text
+config/blueprint.conf
+```
+
+Blueprint contains selection state, not copies of discovered values.
+
+Both `config/blueprint.conf` and `config/generated/` are local state and are
+excluded from Git.
+
+Without a Blueprint, Bootstrap preserves the supported all-inclusive behavior
+for Generated Configuration.
+
+---
+
+## 5. Transfer the local state
+
+On a different target Mac, clone the Toolkit repository and privately transfer
+the reviewed local state required for restoration:
+
+```text
+config/generated/
+config/blueprint.conf
+```
+
+Transfer `config/blueprint.conf` only when you want to preserve the same
+selection. Without it, Bootstrap uses the supported all-inclusive behavior.
+
+Do not commit machine-specific Generated Configuration or the private Blueprint
+to the repository.
+
+---
+
+## 6. Bootstrap the target Mac
+
+From the repository root on the target Mac:
 
 ```bash
 ./bootstrap.sh --bootstrap
 ```
 
-For diagnostic details:
+For additional diagnostics:
 
 ```bash
 ./bootstrap.sh --bootstrap --verbose
 ```
 
-Bootstrap uses the generated configuration to:
+Bootstrap combines Generated Configuration with the optional Blueprint
+selection and restores supported state.
 
-- create missing workspace folders;
-- clone missing Git repositories, verify origins, and restore configured
-  branches only when existing repositories are clean;
-- apply global Git configuration;
-- install missing Homebrew formulae and casks;
-- install configured App Store applications when `mas` is available;
-- install VS Code extensions and apply VS Code user settings;
-- apply supported Finder, Dock, keyboard, trackpad, and screenshot settings.
+Depending on the selected scope, this can include:
 
-The VS Code settings module creates `settings.json.bootstrap.bak` before
-replacing an existing, different settings file. Existing workspace directories
-and repository remotes are not overwritten. Conflicts are reported for manual
-attention.
+- Homebrew packages and casks
+- Mac App Store applications
+- global Git configuration
+- VS Code extensions and settings
+- Workspace folders
+- Git repositories and configured branches
+- supported Finder, Dock, keyboard, trackpad, and screenshot settings
+
+Bootstrap is designed to be idempotent: state that already matches the desired
+configuration should not be changed unnecessarily.
+
+Existing user state is protected where safe automatic convergence cannot be
+guaranteed. Conflicts and unsafe conditions are reported instead of being
+silently resolved through destructive operations.
+
+VS Code Workspace metadata is discovered, but `.code-workspace` restoration is
+not currently performed by Bootstrap.
+
+---
 
 ## Logs and exit status
 
-Runs write the latest log to `logs/latest.log` and timestamped history logs to
-`logs/history/`. Both locations are excluded from Git.
+Toolkit keeps the latest run at:
 
-The final process status is:
+```text
+logs/latest.log
+```
 
-- `0` — success;
-- `1` — completed with warnings;
-- `2` — error.
+Historical logs are stored under:
 
-## What is not available yet
+```text
+logs/history/
+```
 
-Dry-run, Blueprint, Verification, Restore, and AI Assistant are planned future
-work. In particular, `--dry-run` is not a supported option in version 2.0.1.
-See the project [roadmap](../../ROADMAP.md) for status.
+The final process status follows the common lifecycle:
+
+- `0` — completed successfully
+- `1` — completed with warnings
+- `2` — completed with errors
+
+Use `--verbose` when additional diagnostics are needed.
+
+---
+
+## Not implemented yet
+
+The current workflow does not yet include:
+
+- Dry-run / Preview
+- aggregate post-Bootstrap Verification
+
+These are planned extensions of the existing workflow rather than separate
+configuration systems.
+
+Other future capabilities are tracked in the project
+[Roadmap](../../ROADMAP.md).
+
+For architecture and configuration details, see:
+
+- [Architecture](../toolkit/ARCHITECTURE.md)
+- [Configuration](../toolkit/CONFIGURATION.md)
 
 Return to the [main README](../../README.md).

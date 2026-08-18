@@ -4,74 +4,125 @@ Thank you for contributing to Mac Bootstrap Toolkit.
 
 ## Workflow
 
-- Start work from `develop`; it is the development branch.
-- `main` contains stable releases only. Do not develop directly on `main`.
-- Keep each commit to one logical task.
-- Use an English commit message in the form `type: short description`, where
-  `type` is `feat`, `fix`, `refactor`, `docs`, `style`, `chore`, or `release`.
-- Do not commit generated configuration, logs, exports, environment files, or
-  local temporary files.
+- Start development from `develop`.
+- `main` contains stable releases only; do not develop directly on `main`.
+- Keep each commit limited to one logical task.
+- Use English commit messages in the form `type: short description`.
+- Supported commit types are `feat`, `fix`, `refactor`, `docs`, `style`,
+  `chore`, and `release`.
+- Do not commit generated configuration, logs, exports, environment files,
+  local Blueprint state, or temporary files.
 
-Before editing, confirm that the working tree is understood and that local
-`develop` matches `origin/develop`. Preserve unrelated local changes.
+Before editing, understand the current working tree and confirm that local
+`develop` is synchronized with `origin/develop`. Preserve unrelated local
+changes.
 
-## Making changes
+---
 
-Keep changes small. Stable 2.0.1 uses:
+## Project model
 
-```text
-Discovery → config/generated/ → Bootstrap
-```
-
-The unreleased `develop` branch also implements the E2E-verified Blueprint
-selection layer:
+The current Toolkit workflow is:
 
 ```text
-Discovery → config/generated/ → Blueprint → Bootstrap
+Discovery
+    ↓
+Generated Configuration
+    ↓
+Blueprint
+    ↓
+Bootstrap
 ```
 
-Discovery may write only its generated output and must not change the system.
-Bootstrap changes must check current state, avoid unnecessary work, preserve
-existing user data, and verify applied state where practical. Never add
-destructive Git behavior such as reset, clean, force-push, or forced checkout.
+Discovery observes supported state and publishes machine-specific Generated
+Configuration.
 
-Blueprint is implemented on `develop` but is not part of stable 2.0.1. Dry-run
-and Verification remain planned and unimplemented. Keep release and development
-status explicit when documenting these capabilities.
+Blueprint selects the restoration scope without duplicating discovered values.
 
-Update relevant documentation when behavior changes. Architecture changes
-belong in `docs/toolkit/ARCHITECTURE.md`, near-term work in `TODO.md`, roadmap
-status in `ROADMAP.md`, and completed user-visible changes in `CHANGELOG.md`.
+Bootstrap combines that selection with Generated Configuration and safely
+applies supported state.
+
+Dry-run / Preview and aggregate Verification are planned extensions and are not
+currently implemented.
+
+For architectural details, see
+[`docs/toolkit/ARCHITECTURE.md`](docs/toolkit/ARCHITECTURE.md).
+
+---
+
+## Change principles
+
+Keep changes focused and preserve existing contracts unless the task explicitly
+requires changing them.
+
+Discovery changes must:
+
+- observe rather than configure the system;
+- validate and serialize new state before publication;
+- preserve previous valid Generated Configuration on handled failure.
+
+Bootstrap changes must:
+
+- distinguish observation failures from legitimate differences;
+- validate required Generated Configuration before mutation;
+- avoid unnecessary changes;
+- preserve existing user state;
+- verify applied state where supported.
+
+Do not introduce silent destructive behavior such as:
+
+- `git reset --hard`;
+- `git clean`;
+- force-push;
+- forced checkout over local changes;
+- deletion or replacement of user data without an explicit safe contract.
+
+Update documentation when externally visible behavior or a documented contract
+changes.
+
+Use:
+
+- `docs/toolkit/ARCHITECTURE.md` for architecture;
+- `ROADMAP.md` for implementation stages and future development;
+- `TODO.md` for immediate technical backlog;
+- `CHANGELOG.md` for completed release-visible changes.
+
+---
 
 ## Validation
 
-The repository has focused Blueprint regression harnesses, but not
-comprehensive Toolkit coverage, a CI workflow, or a ShellCheck configuration:
+Use the focused regression harnesses relevant to the changed area.
 
-```bash
-scripts/test-blueprint.sh
-scripts/test-blueprint-bootstrap.sh
-scripts/test-blueprint-selector.sh
-```
+Existing coverage includes Blueprint, Discovery, applications, Git, Workspace,
+and macOS consumer behavior. Do not create a new test script solely to mirror
+every production module; extend the closest focused harness when practical.
 
-Run the relevant harnesses for Blueprint changes. For Bash changes, run at
-minimum:
+For Bash changes, run the relevant regression tests and at minimum:
 
 ```bash
 find modules scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
 bash -n bootstrap.sh
+git diff --check
 ```
 
-For changes that do not need to inspect or modify the local environment, the
-safe CLI checks are:
+Safe CLI sanity checks that do not execute a real Discovery or Bootstrap
+workflow are:
 
 ```bash
 ./bootstrap.sh --help
 ./bootstrap.sh --version
 ```
 
-Do not run `--check`, `--discover`, or `--bootstrap` casually: they have the
-side effects described in the [Quick Start](docs/getting-started/QUICKSTART.md).
+Run real:
+
+```bash
+./bootstrap.sh --check
+./bootstrap.sh --discover
+./bootstrap.sh --blueprint
+./bootstrap.sh --bootstrap
+```
+
+only when the task explicitly requires the corresponding workflow and its side
+effects are understood.
 
 Before handing off a change, inspect:
 
@@ -81,5 +132,14 @@ git diff --stat
 git status --short
 ```
 
-Open contributions against `develop`. Release integration into `main`, version
-changes, tags, and publishing follow the maintainer release process.
+---
+
+## Pull requests and releases
+
+Open contributions against `develop`.
+
+Release integration into `main`, version changes, release notes, tags, and
+publishing follow the maintainer release process.
+
+See [`docs/git/RELEASE-PROCESS.md`](docs/git/RELEASE-PROCESS.md) for the
+current release procedure.

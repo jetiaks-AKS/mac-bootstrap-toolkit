@@ -1,76 +1,54 @@
-# Knowledge Base
+# Documentation
 
-Документация проекта **Mac Bootstrap Toolkit**.
+Documentation for Mac Bootstrap Toolkit.
 
-В данном разделе содержится описание архитектуры, модулей, процесса разработки, Git Workflow и настроек Toolkit.
-
----
-
-# Разделы
+The documentation is intentionally kept compact. Detailed behavior should be
+documented only where it has a clear and stable responsibility.
 
 ## Getting Started
 
-Документация для быстрого начала работы с Toolkit.
-
-- QUICKSTART.md
-- COMMANDS.md
-
----
-
-## Git
-
-Документация по работе с Git и процессу разработки проекта.
-
-- GIT-CHEATSHEET.md
-- GIT-FLOW.md
-- COMMIT-CONVENTIONS.md
-- RELEASE-PROCESS.md
-
----
+- [Quick Start](getting-started/QUICKSTART.md) — installation and the main
+  Discovery → Blueprint → Bootstrap workflow.
 
 ## Toolkit
 
-Внутреннее устройство Mac Bootstrap Toolkit.
+- [Architecture](toolkit/ARCHITECTURE.md) — current architecture, component
+  responsibilities, and planned architectural extensions.
+- [Architecture — Russian](toolkit/ARCHITECTURE.ru.md) — Russian version of
+  the architecture document.
+- [Configuration](toolkit/CONFIGURATION.md) — Generated Configuration,
+  Blueprint, configuration ownership, formats, and publication rules.
+- [Output and Logging](toolkit/OUTPUT.md) — CLI output, logging, Summary, and
+  status behavior.
 
-- ARCHITECTURE.md / ARCHITECTURE.ru.md
-- MODULES.md
-- CONFIGURATION.md
-- LOGGING.md
-- OUTPUT.md
+## Development and Releases
 
----
+- [Contributing](../CONTRIBUTING.md) — development workflow, change principles,
+  commit conventions, and validation.
+- [Release Process](git/RELEASE-PROCESS.md) — maintainer release procedure.
+- [Roadmap](../ROADMAP.md) — implementation stages and planned development.
+- [TODO](../TODO.md) — immediate technical backlog.
+- [Changelog](../CHANGELOG.md) — completed release-visible changes.
 
-## macOS
+## Project Direction
 
-Документация по настройкам macOS, применяемым Bootstrap Toolkit.
+- [Vision](VISION.md) — long-term product direction and design principles.
 
-- Finder
-- Dock
-- Keyboard
-- Trackpad
-- Screenshots
+## Documentation rules
 
----
+Documentation should describe stable responsibilities rather than mirror every
+source file or module.
 
-## Ideas
+When behavior changes:
 
-Долгосрочные и исторические концепции с явно указанным статусом.
+- update Architecture only when architectural responsibilities or contracts
+  change;
+- update Configuration when configuration ownership or formats change;
+- update Output and Logging when user-visible lifecycle or logging behavior
+  changes;
+- update Quick Start when the supported user workflow changes;
+- update Roadmap or TODO when implementation status or near-term work changes;
+- record completed release-visible changes in the Changelog.
 
-- [State Convergence](ideas/STATE-CONVERGENCE.md) / [Русский](ideas/STATE-CONVERGENCE.ru.md)
-- [Mac Blueprint — historical concept](ideas/MAC-BLUEPRINT.md)
-
----
-
-# Принципы
-
-- Реализованный функционал документируется как реализованный.
-- Планируемые, optional- и исторические концепции могут оставаться в
-  документации только с явно указанным статусом.
-- Один модуль = один документ.
-- Документация текущего поведения всегда соответствует коду проекта.
-- При изменении модуля соответствующий документ должен быть обновлён.
-- Каждый новый раздел сопровождается документацией.
-
----
-
-© Mac Bootstrap Toolkit
+Implementation details that are already clear from code and tests do not require
+a separate documentation page.

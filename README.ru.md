@@ -262,9 +262,7 @@ Dry-run и Verification пока не реализованы. Restore и AI Assi
 
 - `docs/getting-started/` — начало работы и основные сценарии.
 - `docs/toolkit/` — архитектура и устройство Toolkit.
-- `docs/macos/` — документация по macOS.
 - `docs/git/` — Git и рабочие процессы.
-- `docs/ideas/` — идеи и направления развития.
 
 Основные документы:
 

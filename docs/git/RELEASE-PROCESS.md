@@ -23,7 +23,6 @@
 - CHANGELOG.md
 - ROADMAP.md
 - QUICKSTART.md
-- COMMANDS.md
 
 При необходимости обновить документацию в каталоге `docs/`.
 
