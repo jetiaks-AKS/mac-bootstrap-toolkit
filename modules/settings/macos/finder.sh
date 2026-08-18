@@ -24,10 +24,17 @@ apply_finder_settings() {
 
     info "Configuring Finder..."
 
-    apply_defaults_config "$FINDER_CONFIG"
+    if ! apply_defaults_config "$FINDER_CONFIG"; then
+        error "Failed to configure Finder"
+        return 2
+    fi
 
-    killall Finder >/dev/null 2>&1
+    if ! killall Finder >/dev/null 2>&1; then
+        error "Failed to restart Finder"
+        return 2
+    fi
 
     success "Finder configured successfully"
+    return 0
 
 }

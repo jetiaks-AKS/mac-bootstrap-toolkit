@@ -24,8 +24,12 @@ apply_keyboard_settings() {
 
     info "Configuring Keyboard..."
 
-    apply_defaults_config "$KEYBOARD_CONFIG"
+    if ! apply_defaults_config "$KEYBOARD_CONFIG"; then
+        error "Failed to configure Keyboard"
+        return 2
+    fi
 
     success "Keyboard configured successfully"
+    return 0
 
 }

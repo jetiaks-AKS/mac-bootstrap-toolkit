@@ -24,8 +24,12 @@ apply_trackpad_settings() {
 
     info "Configuring Trackpad..."
 
-    apply_defaults_config "$TRACKPAD_CONFIG"
+    if ! apply_defaults_config "$TRACKPAD_CONFIG"; then
+        error "Failed to configure Trackpad"
+        return 2
+    fi
 
     success "Trackpad configured successfully"
+    return 0
 
 }
