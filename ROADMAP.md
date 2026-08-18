@@ -171,12 +171,12 @@ ShellCheck, единый test runner и CI не являются условия�
 
 Конечный release gate для ещё не выпущенной версии 3.0.0.
 
-- [ ] Завершить финальное согласование документации
-- [ ] Провести единый финальный release validation
-- [ ] Разрешить вопрос release graph / release history
+- [x] Завершить финальное согласование документации
+- [x] Провести единый финальный release validation
+- [x] Разрешить вопрос release graph / release history
 - [ ] Установить Toolkit version 3.0.0
-- [ ] Финализировать CHANGELOG и release notes 3.0.0
-- [ ] Обновить release-specific документацию для 3.0.0
+- [x] Финализировать CHANGELOG и release notes 3.0.0
+- [x] Обновить release-specific документацию для 3.0.0
 - [ ] Выполнить merge `develop` → `main`
 - [ ] Проверить состояние `main` после merge
 - [ ] Создать tag `v3.0.0`
