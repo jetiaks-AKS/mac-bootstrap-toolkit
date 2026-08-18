@@ -275,25 +275,7 @@ show_summary() {
 
     section "Summary"
 
-    if [[ $ERROR_COUNT -eq 0 ]]; then
-
-        case "$MODE" in
-
-            --discover)
-                success "Discovery completed successfully"
-                ;;
-
-            --bootstrap)
-                success "Bootstrap completed successfully"
-                ;;
-
-            --check)
-                success "System check completed successfully"
-                ;;
-
-        esac
-
-    else
+    if [[ $ERROR_COUNT -gt 0 ]]; then
 
         case "$MODE" in
 
@@ -307,6 +289,42 @@ show_summary() {
 
             --check)
                 error "System check completed with errors"
+                ;;
+
+        esac
+
+    elif [[ $WARNING_COUNT -gt 0 ]]; then
+
+        case "$MODE" in
+
+            --discover)
+                warning "Discovery completed with warnings"
+                ;;
+
+            --bootstrap)
+                warning "Bootstrap completed with warnings"
+                ;;
+
+            --check)
+                warning "System check completed with warnings"
+                ;;
+
+        esac
+
+    else
+
+        case "$MODE" in
+
+            --discover)
+                success "Discovery completed successfully"
+                ;;
+
+            --bootstrap)
+                success "Bootstrap completed successfully"
+                ;;
+
+            --check)
+                success "System check completed successfully"
                 ;;
 
         esac

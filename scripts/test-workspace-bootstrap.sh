@@ -68,8 +68,6 @@ repository_checkout() {
 repository_verify() {
     repository_clone "$2" "$1"
 }
-bootstrap_workspace_vscode() { return 0; }
-
 pass() { echo "PASS: $1"; }
 fail() { echo "FAIL: $1" >&2; ((TEST_FAILURES++)); }
 expect_status() {
@@ -132,6 +130,12 @@ write_valid_folders
 write_valid_repositories
 output="$(bootstrap_workspace)"; status=$?
 expect_status 0 "$status" "valid Workspace generated state continues to work"
+if [[ "$output" != *'Restoring VS Code workspace'* &&
+      "$output" != *'VS Code workspace restored'* ]]; then
+    pass "Workspace Bootstrap emits no false VS Code workspace restoration"
+else
+    fail "Workspace Bootstrap emitted false VS Code workspace restoration"
+fi
 if [[ -d "$HOME/Projects" && -d "$HOME/Other" &&
       "$(grep -c '^clone:' "$MUTATION_LOG")" -eq 2 ]]; then
     pass "no-Blueprint Workspace behavior remains all-inclusive"

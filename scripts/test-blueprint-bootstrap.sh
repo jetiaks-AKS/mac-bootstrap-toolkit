@@ -540,6 +540,10 @@ else
     fail "mixed Blueprint macOS apply (processed='$PROCESSED_ITEMS')"
 fi
 
+success() { echo "[ OK ] $1"; }
+warning() { echo "[WARN] $1"; }
+error() { echo "[ERROR] $1"; }
+
 write_generated_state
 write_blueprint true true
 MODE="--bootstrap"
@@ -555,7 +559,8 @@ summary_output="$(show_summary)"
 toolkit_exit_code
 after_status=$?
 
-if [[ "$summary_output" == *'Homebrew packages      2 / 2 selected'* &&
+if [[ "$summary_output" == *'Bootstrap completed successfully'* &&
+      "$summary_output" == *'Homebrew packages      2 / 2 selected'* &&
       "$summary_output" == *'Homebrew casks         2 / 2 selected'* &&
       "$summary_output" == *'App Store              2 / 2 selected'* &&
       "$summary_output" == *'VS Code extensions     2 / 2 selected'* &&
@@ -586,7 +591,9 @@ summary_output="$(show_summary)"
 toolkit_exit_code
 after_status=$?
 
-if [[ "$summary_output" == *'Homebrew packages      1 / 2 selected'* &&
+if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
+      "$summary_output" != *'Bootstrap completed successfully'* &&
+      "$summary_output" == *'Homebrew packages      1 / 2 selected'* &&
       "$summary_output" == *'Homebrew casks         1 / 2 selected'* &&
       "$summary_output" == *'App Store              1 / 2 selected'* &&
       "$summary_output" == *'VS Code extensions     1 / 2 selected'* &&
@@ -610,21 +617,28 @@ else
 fi
 
 write_blueprint false
-WARNING_COUNT=1
+WARNING_COUNT=0
 ERROR_COUNT=0
+summary_warning_module() { return 1; }
+summary_success_module() { return 0; }
+run_module "Summary Warning" summary_warning_module >/dev/null
+run_module "Summary Later Success" summary_success_module >/dev/null
 before_warnings=$WARNING_COUNT
+before_errors=$ERROR_COUNT
 toolkit_exit_code
 before_status=$?
 summary_output="$(show_summary)"
 toolkit_exit_code
 after_status=$?
 
-if [[ "$summary_output" == *'Homebrew packages      0 / 2 selected'* &&
+if [[ "$summary_output" == *'Bootstrap completed with warnings'* &&
+      "$summary_output" != *'Bootstrap completed successfully'* &&
+      "$summary_output" == *'Homebrew packages      0 / 2 selected'* &&
       "$summary_output" == *'App Store              0 / 2 selected'* &&
       "$summary_output" == *'Folders                0 / 2 selected'* &&
       "$summary_output" == *'Git repositories       0 / 2 selected'* &&
       $WARNING_COUNT -eq $before_warnings &&
-      $ERROR_COUNT -eq 0 &&
+      $ERROR_COUNT -eq $before_errors &&
       $before_status -eq 1 && $after_status -eq 1 ]]; then
     pass "Blueprint Bootstrap Summary reports zero selections and preserves stale warning status"
 else
@@ -640,11 +654,55 @@ ERROR_COUNT=0
 summary_output="$(show_summary)"
 
 if [[ "$summary_output" == *'Modules Checked : 7'* &&
+      "$summary_output" == *'Bootstrap completed successfully'* &&
       "$summary_output" != *'Applications'* &&
       "$summary_output" != *'selected'* ]]; then
     pass "missing Blueprint retains the legacy Bootstrap Summary"
 else
     fail "missing Blueprint showed a misleading Blueprint Summary"
+fi
+
+WARNING_COUNT=1
+ERROR_COUNT=0
+before_warnings=$WARNING_COUNT
+before_errors=$ERROR_COUNT
+toolkit_exit_code
+before_status=$?
+summary_output="$(show_summary)"
+toolkit_exit_code
+after_status=$?
+
+if [[ "$summary_output" == *'Bootstrap completed with warnings'* &&
+      "$summary_output" != *'Bootstrap completed successfully'* &&
+      "$summary_output" == *'Warnings        : 1'* &&
+      $WARNING_COUNT -eq $before_warnings &&
+      $ERROR_COUNT -eq $before_errors &&
+      $before_status -eq 1 && $after_status -eq 1 ]]; then
+    pass "legacy Bootstrap Summary reports warnings without changing status"
+else
+    fail "legacy warning Summary or lifecycle preservation failed"
+fi
+
+WARNING_COUNT=1
+ERROR_COUNT=1
+before_warnings=$WARNING_COUNT
+before_errors=$ERROR_COUNT
+toolkit_exit_code
+before_status=$?
+summary_output="$(show_summary)"
+toolkit_exit_code
+after_status=$?
+
+if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
+      "$summary_output" != *'Bootstrap completed successfully'* &&
+      "$summary_output" == *'Warnings        : 1'* &&
+      "$summary_output" == *'Errors          : 1'* &&
+      $WARNING_COUNT -eq $before_warnings &&
+      $ERROR_COUNT -eq $before_errors &&
+      $before_status -eq 2 && $after_status -eq 2 ]]; then
+    pass "legacy Bootstrap Summary gives errors precedence without changing status"
+else
+    fail "legacy error-precedence Summary or lifecycle preservation failed"
 fi
 
 git_test_root="$TEST_ROOT/git-configuration"
