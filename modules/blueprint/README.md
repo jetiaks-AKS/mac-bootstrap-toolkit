@@ -62,7 +62,7 @@ Create or edit the local Blueprint with:
 ```
 
 The selector offers All, None, or Edit for each discovered item area. Edit mode
-shows the current checkbox state on pages of 10 items. Entered numbers toggle
+shows the current checkbox state on pages of 20 items. Entered numbers toggle
 those checkboxes; they may be separated by commas or spaces and may include
 ranges such as `5-9` or mixed input such as `1,3,7-10`. Running `--blueprint`
 again loads the current choices for editing.

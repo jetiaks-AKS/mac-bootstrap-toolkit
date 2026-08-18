@@ -35,6 +35,20 @@ reset_selector_log() {
     : > "$LOG_FILE"
 }
 
+seed_selector_items() {
+    local count="$1"
+    local index
+
+    BLUEPRINT_SELECTOR_ITEMS=()
+    BLUEPRINT_SELECTOR_LABELS=()
+    BLUEPRINT_SELECTOR_SELECTED=()
+    for ((index = 1; index <= count; index++)); do
+        BLUEPRINT_SELECTOR_ITEMS+=("package-$index")
+        BLUEPRINT_SELECTOR_LABELS+=("package-$index")
+        BLUEPRINT_SELECTOR_SELECTED+=(true)
+    done
+}
+
 expect_parse() {
     local label="$1"
     local input="$2"
@@ -194,14 +208,32 @@ else
     fail "S remains accepted or changed selection"
 fi
 
-blueprint_selector_set_all true
-pagination_output="$(blueprint_selector_select_items "Packages" <<< $'p\nn\nn\np\nd')"
-if grep -q 'Packages — 1/2' <<< "$pagination_output" &&
-   grep -q 'Packages — 2/2' <<< "$pagination_output" &&
-   grep -q '11\. \[x\] package-11' <<< "$pagination_output"; then
-    pass "pagination boundaries keep stable global numbering"
+seed_selector_items 20
+single_page_output="$(blueprint_selector_select_items "Packages" <<< $'n\nd')"
+if grep -q 'Packages — 1/1' <<< "$single_page_output" &&
+   grep -q '20\. \[x\] package-20' <<< "$single_page_output" &&
+   ! grep -q 'Packages — 2/' <<< "$single_page_output"; then
+    pass "20 items fit on one page"
 else
-    fail "pagination or stable numbering failed"
+    fail "20-item page boundary is incorrect"
+fi
+
+seed_selector_items 25
+pagination_file="$TEST_ROOT/pagination.out"
+blueprint_selector_select_items "Packages" <<< $'p\n19-22\nn\n21\np\nn\nd' > "$pagination_file"
+page_two_first_item="$(awk '/Packages — 2\/2/ { on_page_two = 1; next } on_page_two && /\[[x ]\]/ { print $1; exit }' "$pagination_file")"
+if grep -q 'Packages — 1/2' "$pagination_file" &&
+   grep -q 'Packages — 2/2' "$pagination_file" &&
+   [[ "$page_two_first_item" == "21." ]] &&
+   grep -q '21\. \[ \] package-21' "$pagination_file" &&
+   grep -q '21\. \[x\] package-21' "$pagination_file" &&
+   [[ "${BLUEPRINT_SELECTOR_SELECTED[18]}" == false &&
+      "${BLUEPRINT_SELECTOR_SELECTED[19]}" == false &&
+      "${BLUEPRINT_SELECTOR_SELECTED[20]}" == true &&
+      "${BLUEPRINT_SELECTOR_SELECTED[21]}" == false ]]; then
+    pass "21+ items paginate with global navigation, toggles, and boundary ranges"
+else
+    fail "pagination, global numbering, navigation, or boundary selection failed"
 fi
 
 write_existing_blueprint

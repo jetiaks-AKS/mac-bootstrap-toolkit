@@ -4,7 +4,7 @@
 # Interactive Blueprint Selector
 # ==========================================
 
-BLUEPRINT_PAGE_SIZE=10
+BLUEPRINT_PAGE_SIZE=20
 BLUEPRINT_SELECTOR_ITEMS=()
 BLUEPRINT_SELECTOR_LABELS=()
 BLUEPRINT_SELECTOR_SELECTED=()
