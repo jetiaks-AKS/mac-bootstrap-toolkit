@@ -337,7 +337,15 @@ show_summary() {
     echo "------------------------------------------"
     log "------------------------------------------"
 
-    if [[ "$MODE" == "--bootstrap" &&
+    if [[ "$MODE" == "--discover" ]]; then
+        echo "Modules Processed : $MODULES_CHECKED"
+        echo "Warnings          : $WARNING_COUNT"
+        echo "Errors            : $ERROR_COUNT"
+
+        log "Modules Processed : $MODULES_CHECKED"
+        log "Warnings          : $WARNING_COUNT"
+        log "Errors            : $ERROR_COUNT"
+    elif [[ "$MODE" == "--bootstrap" &&
           "${BLUEPRINT_BOOTSTRAP_SUMMARY:-false}" == true ]] &&
        blueprint_exists &&
        command -v blueprint_show_bootstrap_summary >/dev/null 2>&1; then

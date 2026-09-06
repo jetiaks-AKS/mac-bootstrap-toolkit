@@ -11,6 +11,12 @@ The format is based on the principles of **Keep a Changelog**.
 
 Current development after the **3.0.0 Stable** release.
 
+### Fixed
+
+* Discovery Summary now reports modules processed, warnings, and errors instead
+  of Bootstrap-oriented Installed / Skipped counts, in both terminal and log.
+  Existing lifecycle accounting and Check / Bootstrap summaries are unchanged.
+
 ## [3.0.0] - 18.08.2026
 
 Major release introducing **Blueprint** as the selection layer between

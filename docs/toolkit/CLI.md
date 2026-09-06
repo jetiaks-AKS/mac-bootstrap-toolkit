@@ -159,7 +159,7 @@ lifecycle из history log.
 
 ## Lifecycle/count Summary
 
-Check, Discovery и Bootstrap без Blueprint используют существующий Summary
+Check и Bootstrap без Blueprint используют существующий Summary
 жизненного цикла. Он может включать:
 
 ```text
@@ -189,7 +189,24 @@ Errors          : 0
 Duration        : 15s
 ```
 
-Headline определяется lifecycle-счётчиками с приоритетом:
+Discovery использует отдельный набор полей:
+
+```text
+Modules Processed : 10
+Warnings          : 0
+Errors            : 0
+```
+
+`Modules Processed` — существующий счётчик вызовов `run_module()`, включая
+четыре общих Core-модуля и шесть Discovery-модулей при полном проходе.
+Это не число обнаруженных компонентов или опубликованных файлов. `Warnings`
+и `Errors` сохраняют существующий учёт результатов lifecycle, включая ошибку
+preflight; они не считают каждое отдельное сообщение. При остановке на
+preflight число обработанных модулей равно нулю. Поля `Installed` и `Skipped`
+в Discovery Summary не выводятся. `Duration` сохраняется при наличии времени
+начала запуска. Терминал и лог содержат одинаковые поля и значения.
+
+Во всех режимах headline определяется lifecycle-счётчиками с приоритетом:
 
 ```text
 ERROR_COUNT > 0
