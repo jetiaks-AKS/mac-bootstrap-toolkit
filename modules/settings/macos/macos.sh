@@ -17,10 +17,6 @@ source modules/settings/macos/screenshots.sh
 
 check_macos_settings() {
 
-    if [[ "${MACOS_APPLY_FAILED:-false}" == true ]]; then
-        return 2
-    fi
-
     local settings_result=0
     local category_result
 
@@ -83,8 +79,6 @@ check_macos_settings() {
 # ==========================================
 
 apply_macos_settings() {
-
-    MACOS_APPLY_FAILED=false
 
     run_configuration \
         "macOS Settings" \
@@ -167,10 +161,7 @@ apply_macos_components() {
         esac
     fi
 
-    if [[ $apply_result -eq 2 ]]; then
-        MACOS_APPLY_FAILED=true
-        return 2
-    fi
+    [[ $apply_result -ne 2 ]] || return 2
 
     return 0
 

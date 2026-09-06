@@ -149,7 +149,6 @@ reset_case() {
     POST_WRITE_MODE="match"
     KILLALL_STATUS=0
     MKDIR_STATUS=0
-    MACOS_APPLY_FAILED=false
 }
 
 # Valid matching values retain type-safe, configured-empty semantics.
@@ -375,7 +374,7 @@ CHECK_FINDER_STATUS=2
 CHECK_DOCK_STATUS=1
 apply_macos_components >/dev/null 2>&1; status=$?
 expect_status 2 "$status" "repeat category check 2 remains error"
-if [[ "$(cat "$MUTATION_LOG")" == 'apply:dock' && "$MACOS_APPLY_FAILED" == true ]]; then
+if [[ "$(cat "$MUTATION_LOG")" == 'apply:dock' ]]; then
     pass "check error skips its apply and later category success cannot erase it"
 else
     fail "check error reached apply or was erased by later category"

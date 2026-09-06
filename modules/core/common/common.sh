@@ -179,9 +179,10 @@ run_configuration() {
 
     log "[MODULE] START: $module_name"
 
-    $check_function >/dev/null 2>&1
+    local result
 
-    local result=$?
+    $check_function >/dev/null 2>&1
+    result=$?
 
     case $result in
 
@@ -199,23 +200,48 @@ run_configuration() {
 
         1)
 
-            if $apply_function; then
-                MODULE_CHANGED=true
+            $apply_function
+            result=$?
+
+            if [[ $result -ne 0 ]]; then
+                if [[ "$MODULE_CHANGED" == true ]]; then
+                    ((INSTALLED_COUNT++))
+                else
+                    ((SKIPPED_COUNT++))
+                fi
+
+                log "[MODULE] Changed: $MODULE_CHANGED"
+                log "[MODULE] RESULT: ERROR"
+
+                error "$module_name configuration failed"
+
+                ((ERROR_COUNT++))
+                return 2
             fi
 
             $check_function >/dev/null 2>&1
+            result=$?
 
-            if [[ $? -eq 0 ]]; then
+            if [[ $result -eq 0 ]]; then
+                if [[ "$MODULE_CHANGED" == true ]]; then
+                    ((INSTALLED_COUNT++))
+                else
+                    ((SKIPPED_COUNT++))
+                fi
 
-                ((INSTALLED_COUNT++))
-
-                log "[MODULE] Changed: Yes"
+                log "[MODULE] Changed: $MODULE_CHANGED"
                 log "[MODULE] RESULT: SUCCESS"
 
                 success "$module_name configured successfully"
 
                 return 0
 
+            fi
+
+            if [[ "$MODULE_CHANGED" == true ]]; then
+                ((INSTALLED_COUNT++))
+            else
+                ((SKIPPED_COUNT++))
             fi
 
             log "[MODULE] Changed: $MODULE_CHANGED"

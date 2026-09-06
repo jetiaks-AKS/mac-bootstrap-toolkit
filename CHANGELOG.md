@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* `run_configuration()` now returns error 2 immediately when Apply fails and
+  verifies only after successful Apply. Verify mismatch or observation failure
+  returns error 2, while consumer-owned Changed state is preserved. The macOS
+  Apply-failure guard is no longer needed by the generic lifecycle.
+
 * Workspace folder restoration now distinguishes present, absent, and erroneous
   paths, creates only confirmed-absent folders, and verifies the resulting
   directory before success. Retained folder creation is recorded in Changed,
