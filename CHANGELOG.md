@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Homebrew formula Bootstrap validates the complete generated list before
+  installation, distinguishes inventory errors from absence, and verifies
+  presence after successful installs. Changed state is recorded only after a
+  successful install and remains recorded if a later install or verification
+  fails; Bootstrap does not roll back earlier successful installations.
+
 * Discovery Summary now reports modules processed, warnings, and errors instead
   of Bootstrap-oriented Installed / Skipped counts, in both terminal and log.
   Existing lifecycle accounting and Check / Bootstrap summaries are unchanged.

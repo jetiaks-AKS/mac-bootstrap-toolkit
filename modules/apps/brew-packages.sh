@@ -1,6 +1,59 @@
 #!/bin/bash
 
 # ==========================================
+# Read and Validate Generated Formulae
+# ==========================================
+
+read_brew_packages_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    # Only formula names, optionally qualified as owner/tap/formula.
+    # Emit a validated snapshot so a later record cannot fail after mutation.
+    LC_ALL=C awk '
+        /^$/ || /^#/ { next }
+        {
+            count = split($0, parts, "/")
+            if (count != 1 && count != 3) exit 2
+            for (i = 1; i <= count; i++) {
+                if (parts[i] !~ /^[A-Za-z0-9][A-Za-z0-9+_.@-]*$/) exit 2
+            }
+            if (tolower($0) ~ /\.rb$/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
+# ==========================================
+# Inspect Formula Presence (0 Present, 1 Absent, 2 Error)
+# ==========================================
+
+is_brew_package_installed() {
+
+    local package="$1"
+    local inventory
+
+    inventory="$(brew list --formula --full-name)" || return 2
+
+    # Discovery emits short names. Qualified inputs must match the tap too;
+    # ambiguous short names are an observation error, not confirmed absence.
+    LC_ALL=C awk -v package="$package" '
+        {
+            count = split($0, parts, "/")
+            if ($0 == package || "homebrew/core/" $0 == package ||
+                (index(package, "/") == 0 && parts[count] == package)) matches++
+        }
+        END { exit(matches > 1 ? 2 : (matches == 1 ? 0 : 1)) }
+    ' <<< "$inventory"
+
+}
+
+# ==========================================
 # Install Homebrew Packages
 # ==========================================
 
@@ -22,14 +75,17 @@ install_brew_packages() {
     local config_file
     config_file="$(blueprint_generated_file homebrew-packages)"
 
-    if [[ ! -f "$config_file" ]]; then
+    local packages
+    if ! packages="$(read_brew_packages_configuration "$config_file")"; then
 
-        error "Configuration file $config_file not found"
+        error "Formula configuration missing, unreadable, or malformed: $config_file"
         return 2
 
     fi
 
     local missing_packages=0
+    local package
+    local inspection_result
 
     while IFS= read -r package || [[ -n "$package" ]]; do
 
@@ -37,16 +93,22 @@ install_brew_packages() {
         [[ "$package" =~ ^# ]] && continue
         blueprint_item_selected homebrew-packages "$package" || continue
 
-        if brew list "$package" >/dev/null 2>&1; then
+        is_brew_package_installed "$package"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
 
             detail "$package is already installed"
             continue
 
         fi
 
-        ((missing_packages++))
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect Homebrew formula: $package"
+            return 2
+        fi
 
-        MODULE_CHANGED=true
+        ((missing_packages++))
 
         if [[ $missing_packages -eq 1 ]]; then
             action "Installing Homebrew Packages..."
@@ -72,9 +134,16 @@ install_brew_packages() {
 
         fi
 
+        MODULE_CHANGED=true
+
+        if ! is_brew_package_installed "$package"; then
+            error "Failed to verify Homebrew formula: $package"
+            return 2
+        fi
+
         success "$package installed successfully"
 
-    done < "$config_file"
+    done <<< "$packages"
 
     if [[ $missing_packages -eq 0 ]]; then
 

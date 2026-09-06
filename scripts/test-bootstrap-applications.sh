@@ -30,6 +30,7 @@ blueprint_generated_file() {
         app-store) printf '%s\n' "$TEST_DIR/appstore.conf" ;;
         vscode-extensions) printf '%s\n' "$TEST_DIR/vscode-extensions.conf" ;;
         homebrew-casks) printf '%s\n' "$TEST_DIR/brew-casks.conf" ;;
+        homebrew-packages) printf '%s\n' "$TEST_DIR/brew-packages.conf" ;;
     esac
 }
 
@@ -74,7 +75,37 @@ BREW_INSTALL_MAKES_PRESENT=false
 BREW_INSTALLED_FILE="$TEST_DIR/brew-installed"
 JQ_STATUS=0
 JQ_OUTPUT=""
+FORMULA_INSTALLED_FILE="$TEST_DIR/formula-installed"
+FORMULA_READ_STATUS=0
+FORMULA_READ_FAIL_AT=0
+FORMULA_VERIFY_READ_STATUS=0
+FORMULA_INSTALL_FAIL_PACKAGE=""
+FORMULA_INSTALL_MAKES_PRESENT=true
+FORMULA_INSTALL_COUNT=0
 brew() {
+    if [[ "$*" == 'list --formula --full-name' ]]; then
+        printf 'brew formula list\n' >> "$OBSERVATION_LOG"
+        [[ $FORMULA_READ_STATUS -eq 0 ]] || return "$FORMULA_READ_STATUS"
+        if [[ "$(grep -c '^brew formula list$' "$OBSERVATION_LOG")" -eq $FORMULA_READ_FAIL_AT ]]; then
+            return 2
+        fi
+        if [[ $FORMULA_INSTALL_COUNT -gt 0 && $FORMULA_VERIFY_READ_STATUS -ne 0 ]]; then
+            return "$FORMULA_VERIFY_READ_STATUS"
+        fi
+        cat "$FORMULA_INSTALLED_FILE"
+        return 0
+    fi
+
+    if [[ "$1" == install && "$2" != --cask ]]; then
+        printf 'brew install %s\n' "$2" >> "$COMMAND_LOG"
+        ((FORMULA_INSTALL_COUNT++))
+        [[ "$2" != "$FORMULA_INSTALL_FAIL_PACKAGE" ]] || return 2
+        if [[ "$FORMULA_INSTALL_MAKES_PRESENT" == true ]]; then
+            printf '%s\n' "$2" >> "$FORMULA_INSTALLED_FILE"
+        fi
+        return 0
+    fi
+
     if [[ "$1" == list && "$2" == --cask ]]; then
         printf 'brew list\n' >> "$OBSERVATION_LOG"
         cat "$BREW_INSTALLED_FILE"
@@ -104,6 +135,7 @@ jq() {
 source modules/apps/appstore.sh
 source modules/vscode/extensions.sh
 source modules/apps/brew-casks.sh
+source modules/apps/brew-packages.sh
 
 pass() { echo "PASS: $*"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -120,7 +152,7 @@ assert_no_mutation() {
 assert_no_false_success() {
     local output="$1"
     local name="$2"
-    if grep -Eq 'installed successfully|applications are ready|extensions are ready|casks are ready|All .* installed' <<< "$output"; then
+    if grep -Eq 'installed successfully|applications are ready|extensions are ready|casks are ready|Packages are ready|All .* installed' <<< "$output"; then
         fail "$name"
     fi
     pass "$name"
@@ -129,6 +161,13 @@ reset_state() {
     : > "$COMMAND_LOG"
     : > "$OBSERVATION_LOG"
     : > "$BREW_INSTALLED_FILE"
+    : > "$FORMULA_INSTALLED_FILE"
+    FORMULA_READ_STATUS=0
+    FORMULA_READ_FAIL_AT=0
+    FORMULA_VERIFY_READ_STATUS=0
+    FORMULA_INSTALL_FAIL_PACKAGE=""
+    FORMULA_INSTALL_MAKES_PRESENT=true
+    FORMULA_INSTALL_COUNT=0
     MODULE_CHANGED=false
     BLUEPRINT_PRESENT=false
     SELECTED_ITEMS=""
@@ -149,6 +188,177 @@ reset_state() {
 printf '111|Installed App\n222|Missing App\n' > "$TEST_DIR/appstore.conf"
 printf 'installed.extension\nmissing.extension\n' > "$TEST_DIR/vscode-extensions.conf"
 printf 'example-cask\n' > "$TEST_DIR/brew-casks.conf"
+
+# Formula lifecycle uses real production validation and inspection helpers.
+# Execute directly: a subshell would hide MODULE_CHANGED from assertions.
+run_formula_case() {
+    install_brew_packages > "$TEST_DIR/formula.out" 2>&1
+    status=$?
+    output="$(cat "$TEST_DIR/formula.out")"
+}
+reset_formula_case() {
+    reset_state
+    printf 'alpha\nbeta\n' > "$TEST_DIR/brew-packages.conf"
+}
+
+reset_formula_case
+printf 'alpha\nbeta\n' > "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 0 "$status" "already-installed formulae succeed"
+assert_no_mutation "already-installed formulae perform no installs"
+[[ "$MODULE_CHANGED" == false ]] || fail "already-installed formulae set Changed"
+pass "already-installed formulae preserve Changed=false"
+
+reset_formula_case
+printf 'alpha\n' > "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 0 "$status" "absent formula installs and verifies"
+[[ "$(cat "$COMMAND_LOG")" == 'brew install beta' && "$MODULE_CHANGED" == true ]] || fail "formula install/Changed mismatch"
+[[ "$(grep -c '^brew formula list$' "$OBSERVATION_LOG")" -eq 3 ]] || fail "formula verification observation missing"
+grep -Fxq beta "$FORMULA_INSTALLED_FILE" || fail "formula not installed"
+pass "formula install is verified and records Changed=true"
+: > "$COMMAND_LOG"
+MODULE_CHANGED=false
+run_formula_case
+assert_status 0 "$status" "repeated formula run succeeds"
+assert_no_mutation "repeated formula run is idempotent"
+[[ "$MODULE_CHANGED" == false ]] || fail "idempotent run set Changed"
+
+for read_failure in 1 2 7; do
+    reset_formula_case
+    FORMULA_READ_STATUS=$read_failure
+    run_formula_case
+    assert_status 2 "$status" "formula inventory failure $read_failure returns 2"
+    assert_no_mutation "formula inventory failure $read_failure blocks installs"
+    assert_no_false_success "$output" "formula inventory failure has no success"
+    [[ "$MODULE_CHANGED" == false ]] || fail "formula read error set Changed"
+done
+
+reset_formula_case
+FORMULA_INSTALL_FAIL_PACKAGE=alpha
+run_formula_case
+assert_status 2 "$status" "failed first formula install returns 2"
+[[ "$MODULE_CHANGED" == false && "$(cat "$COMMAND_LOG")" == 'brew install alpha' ]] || fail "failed first install changed state or continued"
+[[ "$(grep -c '^brew formula list$' "$OBSERVATION_LOG")" -eq 1 ]] || fail "failed install reached Verify"
+assert_no_false_success "$output" "failed first formula install has no success"
+
+reset_formula_case
+FORMULA_INSTALL_FAIL_PACKAGE=beta
+run_formula_case
+assert_status 2 "$status" "later formula failure returns 2 after earlier success"
+[[ "$MODULE_CHANGED" == true && "$(cat "$FORMULA_INSTALLED_FILE")" == alpha ]] || fail "partial mutation was lost"
+[[ "$output" == *'alpha installed successfully'* && "$output" != *'beta installed successfully'* && "$output" != *'Packages are ready'* ]] || fail "partial failure success messages are misleading"
+pass "non-transactional formula failure retains earlier mutation and honest output"
+
+reset_formula_case
+FORMULA_READ_FAIL_AT=3
+run_formula_case
+assert_status 2 "$status" "later formula observation error preserves earlier successful install"
+[[ "$MODULE_CHANGED" == true && "$(cat "$COMMAND_LOG")" == 'brew install alpha' ]] || fail "later read error lost mutation or attempted another install"
+[[ "$output" == *'alpha installed successfully'* && "$output" != *'beta installed successfully'* && "$output" != *'Packages are ready'* ]] || fail "later read error emitted false completion"
+
+for verify_failure in absent read-error; do
+    reset_formula_case
+    if [[ "$verify_failure" == absent ]]; then
+        FORMULA_INSTALL_MAKES_PRESENT=false
+    else
+        FORMULA_VERIFY_READ_STATUS=2
+    fi
+    run_formula_case
+    assert_status 2 "$status" "formula post-install $verify_failure returns 2"
+    [[ "$MODULE_CHANGED" == true && "$(cat "$COMMAND_LOG")" == 'brew install alpha' ]] || fail "Verify failure lost mutation or continued installs"
+    assert_no_false_success "$output" "formula Verify failure emits no success"
+done
+
+for invalid in '-force' 'has space' '../outside' '/tmp/formula.rb' 'formula.rb' 'https://example.org/a' 'alpha|extra' 'owner//name' 'name;command' $'name\r'; do
+    reset_formula_case
+    printf 'alpha\n%s\n' "$invalid" > "$TEST_DIR/brew-packages.conf"
+    run_formula_case
+    assert_status 2 "$status" "invalid formula record '$invalid' returns 2"
+    assert_no_mutation "late invalid formula blocks earlier valid install"
+    [[ "$MODULE_CHANGED" == false && ! -s "$OBSERVATION_LOG" ]] || fail "invalid formula input reached observation or changed state"
+done
+
+reset_formula_case
+rm "$TEST_DIR/brew-packages.conf"
+run_formula_case
+assert_status 2 "$status" "missing formula input returns 2"
+assert_no_mutation "missing formula input blocks installs"
+
+reset_formula_case
+chmod 000 "$TEST_DIR/brew-packages.conf"
+run_formula_case
+chmod 600 "$TEST_DIR/brew-packages.conf"
+assert_status 2 "$status" "unreadable formula input returns 2"
+assert_no_mutation "unreadable formula input blocks installs"
+
+reset_formula_case
+printf '# comment\n\n' > "$TEST_DIR/brew-packages.conf"
+run_formula_case
+assert_status 0 "$status" "empty/comment-only formula input remains valid"
+assert_no_mutation "empty formula input installs nothing"
+
+reset_formula_case
+BLUEPRINT_PRESENT=true
+SELECTED_ITEMS=beta
+run_formula_case
+assert_status 0 "$status" "Blueprint formula subset installs and verifies"
+[[ "$(cat "$COMMAND_LOG")" == 'brew install beta' ]] || fail "Blueprint formula subset changed"
+pass "Blueprint excludes unselected formulae"
+
+reset_formula_case
+BLUEPRINT_PRESENT=true
+SELECTED_ITEMS=""
+rm "$TEST_DIR/brew-packages.conf"
+run_formula_case
+assert_status 0 "$status" "empty Blueprint formula selection needs no input"
+[[ ! -s "$COMMAND_LOG" && ! -s "$OBSERVATION_LOG" && "$MODULE_CHANGED" == false ]] || fail "empty Blueprint scope observed or mutated"
+
+reset_formula_case
+printf '# names and final line without newline\nopenssl@3\nowner/tap/tool' > "$TEST_DIR/brew-packages.conf"
+run_formula_case
+assert_status 0 "$status" "versioned and qualified formula names retain their format"
+[[ "$(cat "$COMMAND_LOG")" == $'brew install openssl@3\nbrew install owner/tap/tool' ]] || fail "formula names were transformed or dropped"
+
+reset_formula_case
+printf 'tool\n' > "$TEST_DIR/brew-packages.conf"
+printf 'owner/tap/tool\n' > "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 0 "$status" "Discovery short name recognizes installed tap formula"
+assert_no_mutation "installed tap short name is not reinstalled"
+printf 'other/tap/tool\n' >> "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 2 "$status" "ambiguous installed short name returns 2"
+assert_no_mutation "ambiguous formula inspection blocks installs"
+
+reset_formula_case
+printf 'homebrew/core/alpha\n' > "$TEST_DIR/brew-packages.conf"
+printf 'alpha\n' > "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 0 "$status" "explicit core formula recognizes canonical inventory name"
+assert_no_mutation "qualified core formula is not reinstalled"
+
+reset_formula_case
+printf 'owner/tap/tool\n' > "$TEST_DIR/brew-packages.conf"
+printf 'other/tap/tool\n' > "$FORMULA_INSTALLED_FILE"
+run_formula_case
+assert_status 0 "$status" "qualified formula installs despite same basename from another tap"
+[[ "$(cat "$COMMAND_LOG")" == 'brew install owner/tap/tool' ]] || fail "qualified formula ignored tap identity"
+
+reset_formula_case
+printf 'alpha\nalpha\n' > "$TEST_DIR/brew-packages.conf"
+run_formula_case
+assert_status 0 "$status" "duplicate valid formula records are idempotent"
+[[ "$(cat "$COMMAND_LOG")" == 'brew install alpha' ]] || fail "duplicate record installed twice"
+
+reset_formula_case
+VERBOSE=true
+FORMULA_INSTALL_FAIL_PACKAGE=alpha
+run_formula_case
+VERBOSE=false
+assert_status 2 "$status" "verbose formula install failure returns 2"
+[[ "$MODULE_CHANGED" == false ]] || fail "verbose failed formula install set Changed"
+assert_no_false_success "$output" "verbose failed formula install emits no success"
 
 # App Store observation, apply, and failure semantics.
 reset_state
@@ -328,6 +538,13 @@ run_module "Homebrew Casks" install_brew_casks > "$TEST_DIR/run-module.out" 2>&1
 assert_status 2 "$status" "Homebrew cask observation failure reaches run_module as error 2"
 [[ "$ERROR_COUNT" -eq 3 ]] || fail "Homebrew cask run_module records the error"
 pass "Homebrew cask run_module records the error"
+
+reset_formula_case
+FORMULA_READ_STATUS=2
+run_module "Homebrew Packages" install_brew_packages > "$TEST_DIR/run-module.out" 2>&1; status=$?
+assert_status 2 "$status" "formula observation failure reaches run_module as error 2"
+[[ "$ERROR_COUNT" -eq 4 && "$MODULE_CHANGED" == false ]] || fail "formula error accounting changed"
+assert_no_mutation "formula lifecycle observation failure performs zero installs"
 
 later_success() { return 0; }
 run_module "Later Success" later_success > "$TEST_DIR/run-module.out" 2>&1

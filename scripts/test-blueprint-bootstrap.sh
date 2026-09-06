@@ -46,6 +46,10 @@ command() {
 
 brew() {
     if [[ "$1" == list ]]; then
+        if [[ "$*" == 'list --formula --full-name' ]]; then
+            printf '%s\n' ${PROCESSED_ITEMS:-}
+            return 0
+        fi
         return 1
     fi
 
