@@ -42,6 +42,49 @@ workspace_folder_first_missing_path() {
 
 }
 
+# ==========================================
+# Workspace Folders Preview
+# ==========================================
+
+preview_workspace_folders() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items workspace-folders)" ]]; then
+        return 0
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file workspace-folders)"
+
+    local folders folder inspection_result
+    if ! folders="$(workspace_read_bootstrap_folders "$config_file")"; then
+        error "Workspace folders configuration is missing, unreadable, or not actionable"
+        return 2
+    fi
+
+    while IFS= read -r folder; do
+        [[ -n "$folder" ]] || continue
+
+        workspace_folder_state "$folder"
+        inspection_result=$?
+
+        case $inspection_result in
+            0)
+                detail "$folder already exists"
+                ;;
+            1)
+                action "Would create workspace folder: $HOME/$folder"
+                ;;
+            *)
+                error "Failed to inspect workspace folder: $folder"
+                return 2
+                ;;
+        esac
+    done <<< "$folders"
+
+    return 0
+}
+
 bootstrap_workspace_folders() {
 
     if blueprint_exists &&

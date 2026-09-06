@@ -628,6 +628,110 @@ expect_status 2 "$status" 'folder lifecycle error propagates through Workspace'
 [[ "$MODULE_CHANGED" == true && "$(grep -c '^clone:' "$MUTATION_LOG")" == 0 ]] ||
     fail 'folder error did not retain Changed or allowed repository mutation'
 
+# Workspace Preview reuses the W1-W4 readers and inspection helpers without Apply.
+PREVIEW_ACTIONS=""
+PREVIEW_WARNINGS=""
+PREVIEW_ERRORS=""
+action() { PREVIEW_ACTIONS="${PREVIEW_ACTIONS}${PREVIEW_ACTIONS:+|}$*"; }
+warning() { PREVIEW_WARNINGS="${PREVIEW_WARNINGS}${PREVIEW_WARNINGS:+|}$*"; }
+error() { PREVIEW_ERRORS="${PREVIEW_ERRORS}${PREVIEW_ERRORS:+|}$*"; }
+reset_preview_messages() {
+    PREVIEW_ACTIONS=""
+    PREVIEW_WARNINGS=""
+    PREVIEW_ERRORS=""
+    : > "$MUTATION_LOG"
+    MODULE_CHANGED=preserved
+}
+
+reset_folder_lifecycle
+command mkdir -p "$HOME/Projects"
+reset_preview_messages
+preview_workspace_folders; status=$?
+expect_status 0 "$status" 'Preview existing folder succeeds'
+[[ -z "$PREVIEW_ACTIONS" && "$MODULE_CHANGED" == preserved && ! -s "$MUTATION_LOG" ]] ||
+    fail 'Preview existing folder planned or mutated'
+
+reset_folder_lifecycle
+FOLDER_MKDIR_TARGET="$HOME/Projects"
+reset_preview_messages
+preview_workspace_folders; status=$?
+expect_status 0 "$status" 'Preview absent folder succeeds'
+[[ "$PREVIEW_ACTIONS" == "Would create workspace folder: $HOME/Projects" &&
+   ! -e "$HOME/Projects" && "$MODULE_CHANGED" == preserved && ! -s "$MUTATION_LOG" ]] ||
+    fail 'Preview absent folder plan or mutation is incorrect'
+first_preview="$PREVIEW_ACTIONS"
+reset_preview_messages
+preview_workspace_folders; status=$?
+[[ $status -eq 0 && "$PREVIEW_ACTIONS" == "$first_preview" && ! -s "$MUTATION_LOG" ]] ||
+    fail 'repeated folder Preview is unstable or mutating'
+
+reset_folder_lifecycle
+printf 'wrong type\n' > "$HOME/Projects"
+reset_preview_messages
+preview_workspace_folders; status=$?
+expect_status 2 "$status" 'Preview wrong-type folder is an observation error'
+[[ -z "$PREVIEW_ACTIONS" && ! -s "$MUTATION_LOG" ]] || fail 'wrong-type folder Preview mutated'
+
+reset_folder_lifecycle
+command mkdir -p "$HOME/Projects"
+chmod 000 "$HOME/Projects"
+reset_preview_messages
+preview_workspace_folders; status=$?
+chmod 700 "$HOME/Projects"
+expect_status 2 "$status" 'Preview inaccessible folder is an observation error'
+[[ -z "$PREVIEW_ACTIONS" && ! -s "$MUTATION_LOG" ]] || fail 'folder observation error Preview mutated'
+
+for scenario in correct absent different detached dirty remote-mismatch branch-error remote-error worktree-error non-git; do
+    reset_observation
+    reset_preview_messages
+    expected=0
+    case "$scenario" in
+        absent) rmdir "$HOME/Projects/example/.git" "$HOME/Projects/example" ;;
+        different) OBSERVED_BRANCH=other ;;
+        detached) OBSERVED_BRANCH="" ;;
+        dirty) OBSERVED_BRANCH=other; WORKTREE_STATUS=1; expected=1 ;;
+        remote-mismatch) OBSERVED_REMOTE=git@example.com:other.git; expected=1 ;;
+        branch-error|remote-error|worktree-error) OBSERVATION_MODE="$scenario"; expected=2 ;;
+        non-git) rmdir "$HOME/Projects/example/.git"; expected=1 ;;
+    esac
+    repository_preview example "$HOME/Projects/example" 'git@example.com:example.git' main
+    status=$?
+    expect_status "$expected" "$status" "repository Preview: $scenario"
+    case "$scenario" in
+        absent) [[ "$PREVIEW_ACTIONS" == 'Would clone repository: example' ]] || fail 'absent repository clone plan is incorrect' ;;
+        different|detached) [[ "$PREVIEW_ACTIONS" == 'Would switch repository branch: example -> main' ]] || fail "$scenario branch plan is incorrect" ;;
+        dirty) [[ -z "$PREVIEW_ACTIONS" && "$PREVIEW_WARNINGS" == *'uncommitted changes'* ]] || fail 'dirty repository policy changed' ;;
+        remote-mismatch) [[ -z "$PREVIEW_ACTIONS" && "$PREVIEW_WARNINGS" == *'Remote does not match'* ]] || fail 'remote mismatch policy changed' ;;
+        correct) [[ -z "$PREVIEW_ACTIONS" ]] || fail 'correct repository produced a plan' ;;
+    esac
+    [[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == preserved ]] || fail "$scenario Preview mutated or changed state"
+done
+
+reset_observation
+mkdir -p "$HOME/Projects/second/.git"
+{
+    write_repository_section example "$HOME/Projects/example"
+    write_repository_section second "$HOME/Projects/second"
+} > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+BLUEPRINT_PRESENT=true
+SELECTED_REPOSITORIES=example
+FAIL_BRANCH_PATH="$HOME/Projects/second"
+reset_preview_messages
+preview_workspace_repositories; status=$?
+expect_status 0 "$status" 'repository Preview preserves Blueprint subset'
+[[ -z "$PREVIEW_ACTIONS" && ! -s "$MUTATION_LOG" ]] || fail 'unselected repository was inspected or mutated'
+
+reset_folder_lifecycle
+printf 'Projects|workspace\nOther|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+BLUEPRINT_PRESENT=true
+SELECTED_FOLDERS=Projects
+command mkdir -p "$HOME/Projects"
+printf 'wrong type\n' > "$HOME/Other"
+reset_preview_messages
+preview_workspace_folders; status=$?
+expect_status 0 "$status" 'folder Preview preserves Blueprint subset'
+[[ -z "$PREVIEW_ACTIONS" && ! -s "$MUTATION_LOG" ]] || fail 'unselected folder was inspected or mutated'
+
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Workspace Bootstrap validation tests passed"

@@ -333,8 +333,11 @@ run_preview() {
         run_inspection "VS Code Settings Preview" preview_vscode_settings
     fi
 
+    run_inspection "Workspace Folders Preview" preview_workspace_folders
+    run_inspection "Workspace Repositories Preview" preview_workspace_repositories
+
     section "Preview"
-    info "Workspace and macOS Preview are not implemented yet"
+    info "macOS Preview is not implemented yet"
     return 0
 
 }

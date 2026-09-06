@@ -158,8 +158,8 @@ Global Verification
 ```
 
 The `--dry-run` CLI, its read-only startup path, and Preview for Applications,
-Git configuration, and VS Code settings are implemented. Preview for the
-remaining domains and Global Verification remain planned and unimplemented.
+Git configuration, VS Code settings, and Workspace are implemented. macOS
+Preview and Global Verification remain planned and unimplemented.
 
 ### Dry-run / Preview
 
@@ -171,10 +171,12 @@ implemented for Homebrew formulae and casks, App Store applications, and VS
 Code extensions by reusing their Bootstrap validators, Blueprint filters, and
 presence readers. Git configuration Preview reuses native generated-config
 validation and global-value inspection; VS Code settings Preview reuses source
-validation and byte comparison. Workspace and macOS Preview remain
-unimplemented. Preview inspections use inspection-only lifecycle accounting
-and do not use Bootstrap `MODULE_CHANGED` state. Preview is not a configuration
-source or a separately required planning engine.
+validation and byte comparison. Workspace Preview reuses its validated selected
+records and folder/repository inspection helpers. An absent repository produces
+only a clone plan; Preview does not infer its future branch state. macOS Preview
+remains unimplemented. Preview inspections use inspection-only lifecycle
+accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview is not a
+configuration source or a separately required planning engine.
 
 ### Global Verification
 

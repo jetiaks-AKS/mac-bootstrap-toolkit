@@ -20,7 +20,9 @@ Discovery → Generated Configuration → Blueprint → Bootstrap
 Blueprint реализован, E2E-проверен и входит в стабильный релиз 3.0.0.
 Локальный post-apply Verify уже является частью lifecycle модулей,
 когда результат наблюдаем их текущими средствами. Отдельная глобальная
-Verification-возможность и Dry-run пока не реализованы.
+Verification-возможность пока не реализована. `--dry-run` и Preview для
+Applications, Git configuration, VS Code settings и Workspace реализованы;
+macOS Preview остаётся запланированным.
 
 ## Рабочая директория и точка входа
 
@@ -31,6 +33,7 @@ Verification-возможность и Dry-run пока не реализова�
 ./bootstrap.sh --discover
 ./bootstrap.sh --blueprint
 ./bootstrap.sh --bootstrap
+./bootstrap.sh --dry-run
 ```
 
 `bootstrap.sh` использует относительные `source`-пути и относительные
@@ -43,12 +46,13 @@ Verification-возможность и Dry-run пока не реализова�
 - `--discover`
 - `--blueprint`
 - `--bootstrap`
+- `--dry-run`
 - `--verbose`
 - `--help`
 - `--version`
 
-`--dry-run` описан в документации как будущая возможность и пока не
-должен считаться доступным CLI-режимом.
+`--dry-run` использует read-only startup path и не должен выполнять целевые
+мутации. Domain Preview для macOS пока не реализован.
 
 ## Структура проекта
 

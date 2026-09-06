@@ -389,6 +389,9 @@ Would install App Store app: <name> (<id>)
 Would install VS Code extension: <id>
 Would configure Git setting: <key>
 Would update VS Code settings
+Would create workspace folder: <path>
+Would clone repository: <id>
+Would switch repository branch: <id> -> <branch>
 ```
 
 Уже соответствующие состоянию и невыбранные элементы не выводятся как planned
@@ -397,7 +400,9 @@ actions. Сами planned actions сохраняют status `0`; observation err
 Bootstrap-полей `Installed` и `Skipped`. Stale Blueprint сохраняет warning
 status; malformed Blueprint или обязательный selected input возвращает `2`.
 Отсутствующий optional source VS Code settings сохраняет warning status.
-Preview для Workspace и macOS пока не реализован.
+Workspace Preview сохраняет текущую warning-политику для dirty repositories,
+remote mismatch и существующих non-Git destinations. После clone-плана он не
+предполагает будущую branch state. Preview для macOS пока не реализован.
 
 ---
 
@@ -427,4 +432,4 @@ Bootstrap
 Preview foundation (`--dry-run`)
 ```
 
-Preview для Workspace и macOS остаётся запланированной возможностью.
+Preview для macOS остаётся запланированной возможностью.

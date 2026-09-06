@@ -113,6 +113,78 @@ repository_checkout() {
 }
 
 # ==========================================
+# Preview Repository
+# ==========================================
+
+repository_preview() {
+
+    local repository="$1"
+    local path="$2"
+    local expected_remote="$3"
+    local expected_branch="$4"
+    local inspection_result
+    local current_remote
+    local current_branch
+
+    repository_exists "$path"
+    inspection_result=$?
+
+    case $inspection_result in
+        1)
+            action "Would clone repository: $repository"
+            return 0
+            ;;
+        2)
+            error "Failed to inspect repository destination"
+            return 2
+            ;;
+    esac
+
+    repository_is_git "$path"
+    inspection_result=$?
+    if [[ $inspection_result -eq 2 ]]; then
+        error "Failed to inspect Git worktree"
+        return 2
+    fi
+    if [[ $inspection_result -eq 1 ]]; then
+        warning "Directory is not a Git repository"
+        return 1
+    fi
+
+    if ! current_remote=$(repository_origin "$path") || [[ -z "$current_remote" ]]; then
+        error "Failed to observe repository origin"
+        return 2
+    fi
+
+    if [[ "$current_remote" != "$expected_remote" ]]; then
+        warning "Remote does not match"
+        return 1
+    fi
+
+    if ! current_branch=$(repository_branch "$path"); then
+        error "Failed to observe repository branch"
+        return 2
+    fi
+
+    [[ "$current_branch" == "$expected_branch" ]] && return 0
+
+    repository_is_clean "$path"
+    inspection_result=$?
+    if [[ $inspection_result -eq 2 ]]; then
+        error "Failed to inspect repository changes"
+        return 2
+    fi
+    if [[ $inspection_result -eq 1 ]]; then
+        warning "Branch does not match"
+        warning "Repository has uncommitted changes"
+        return 1
+    fi
+
+    action "Would switch repository branch: $repository -> $expected_branch"
+    return 0
+}
+
+# ==========================================
 # Verify Repository
 # ==========================================
 

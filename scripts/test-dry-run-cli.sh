@@ -107,6 +107,8 @@ write_fixture_file modules/settings/macos/macos.sh \
 
 write_fixture_file modules/bootstrap/workspace/workspace.sh \
     'workspace_validate_bootstrap_inputs() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'preview_workspace_folders() { printf "%s\n" workspace-folders-preview >> "$TEST_SPY_FILE"; }' \
+    'preview_workspace_repositories() { printf "%s\n" workspace-repositories-preview >> "$TEST_SPY_FILE"; }' \
     'bootstrap_workspace() { printf "%s\n" workspace-mutation >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/blueprint/selector.sh \
@@ -177,10 +179,12 @@ else
     fail "Preview output or Summary is incorrect"
 fi
 if [[ "$ENTRYPOINT_SPY" == *git-config-preview* &&
-      "$ENTRYPOINT_SPY" == *vscode-settings-preview* ]]; then
-    pass "Preview dispatch includes Git and VS Code settings"
+      "$ENTRYPOINT_SPY" == *vscode-settings-preview* &&
+      "$ENTRYPOINT_SPY" == *workspace-folders-preview* &&
+      "$ENTRYPOINT_SPY" == *workspace-repositories-preview* ]]; then
+    pass "Preview dispatch includes configuration and Workspace domains"
 else
-    fail "Preview dispatch omitted a configuration domain"
+    fail "Preview dispatch omitted a completed domain"
 fi
 
 run_entrypoint --check --discover

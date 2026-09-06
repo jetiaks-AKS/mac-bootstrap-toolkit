@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Added
 
+* Added non-mutating Workspace Preview for selected folders and repositories.
+  It reuses Workspace validation and inspection, reports folder creation,
+  repository cloning, and eligible branch switching without mutation, and
+  preserves warnings for dirty repositories, remote mismatches, and non-Git
+  destinations.
+
 * Added non-mutating Preview for Git configuration and VS Code settings. Git
   Preview reports every mismatched supported key after a complete inspection;
   VS Code settings Preview preserves the optional-source warning and reports an
