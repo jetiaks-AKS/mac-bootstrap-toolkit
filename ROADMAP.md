@@ -6,7 +6,7 @@ Roadmap описывает последовательность развития
 Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`, ближайшие
 технические задачи — в `TODO.md`, а история изменений — в `CHANGELOG.md`.
 
-Roadmap показывает завершённые крупные этапы, текущий release gate и
+Roadmap показывает завершённые крупные этапы, завершённый release gate 3.0.0 и
 утверждённое направление дальнейшего развития без деталей реализации модулей.
 
 ---
@@ -167,22 +167,25 @@ ShellCheck, единый test runner и CI не являются условия�
 
 # Этап 7 — Release 3.0.0
 
-**Статус: In Progress**
+**Статус: Completed**
 
-Конечный release gate для ещё не выпущенной версии 3.0.0.
+Toolkit 3.0.0 выпущен как Stable. Release commit `c36902d` входит в `develop`
+и объединён в `main` merge-коммитом `8c8522c`; tag `v3.0.0` указывает на это
+релизное состояние `main`.
 
 - [x] Завершить финальное согласование документации
 - [x] Провести единый финальный release validation
 - [x] Разрешить вопрос release graph / release history
-- [ ] Установить Toolkit version 3.0.0
+- [x] Установить Toolkit version 3.0.0
 - [x] Финализировать CHANGELOG и release notes 3.0.0
 - [x] Обновить release-specific документацию для 3.0.0
-- [ ] Выполнить merge `develop` → `main`
-- [ ] Проверить состояние `main` после merge
-- [ ] Создать tag `v3.0.0`
-- [ ] Завершить release verification
+- [x] Выполнить merge `develop` → `main`
+- [x] Проверить состояние `main` после merge
+- [x] Создать tag `v3.0.0`
+- [x] Завершить release verification
 
-Ни один из этих незавершённых пунктов не означает, что 3.0.0 уже выпущена.
+Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview и
+Global Verification остаются post-3.0 planned capabilities.
 
 ---
 
@@ -275,7 +278,7 @@ coverage; scalable catalog стоит рассматривать лишь тог
 
 # Продуктовая модель
 
-Текущая модель в `develop`:
+Текущая модель 3.0.0 Stable и `develop`:
 
 ```text
 Discovery
