@@ -238,6 +238,93 @@ bootstrap_workspace >/dev/null 2>&1; status=$?
 expect_status 0 "$status" "empty Blueprint Workspace selections preserve skip behavior"
 assert_no_mutation "empty Blueprint Workspace selections do not validate or mutate"
 
+# Actionability failures must stop all Workspace mutations, including late rows.
+for bad_folder in '../outside' 'Projects/../../outside' '/outside' 'Projects|extra' $'Bad\tFolder'; do
+    reset_case
+    write_valid_repositories
+    printf 'Projects|workspace\n%s|workspace' "$bad_folder" > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+    bootstrap_workspace >/dev/null 2>&1; status=$?
+    expect_status 2 "$status" "reject late unsafe folder: $bad_folder"
+    assert_no_mutation 'late unsafe folder blocks all mutations'
+done
+reset_case
+write_valid_repositories
+printf 'Projects/Nested Folder|workspace' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'nested relative folder without final newline is accepted'
+[[ -d "$HOME/Projects/Nested Folder" ]] || fail 'nested folder lost spaces or last line'
+
+for invalid_field in 'PATH=""' 'REMOTE=""' 'CURRENT_BRANCH=""' 'CURRENT_BRANCH="--force"' 'CURRENT_BRANCH="bad..branch"' 'CURRENT_BRANCH="HEAD"' 'CURRENT_BRANCH="@{-1}"' 'REMOTE="-upload-pack"' 'REMOTE="https://"' 'NAME=""' "PATH=\"$HOME/../outside\"" $'REMOTE="bad\tremote"'; do
+    reset_case
+    write_valid_folders
+    {
+        write_repository_section good "$HOME/Projects/good"
+        write_repository_section bad "$HOME/Other/bad" | awk -v replacement="$invalid_field" '
+            BEGIN { split(replacement, fields, "=") }
+            index($0, fields[1] "=") == 1 { print replacement; next }
+            { print }
+        '
+    } > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+    bootstrap_workspace >/dev/null 2>&1; status=$?
+    expect_status 2 "$status" "reject late invalid repository field: $invalid_field"
+    assert_no_mutation 'late invalid repository blocks folders and clone/checkout'
+done
+
+reset_case
+write_valid_folders
+write_repository_section 'repository with spaces' "$HOME/Projects/repository with spaces" > "$TEST_ROOT/spaced"
+printf '%s' "$(cat "$TEST_ROOT/spaced")" > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+BLUEPRINT_PRESENT=true
+SELECTED_FOLDERS=Projects
+SELECTED_REPOSITORIES='repository with spaces'
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'selected repository ID with spaces and no final newline'
+[[ "$(grep -c '^clone:' "$MUTATION_LOG")" == 1 && "$(cat "$MUTATION_LOG")" == *'/repository with spaces'* ]] || fail 'repository text was split'
+
+reset_case
+write_valid_folders
+write_valid_repositories
+# Duplicate fields are malformed even when every required field is present.
+printf 'PATH="%s"\n' "$HOME/Other/duplicate" >> "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'extra repository field rejected'
+assert_no_mutation 'extra field blocks mutation'
+
+reset_case
+command mkdir -p "$TEST_ROOT/outside"
+ln -s "$TEST_ROOT/outside" "$HOME/Projects"
+write_valid_folders
+write_valid_repositories
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'symlink escaping HOME rejected before Apply'
+[[ ! -s "$MUTATION_LOG" ]] || fail 'escaping symlink reached repository mutation'
+
+reset_case
+BLUEPRINT_PRESENT=true
+SELECTED_FOLDERS=Projects
+write_valid_folders
+printf 'malformed unrelated repositories' > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'disabled repository scope ignores unrelated malformed input'
+
+reset_case
+BLUEPRINT_PRESENT=true
+SELECTED_FOLDERS=Projects
+printf 'Projects|workspace\n../unselected|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'unselected folder actionability does not expand selected scope'
+
+for supported_remote in 'git@example.com:team/repo.git' 'ssh://git@example.com/team/repo.git' 'https://example.com/team/repo.git' '/local/source repo.git'; do
+    reset_case
+    write_valid_folders
+    write_repository_section example "$HOME/Projects/example" | awk -v remote="$supported_remote" '
+        /^REMOTE=/ { print "REMOTE=\"" remote "\""; next }
+        { print }
+    ' > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+    bootstrap_workspace >/dev/null 2>&1; status=$?
+    expect_status 0 "$status" "supported remote syntax: $supported_remote"
+done
+
 # Existing run_module lifecycle records validation error 2 permanently.
 reset_case
 write_valid_folders

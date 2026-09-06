@@ -37,6 +37,8 @@ source "$PROJECT_ROOT/modules/apps/brew-casks.sh"
 source "$PROJECT_ROOT/modules/apps/appstore.sh"
 source "$PROJECT_ROOT/modules/vscode/extensions.sh"
 source "$PROJECT_ROOT/modules/settings/macos/macos.sh"
+source "$PROJECT_ROOT/modules/discovery/workspace.sh"
+source "$PROJECT_ROOT/modules/bootstrap/workspace/validation.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/folders.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/repositories.sh"
 
@@ -250,11 +252,21 @@ write_generated_state() {
         echo "PATH=\"$HOME/SelectedFolder/selected-repository\""
         echo 'REMOTE="git@example.com:selected/repository.git"'
         echo 'CURRENT_BRANCH="main"'
+        echo 'NAME="repository"'
+        echo 'DEFAULT_BRANCH="main"'
+        for key in HAS_UNCOMMITTED_CHANGES HAS_VSCODE_FOLDER HAS_SETTINGS HAS_TASKS HAS_LAUNCH HAS_EXTENSIONS; do
+            printf '%s="false"\n' "$key"
+        done
         echo
         echo '[unselected-repository]'
         echo "PATH=\"$HOME/UnselectedFolder/unselected-repository\""
         echo 'REMOTE="git@example.com:unselected/repository.git"'
         echo 'CURRENT_BRANCH="main"'
+        echo 'NAME="repository"'
+        echo 'DEFAULT_BRANCH="main"'
+        for key in HAS_UNCOMMITTED_CHANGES HAS_VSCODE_FOLDER HAS_SETTINGS HAS_TASKS HAS_LAUNCH HAS_EXTENSIONS; do
+            printf '%s="false"\n' "$key"
+        done
     } > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
 }
 

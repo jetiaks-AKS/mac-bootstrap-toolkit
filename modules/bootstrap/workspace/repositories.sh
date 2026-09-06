@@ -17,17 +17,11 @@ bootstrap_workspace_repositories() {
     local config_file
     config_file="$(blueprint_generated_file git-repositories)"
 
-    if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
-        warning "Workspace repositories configuration not found"
-        return 1
-    fi
-
     local repositories
-
-    repositories=$(config_sections "$config_file") || {
-        warning "Unable to read configuration"
-        return 1
-    }
+    if ! repositories="$(workspace_read_bootstrap_repositories "$config_file")"; then
+        error "Workspace repositories configuration is missing, unreadable, or not actionable"
+        return 2
+    fi
 
     success "Workspace repositories configuration loaded"
 
@@ -35,17 +29,9 @@ bootstrap_workspace_repositories() {
 
     local has_warnings=false
 
-    for repository in $repositories; do
-
-        blueprint_item_selected git-repositories "$repository" || continue
-
-    local path
-    local remote
-    local branch
-
-    path=$(config_get "$config_file" "$repository" PATH)
-    remote=$(config_get "$config_file" "$repository" REMOTE)
-    branch=$(config_get "$config_file" "$repository" CURRENT_BRANCH)
+    local repository path remote branch
+    while IFS=$'\t' read -r repository path remote branch; do
+        [[ -n "$repository" ]] || continue
 
     info "Repository: $repository"
 
@@ -56,7 +42,7 @@ bootstrap_workspace_repositories() {
 
         echo
 
-    done
+    done <<< "$repositories"
 
     if [[ "$has_warnings" == true ]]; then
         return 1

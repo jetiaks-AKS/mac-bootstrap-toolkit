@@ -185,6 +185,41 @@ Homebrew casks используют тот же локальный lifecycle. Ch
 затем повторяется тот же Check. Success возможен только после Verify;
 его ошибка или ошибка следующего cask не сбрасывает уже установленный Changed.
 
+### Workspace Bootstrap actionability
+
+Bootstrap сохраняет текущие форматы: `folder|classification` для `folders.conf`
+и секции с `NAME`, `PATH`, `REMOTE`, `CURRENT_BRANCH` и Discovery metadata для
+`repositories.conf`. `CURRENT_BRANCH`, а не новый `BRANCH`, задаёт ветку Apply.
+`workspace.conf` описывает обнаруженный HOME; он не переназначает целевой root
+Bootstrap, которым остаётся текущий `$HOME`.
+
+Перед мутациями Workspace проверяет оба требуемых inputs. Каждый consumer также
+собирает полный валидированный selected snapshot перед своим Apply. Для чтения
+секций/значений используется Configuration Engine; section IDs с пробелами
+читаются построчно. Последняя запись без newline поддерживается, пустые строки
+пропускаются. Новый синтаксис комментариев или escaping не добавляется.
+
+Selected folders допускают простые и вложенные относительные пути с пробелами.
+Absolute paths, пустые компоненты, `.`/`..`, управляющие символы и существующие
+symlink-компоненты, ведущие вне HOME, отвергаются. Repository `PATH` должен быть
+абсолютным потомком текущего HOME и удовлетворять тем же правилам. Существующие
+компоненты пути должны быть каталогами.
+
+Структура repository-файла проверяется существующим snapshot validator.
+Selected `NAME`, `REMOTE`, `CURRENT_BRANCH` не могут быть пустыми; управляющие
+символы и неоднозначные кавычки в action fields отвергаются. Section IDs с
+backslash не поддерживаются существующим Configuration Engine и отклоняются.
+REMOTE сохраняет SSH/scp, URL и local-path формы; пустые/option-like значения,
+крайние пробелы и пустые части URL/scp отвергаются без сетевых запросов.
+CURRENT_BRANCH проверяется локальным `git check-ref-format --branch`; option-like
+значения и сокращения, требующие расширения Git, не допускаются.
+
+Ошибка обязательного input возвращает `2` до mkdir/clone/checkout, включая
+ошибку поздней записи. Пустой Blueprint scope не требует соответствующего файла;
+структура требуемого файла проверяется целиком, actionability — для selected
+элементов через существующий Blueprint API. Discovery validators, generated
+форматы и clone/checkout lifecycle этим изменением не расширяются.
+
 ### VS Code settings lifecycle
 
 `config/generated/vscode/settings.json` остаётся optional byte-for-byte snapshot:

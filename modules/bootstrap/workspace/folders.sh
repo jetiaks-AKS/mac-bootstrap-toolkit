@@ -17,18 +17,14 @@ bootstrap_workspace_folders() {
     local config_file
     config_file="$(blueprint_generated_file workspace-folders)"
 
-    if [[ ! -f "$config_file" || ! -r "$config_file" ]]; then
-
-        warning "Workspace configuration not found"
-
-        return 1
-
+    local folders folder
+    if ! folders="$(workspace_read_bootstrap_folders "$config_file")"; then
+        error "Workspace folders configuration is missing, unreadable, or not actionable"
+        return 2
     fi
 
-while IFS="|" read -r folder type; do
-
-    [[ -z "$folder" ]] && continue
-    blueprint_item_selected workspace-folders "$folder" || continue
+    while IFS= read -r folder; do
+        [[ -n "$folder" ]] || continue
 
 if [[ ! -d "$HOME/$folder" ]]; then
 
@@ -43,7 +39,7 @@ if [[ ! -d "$HOME/$folder" ]]; then
 
     fi
 
-    done < "$config_file"
+    done <<< "$folders"
 
     success "Workspace configuration loaded"
 

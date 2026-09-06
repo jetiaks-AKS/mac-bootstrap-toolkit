@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Workspace Bootstrap validates required selected paths and repository action
+  fields before mutation, rejecting traversal outside HOME and incomplete inputs.
+  Repository IDs with spaces and final records without a newline are preserved
+  by line-oriented consumer parsing. Blueprint selection and clone/checkout
+  lifecycle behavior are unchanged.
+
 * VS Code settings Bootstrap validates source access before mutation, separates
   comparison errors from differences, and verifies byte equality before success.
   Settings and backups are staged before publication to avoid partial copies;
