@@ -38,14 +38,23 @@ MAS_LIST_STATUS=0
 MAS_LIST_OUTPUT=""
 MAS_INSTALL_STATUS=0
 mas() {
+    [[ "${MAS_NO_AUTO_INDEX:-}" == 1 ]] || fail "mas call lost MAS_NO_AUTO_INDEX=1"
     case "$1" in
         list)
             printf 'mas list\n' >> "$OBSERVATION_LOG"
+            if [[ -s "$TEST_DIR/MAS-installed" && $MAS_VERIFY_STATUS -ne 0 ]]; then
+                return "$MAS_VERIFY_STATUS"
+            fi
+            cat "$TEST_DIR/MAS-installed"
             printf '%s' "$MAS_LIST_OUTPUT"
             return "$MAS_LIST_STATUS"
             ;;
         install)
             printf 'mas install %s\n' "$2" >> "$COMMAND_LOG"
+            [[ "$2" != "$MAS_FAIL_ITEM" ]] || return 2
+            if [[ $MAS_INSTALL_STATUS -eq 0 && $MAS_INSTALL_MAKES_PRESENT == true ]]; then
+                printf '%s Mock App (1.0)\n' "$2" >> "$TEST_DIR/MAS-installed"
+            fi
             return "$MAS_INSTALL_STATUS"
             ;;
     esac
@@ -58,11 +67,19 @@ code() {
     case "$1" in
         --list-extensions)
             printf 'code list\n' >> "$OBSERVATION_LOG"
+            if [[ -s "$TEST_DIR/CODE-installed" && $CODE_VERIFY_STATUS -ne 0 ]]; then
+                return "$CODE_VERIFY_STATUS"
+            fi
+            cat "$TEST_DIR/CODE-installed"
             printf '%s' "$CODE_LIST_OUTPUT"
             return "$CODE_LIST_STATUS"
             ;;
         --install-extension)
             printf 'code install %s\n' "$2" >> "$COMMAND_LOG"
+            [[ "$2" != "$CODE_FAIL_ITEM" ]] || return 2
+            if [[ $CODE_INSTALL_STATUS -eq 0 && $CODE_INSTALL_MAKES_PRESENT == true ]]; then
+                printf '%s\n' "$2" >> "$TEST_DIR/CODE-installed"
+            fi
             return "$CODE_INSTALL_STATUS"
             ;;
     esac
@@ -174,9 +191,17 @@ reset_state() {
     MAS_LIST_STATUS=0
     MAS_LIST_OUTPUT=""
     MAS_INSTALL_STATUS=0
+    MAS_VERIFY_STATUS=0
+    MAS_FAIL_ITEM=""
+    MAS_INSTALL_MAKES_PRESENT=true
+    : > "$TEST_DIR/MAS-installed"
     CODE_LIST_STATUS=0
     CODE_LIST_OUTPUT=""
     CODE_INSTALL_STATUS=0
+    CODE_VERIFY_STATUS=0
+    CODE_FAIL_ITEM=""
+    CODE_INSTALL_MAKES_PRESENT=true
+    : > "$TEST_DIR/CODE-installed"
     BREW_LIST_STATUS=0
     BREW_INFO_STATUS=0
     BREW_INSTALL_STATUS=0
@@ -510,8 +535,8 @@ reset_state
 MAS_LIST_OUTPUT=$'111 Installed App (1.0)\n'
 output="$(install_appstore_apps)"; status=$?
 assert_status 0 "$status" "App Store populated inventory preserves normal installation"
-[[ "$(grep -c '^mas list$' "$OBSERVATION_LOG")" == 1 ]] || fail "App Store inventory is enumerated exactly once"
-pass "App Store inventory is enumerated exactly once"
+[[ "$(grep -c '^mas list$' "$OBSERVATION_LOG")" == 3 ]] || fail "App Store must check both items and verify the install"
+pass "App Store checks both items and verifies the install"
 [[ "$(cat "$COMMAND_LOG")" == "mas install 222" ]] || fail "App Store installs only the missing application"
 pass "App Store installs only the missing application"
 
@@ -542,8 +567,8 @@ reset_state
 CODE_LIST_OUTPUT=$'installed.extension\n'
 output="$(install_vscode_extensions)"; status=$?
 assert_status 0 "$status" "VS Code populated inventory preserves normal installation"
-[[ "$(grep -c '^code list$' "$OBSERVATION_LOG")" == 1 ]] || fail "VS Code inventory is enumerated exactly once"
-pass "VS Code inventory is enumerated exactly once"
+[[ "$(grep -c '^code list$' "$OBSERVATION_LOG")" == 3 ]] || fail "VS Code must check both items and verify the install"
+pass "VS Code checks both items and verifies the install"
 [[ "$(cat "$COMMAND_LOG")" == "code install missing.extension" ]] || fail "VS Code installs only the missing extension"
 pass "VS Code installs only the missing extension"
 
@@ -568,6 +593,102 @@ assert_status 2 "$status" "VS Code installation failure returns 2"
 assert_no_false_success "$output" "VS Code installation failure emits no false success"
 [[ "$MODULE_CHANGED" == false ]] || fail "VS Code failed installation does not report a change"
 pass "VS Code failed installation does not report a change"
+
+# Exercise the real lifecycle directly so Changed survives in the test shell.
+for lifecycle_domain in appstore extensions; do
+    if [[ "$lifecycle_domain" == appstore ]]; then
+        validation_consumer=install_appstore_apps
+        input_file="$TEST_DIR/appstore.conf"
+        first_record='497799835|Xcode'
+        second_record='222|Another App'
+        first_id=497799835
+        second_id=222
+        second_label='Another App'
+        prefix=MAS
+    else
+        validation_consumer=install_vscode_extensions
+        input_file="$TEST_DIR/vscode-extensions.conf"
+        first_record=publisher.extension
+        second_record=other.extension
+        first_id=publisher.extension
+        second_id=other.extension
+        second_label=other.extension
+        prefix=CODE
+    fi
+    printf '%s\n' "$first_record" > "$input_file"
+
+    reset_state
+    printf '%s\n' "$first_id" > "$TEST_DIR/$prefix-installed"
+    run_application_input_case
+    assert_status 0 "$status" "$lifecycle_domain exact ID already present"
+    assert_no_mutation "$lifecycle_domain exact ID skips installation"
+    [[ "$MODULE_CHANGED" == false ]] || fail "already present item set Changed"
+
+    reset_state
+    run_application_input_case
+    assert_status 0 "$status" "$lifecycle_domain successful install is verified"
+    [[ "$MODULE_CHANGED" == true ]] || fail "successful install lost Changed"
+    [[ "$(wc -l < "$OBSERVATION_LOG" | tr -d ' ')" == 2 ]] || fail "missing Check or Verify"
+    : > "$COMMAND_LOG"
+    MODULE_CHANGED=false
+    run_application_input_case
+    assert_status 0 "$status" "$lifecycle_domain repeated run succeeds"
+    assert_no_mutation "$lifecycle_domain repeated run is idempotent"
+    [[ "$MODULE_CHANGED" == false ]] || fail "idempotent run set Changed"
+
+    for verify_failure in absent error; do
+        reset_state
+        if [[ "$verify_failure" == absent ]]; then
+            export "${prefix}_INSTALL_MAKES_PRESENT=false"
+        else
+            export "${prefix}_VERIFY_STATUS=2"
+        fi
+        run_application_input_case
+        assert_status 2 "$status" "$lifecycle_domain Verify $verify_failure returns 2"
+        [[ "$MODULE_CHANGED" == true ]] || fail "successful mutation must retain Changed after Verify failure"
+        [[ "$(wc -l < "$COMMAND_LOG" | tr -d ' ')" == 1 ]] || fail "Verify failure must follow one install"
+        [[ "$(wc -l < "$OBSERVATION_LOG" | tr -d ' ')" == 2 ]] || fail "Verify failure must follow re-observation"
+        assert_no_false_success "$output" "$lifecycle_domain Verify $verify_failure has no success"
+    done
+
+    reset_state
+    printf '%s\n%s\n' "$first_record" "$second_record" > "$input_file"
+    export "${prefix}_FAIL_ITEM=$second_id"
+    run_application_input_case
+    assert_status 2 "$status" "$lifecycle_domain later install failure returns 2"
+    [[ "$MODULE_CHANGED" == true ]] || fail "later failure cleared earlier Changed"
+    [[ "$output" != *'are ready'* && "$output" != *"$second_label installed successfully"* ]] || fail "later failure reports success"
+    pass "$lifecycle_domain retains earlier successful mutation without module success"
+done
+
+# Names and numeric substrings must never establish App Store presence.
+validation_consumer=install_appstore_apps
+printf '497799835|Xcode\n' > "$TEST_DIR/appstore.conf"
+for inventory in '999 Xcode Helper (1.0)' '4977998350 Xcode (1.0)' '1497799835 Xcode (1.0)' '0497799835 Xcode (1.0)'; do
+    reset_state
+    MAS_LIST_OUTPUT="$inventory"
+    run_application_input_case
+    assert_status 0 "$status" "App Store ignores nonmatching inventory: $inventory"
+    [[ "$(cat "$COMMAND_LOG")" == 'mas install 497799835' ]] || fail "App Store matched name or partial ID"
+done
+reset_state
+MAS_LIST_OUTPUT='497799835 Renamed Application (1.0)'
+run_application_input_case
+assert_status 0 "$status" "App Store exact ID matches regardless of name"
+assert_no_mutation "App Store name is display-only"
+
+# Existing VS Code matching remains case-sensitive and whole-line.
+validation_consumer=install_vscode_extensions
+printf 'publisher.extension\n' > "$TEST_DIR/vscode-extensions.conf"
+for inventory in Publisher.extension publisher.extension-extra; do
+    reset_state
+    CODE_LIST_OUTPUT="$inventory"
+    run_application_input_case
+    assert_status 0 "$status" "VS Code preserves exact case-sensitive matching: $inventory"
+    [[ "$(cat "$COMMAND_LOG")" == 'code install publisher.extension' ]] || fail "VS Code normalized or partially matched an ID"
+done
+printf '111|Installed App\n222|Missing App\n' > "$TEST_DIR/appstore.conf"
+printf 'installed.extension\nmissing.extension\n' > "$TEST_DIR/vscode-extensions.conf"
 
 # Homebrew Cask tri-state observation and verified installation.
 reset_state

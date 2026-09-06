@@ -13,11 +13,17 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* App Store Bootstrap now checks exact numeric IDs instead of application-name
+  substrings. App Store applications and VS Code extensions re-read inventory
+  after successful installs and report success only after local verification.
+  Observation or verification failure returns error 2; successful mutations
+  remain recorded even if verification or a later installation fails.
+
 * Homebrew casks, App Store applications, and VS Code extensions now validate
   their complete required generated input before observation or installation.
   Malformed or unreadable input returns error 2 without partial installation;
   empty Blueprint scopes retain their early successful skip. Generated formats
-  and existing presence/install behavior are unchanged.
+  are unchanged.
 
 * Homebrew formula Bootstrap validates the complete generated list before
   installation, distinguishes inventory errors from absence, and verifies

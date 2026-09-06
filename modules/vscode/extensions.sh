@@ -38,6 +38,15 @@ check_vscode_cli() {
 # Install VS Code Extension
 # ==========================================
 
+# Presence: 0 installed, 1 absent, 2 observation error.
+is_vscode_extension_installed() {
+
+    local inventory
+    inventory="$(code --list-extensions)" || return 2
+    grep -Fxq -- "$1" <<< "$inventory"
+
+}
+
 install_vscode_extension() {
 
     local extension="$1"
@@ -56,7 +65,6 @@ fi
 
 if [[ $? -eq 0 ]]; then
 
-    success "$extension installed successfully"
     return 0
 
 fi
@@ -91,13 +99,8 @@ install_vscode_extensions() {
 
     check_vscode_cli || return 1
 
-    local installed_extensions
-    if ! installed_extensions="$(code --list-extensions)"; then
-        error "Failed to inspect installed VS Code extensions"
-        return 2
-    fi
-
     local missing_extensions=0
+    local inspection_result
 
     while IFS= read -r extension || [[ -n "$extension" ]]; do
 
@@ -105,11 +108,19 @@ install_vscode_extensions() {
         [[ "$extension" =~ ^# ]] && continue
         blueprint_item_selected vscode-extensions "$extension" || continue
 
-        if grep -Fxq "$extension" <<< "$installed_extensions"; then
+        is_vscode_extension_installed "$extension"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
 
             detail "$extension is already installed"
             continue
 
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect VS Code extension: $extension"
+            return 2
         fi
 
         ((missing_extensions++))
@@ -128,6 +139,13 @@ install_vscode_extensions() {
         fi
 
         MODULE_CHANGED=true
+
+        if ! is_vscode_extension_installed "$extension"; then
+            error "Failed to verify VS Code extension: $extension"
+            return 2
+        fi
+
+        success "$extension installed successfully"
 
     done <<< "$extensions"
 

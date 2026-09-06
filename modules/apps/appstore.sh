@@ -24,6 +24,19 @@ read_appstore_configuration() {
 
 }
 
+# Presence: 0 installed, 1 absent, 2 observation error.
+is_appstore_app_installed() {
+
+    local inventory
+    inventory="$(MAS_NO_AUTO_INDEX=1 mas list)" || return 2
+    # Prefix both operands to prevent awk from comparing IDs numerically.
+    LC_ALL=C awk -v app_id="$1" '
+        { if (("id:" $1) == ("id:" app_id)) found=1 }
+        END { exit(found ? 0 : 1) }
+    ' <<< "$inventory"
+
+}
+
 install_appstore_app() {
 
     local app_id="$1"
@@ -43,7 +56,6 @@ fi
 
 if [[ $? -eq 0 ]]; then
 
-    success "$app_name installed successfully"
     return 0
 
 fi
@@ -81,13 +93,8 @@ install_appstore_apps() {
         return 1
     fi
 
-    local installed_apps
-    if ! installed_apps="$(MAS_NO_AUTO_INDEX=1 mas list)"; then
-        error "Failed to inspect installed App Store applications"
-        return 2
-    fi
-
     local missing_apps=0
+    local inspection_result
 
     while IFS='|' read -r app_id app_name || [[ -n "$app_id" ]]; do
 
@@ -95,11 +102,19 @@ install_appstore_apps() {
         [[ "$app_id" =~ ^# ]] && continue
         blueprint_item_selected app-store "$app_id" || continue
 
-        if grep -Fq "$app_name" <<< "$installed_apps"; then
+        is_appstore_app_installed "$app_id"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
 
             detail "$app_name is already installed"
             continue
 
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect App Store application: $app_name"
+            return 2
         fi
 
         ((missing_apps++))
@@ -118,6 +133,13 @@ install_appstore_apps() {
         fi
 
         MODULE_CHANGED=true
+
+        if ! is_appstore_app_installed "$app_id"; then
+            error "Failed to verify App Store application: $app_name"
+            return 2
+        fi
+
+        success "$app_name installed successfully"
 
     done <<< "$applications"
 

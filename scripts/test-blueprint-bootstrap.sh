@@ -57,11 +57,19 @@ brew() {
 }
 
 mas() {
-    return 0
+    if [[ "$1" == list ]]; then
+        printf '%s\n' ${PROCESSED_ITEMS:-}
+        return 0
+    fi
+    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$2"
 }
 
 code() {
-    return 0
+    if [[ "$1" == --list-extensions ]]; then
+        printf '%s\n' ${PROCESSED_ITEMS:-}
+        return 0
+    fi
+    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$2"
 }
 
 is_cask_installed() {
@@ -69,14 +77,6 @@ is_cask_installed() {
 }
 
 install_brew_cask() {
-    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
-}
-
-install_appstore_app() {
-    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
-}
-
-install_vscode_extension() {
     PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
 }
 
