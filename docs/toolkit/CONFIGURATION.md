@@ -220,6 +220,21 @@ CURRENT_BRANCH проверяется локальным `git check-ref-format -
 элементов через существующий Blueprint API. Discovery validators, generated
 форматы и clone/checkout lifecycle этим изменением не расширяются.
 
+Selected Workspace folders используют локальный `Inspect → Apply → Verify`
+после полной W1 validation. Inspection возвращает `0` только для доступного
+каталога в пределах HOME, `1` для подтверждённого отсутствия и `2` для wrong-type,
+небезопасного symlink или ошибки доступа. Только состояние `1` разрешает
+`mkdir -p`. После успешной команды устанавливается `MODULE_CHANGED=true`, затем
+тот же inspector должен подтвердить каталог; success выводится после Verify.
+Ошибка mkdir без созданного каталога не устанавливает Changed. Если mkdir успел
+создать часть вложенного пути до ошибки, это retained изменение учитывается.
+Поздняя ошибка не сбрасывает ранее установленный Changed; rollback отсутствует.
+Повторный запуск для подтверждённого каталога не выполняет mutation.
+
+Workspace orchestration прекращает работу с `2` сразу после folder lifecycle
+error и не запускает repository Apply. Warning `1` сохраняет существующую
+агрегацию. Это локальный module Verify, а не будущая Global Verification.
+
 ### Workspace repository inspection
 
 Repository inspection использует явные статусы: `0` — подтверждённое состояние,

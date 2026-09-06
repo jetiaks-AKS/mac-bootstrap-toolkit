@@ -530,6 +530,104 @@ repository_verify "$HOME/Projects/second" 'git@example.com:second.git' main >/de
 expect_status 2 "$status" 'later checkout failure returns 2'
 [[ "$MODULE_CHANGED" == true ]] || fail 'later checkout failure cleared earlier Changed'
 
+# W4 exercises the production folder inspector and Apply/Verify lifecycle.
+FOLDER_MKDIR_TARGET=""
+FOLDER_MKDIR_MODE=normal
+mkdir() {
+    local target="${!#}"
+    if [[ -n "$FOLDER_MKDIR_TARGET" && "$target" == "$FOLDER_MKDIR_TARGET" ]]; then
+        printf 'mkdir:%s\n' "$target" >> "$MUTATION_LOG"
+        case "$FOLDER_MKDIR_MODE" in
+            fail) return 1 ;;
+            wrong-type) printf 'not a directory\n' > "$target"; return 0 ;;
+        esac
+    fi
+    command mkdir "$@"
+}
+reset_folder_lifecycle() {
+    reset_case
+    FOLDER_MKDIR_TARGET=""
+    FOLDER_MKDIR_MODE=normal
+    printf 'Projects|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+}
+
+reset_folder_lifecycle
+command mkdir -p "$HOME/Projects"
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'existing folder succeeds'
+[[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail 'existing folder mutated or set Changed'
+
+reset_folder_lifecycle
+FOLDER_MKDIR_TARGET="$HOME/Projects"
+bootstrap_workspace_folders > "$TEST_ROOT/folder-output" 2>&1; status=$?
+expect_status 0 "$status" 'absent folder is created and verified'
+[[ -d "$HOME/Projects" && "$MODULE_CHANGED" == true ]] || fail 'created folder was not retained or recorded'
+[[ "$(cat "$TEST_ROOT/folder-output")" == *'SUCCESS:Workspace folder created: Projects'* ]] || fail 'verified folder success missing'
+: > "$MUTATION_LOG"
+MODULE_CHANGED=false
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'folder rerun is idempotent'
+[[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail 'folder rerun mutated'
+
+for folder_failure in mkdir verify; do
+    reset_folder_lifecycle
+    FOLDER_MKDIR_TARGET="$HOME/Projects"
+    if [[ "$folder_failure" == mkdir ]]; then
+        FOLDER_MKDIR_MODE=fail
+    else
+        FOLDER_MKDIR_MODE=wrong-type
+    fi
+    bootstrap_workspace_folders > "$TEST_ROOT/folder-output" 2>&1; status=$?
+    expect_status 2 "$status" "folder $folder_failure failure returns 2"
+    if [[ "$folder_failure" == mkdir ]]; then
+        [[ "$MODULE_CHANGED" == false ]] || fail 'failed mkdir set Changed without retained creation'
+    else
+        [[ "$MODULE_CHANGED" == true ]] || fail 'post-mkdir mismatch lost retained mutation'
+    fi
+    [[ "$(cat "$TEST_ROOT/folder-output")" != *'SUCCESS:Workspace folder created'* ]] || fail "$folder_failure reported success before Verify"
+done
+
+reset_folder_lifecycle
+printf 'wrong type\n' > "$HOME/Projects"
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'wrong-type existing folder path is an error'
+[[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail 'wrong-type path reached Apply'
+
+reset_folder_lifecycle
+command mkdir -p "$HOME/Projects"
+chmod 000 "$HOME/Projects"
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+chmod 700 "$HOME/Projects"
+expect_status 2 "$status" 'folder read/access failure is an observation error'
+[[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail 'folder observation error reached Apply'
+
+reset_folder_lifecycle
+printf 'Projects|workspace\nOther|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+FOLDER_MKDIR_TARGET="$HOME/Other"
+FOLDER_MKDIR_MODE=fail
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'later folder failure returns 2'
+[[ -d "$HOME/Projects" && "$MODULE_CHANGED" == true ]] || fail 'later folder failure cleared earlier creation'
+
+reset_folder_lifecycle
+printf 'Projects|workspace\nOther|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+BLUEPRINT_PRESENT=true
+SELECTED_FOLDERS=Projects
+FOLDER_MKDIR_TARGET="$HOME/Projects"
+bootstrap_workspace_folders >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'Blueprint folder subset succeeds'
+[[ -d "$HOME/Projects" && ! -e "$HOME/Other" ]] || fail 'Blueprint folder subset created an unselected folder'
+
+reset_folder_lifecycle
+write_valid_repositories
+printf 'Projects|workspace\nOther|workspace\n' > "$BLUEPRINT_GENERATED_DIR/workspace/folders.conf"
+FOLDER_MKDIR_TARGET="$HOME/Other"
+FOLDER_MKDIR_MODE=fail
+bootstrap_workspace >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'folder lifecycle error propagates through Workspace'
+[[ "$MODULE_CHANGED" == true && "$(grep -c '^clone:' "$MUTATION_LOG")" == 0 ]] ||
+    fail 'folder error did not retain Changed or allowed repository mutation'
+
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Workspace Bootstrap validation tests passed"

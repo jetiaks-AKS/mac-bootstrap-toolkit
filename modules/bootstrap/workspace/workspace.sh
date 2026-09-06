@@ -70,7 +70,8 @@ bootstrap_workspace() {
     submodule_result=$?
 
     if [[ $submodule_result -eq 2 ]]; then
-        workspace_result=2
+        error "Workspace Bootstrap completed with errors"
+        return 2
     elif [[ $submodule_result -eq 1 && $workspace_result -eq 0 ]]; then
         workspace_result=1
     fi

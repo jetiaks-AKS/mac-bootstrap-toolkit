@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Workspace folder restoration now distinguishes present, absent, and erroneous
+  paths, creates only confirmed-absent folders, and verifies the resulting
+  directory before success. Retained folder creation is recorded in Changed,
+  and a folder error now blocks subsequent repository mutations.
+
 * Workspace repository clone and branch restoration now report success only
   after local verification. Clone verifies the destination, usable Git worktree,
   and exact origin; checkout verifies the exact resulting branch. Mutation and

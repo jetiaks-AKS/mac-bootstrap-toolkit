@@ -4,6 +4,44 @@
 # Workspace Folders Bootstrap
 # ==========================================
 
+# Folder state: 0 usable directory, 1 absent, 2 observation error.
+workspace_folder_state() {
+
+    local folder="$1"
+    local target="$HOME/$folder"
+
+    workspace_bootstrap_path_valid "$folder" || return 2
+
+    if [[ ! -e "$target" && ! -L "$target" ]]; then
+        return 1
+    fi
+
+    [[ -d "$target" && -r "$target" && -x "$target" ]] || return 2
+    return 0
+
+}
+
+workspace_folder_first_missing_path() {
+
+    local folder="$1"
+    local component
+    local current="$HOME"
+
+    while [[ -n "$folder" ]]; do
+        component="${folder%%/*}"
+        current="$current/$component"
+        if [[ ! -e "$current" && ! -L "$current" ]]; then
+            printf '%s\n' "$current"
+            return 0
+        fi
+        [[ "$folder" == */* ]] || break
+        folder="${folder#*/}"
+    done
+
+    return 1
+
+}
+
 bootstrap_workspace_folders() {
 
     if blueprint_exists &&
@@ -17,7 +55,7 @@ bootstrap_workspace_folders() {
     local config_file
     config_file="$(blueprint_generated_file workspace-folders)"
 
-    local folders folder
+    local folders folder target first_missing_path inspection_result
     if ! folders="$(workspace_read_bootstrap_folders "$config_file")"; then
         error "Workspace folders configuration is missing, unreadable, or not actionable"
         return 2
@@ -26,18 +64,41 @@ bootstrap_workspace_folders() {
     while IFS= read -r folder; do
         [[ -n "$folder" ]] || continue
 
-if [[ ! -d "$HOME/$folder" ]]; then
+        target="$HOME/$folder"
+        workspace_folder_state "$folder"
+        inspection_result=$?
 
-    action "Creating: $folder"
-
-        if ! mkdir -p "$HOME/$folder"; then
-
-            error "Failed to create workspace folder: $folder"
-            return 2
-
+        if [[ $inspection_result -eq 0 ]]; then
+            detail "$folder already exists"
+            continue
         fi
 
-    fi
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect workspace folder: $folder"
+            return 2
+        fi
+
+        first_missing_path="$(workspace_folder_first_missing_path "$folder")" || {
+            error "Failed to determine workspace folder mutation: $folder"
+            return 2
+        }
+
+        action "Creating: $folder"
+
+        if ! mkdir -p "$target"; then
+            [[ ! -d "$first_missing_path" ]] || MODULE_CHANGED=true
+            error "Failed to create workspace folder: $folder"
+            return 2
+        fi
+
+        MODULE_CHANGED=true
+
+        if ! workspace_folder_state "$folder"; then
+            error "Failed to verify workspace folder: $folder"
+            return 2
+        fi
+
+        success "Workspace folder created: $folder"
 
     done <<< "$folders"
 
