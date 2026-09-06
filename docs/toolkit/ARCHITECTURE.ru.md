@@ -125,6 +125,12 @@ Bootstrap-модули остаются идемпотентными: наблю
 несовпадения и не должна превращаться в «apply required». Небезопасное
 существующее состояние сообщается пользователю, а не исправляется разрушительно.
 
+В Bootstrap Blueprint и обязательные generated inputs выбранного scope
+валидируются после настройки logger, но до preflight и Core checks. Это
+блокирует malformed input до установки Homebrew или изменения target state.
+Текущий preflight по-прежнему выполняет аутентификацию через `sudo -v`; будущий
+Preview должен использовать отдельный read-only startup path, а не этот.
+
 Discovery метаданных VS Code Workspace и генерация
 `vscode-workspaces.conf` реализованы. Bootstrap-восстановление
 `.code-workspace` не реализовано и отключено от production-оркестрации

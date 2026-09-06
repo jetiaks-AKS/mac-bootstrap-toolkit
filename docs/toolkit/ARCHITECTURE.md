@@ -122,6 +122,12 @@ remains distinct from legitimate absence or mismatch and must not be converted
 into “apply required.” Unsafe existing state is reported rather than corrected
 destructively.
 
+For Bootstrap, Blueprint and the required generated inputs of the selected
+scope are validated after logger setup and before preflight or Core checks.
+This blocks malformed input before Homebrew installation or target-state
+mutation. The current preflight still authenticates through `sudo -v`; a future
+Preview must use a separate read-only startup path rather than this one.
+
 Discovery of VS Code Workspace metadata and generation of
 `vscode-workspaces.conf` are implemented. Bootstrap restoration of
 `.code-workspace` is not implemented and is disconnected from production

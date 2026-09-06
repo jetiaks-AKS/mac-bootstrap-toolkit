@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Bootstrap now validates Blueprint and the required generated inputs of the
+  selected scope before preflight and Core checks, blocking malformed input
+  before Homebrew installation or target-state mutation. Homebrew availability
+  now distinguishes an inspection error from confirmed absence, so an
+  observation error cannot enter the installer path.
+
 * `run_configuration()` now returns error 2 immediately when Apply fails and
   verifies only after successful Apply. Verify mismatch or observation failure
   returns error 2, while consumer-owned Changed state is preserved. The macOS

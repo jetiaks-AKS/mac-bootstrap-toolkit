@@ -41,6 +41,25 @@ copy_vscode_settings() {
 # Apply VS Code Settings
 # ==========================================
 
+validate_vscode_settings_source() {
+
+    local source_file="$1"
+
+    if [[ ! -e "$source_file" && ! -L "$source_file" ]]; then
+        return 1
+    fi
+
+    # Settings are copied verbatim, including comments; validate file access.
+    if [[ ! -f "$source_file" || ! -r "$source_file" ]] ||
+       ! cat "$source_file" >/dev/null; then
+        error "VS Code settings source is not a readable regular file"
+        return 2
+    fi
+
+    return 0
+
+}
+
 apply_vscode_settings() {
 
     local source_file="config/generated/vscode/settings.json"
@@ -50,15 +69,15 @@ apply_vscode_settings() {
     local parent_dir="$target_dir"
     local first_missing_dir=""
 
-    if [[ ! -e "$source_file" && ! -L "$source_file" ]]; then
+    validate_vscode_settings_source "$source_file"
+    local source_result=$?
+
+    if [[ $source_result -eq 1 ]]; then
         warning "Configuration file $source_file not found"
         return 1
     fi
 
-    # Settings are copied verbatim, including comments; validate file access.
-    if [[ ! -f "$source_file" || ! -r "$source_file" ]] ||
-       ! cat "$source_file" >/dev/null; then
-        error "VS Code settings source is not a readable regular file"
+    if [[ $source_result -ne 0 ]]; then
         return 2
     fi
 

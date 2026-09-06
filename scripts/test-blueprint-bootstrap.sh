@@ -131,7 +131,7 @@ run_bootstrap_orchestration() {
     local orchestration
 
     orchestration="$(awk '
-        /^[[:space:]]*blueprint_result=0$/ {
+        /^[[:space:]]*run_module "Workspace" bootstrap_workspace$/ {
             capture = 1
         }
 
@@ -370,46 +370,6 @@ install_appstore_apps() {
 install_vscode_extensions() {
     record_orchestration_step vscode-extensions
 }
-
-write_generated_state
-write_blueprint
-echo '[malformed' >> "$BLUEPRINT_FILE"
-reset_orchestration
-run_bootstrap_orchestration >/dev/null
-toolkit_exit_code
-orchestration_status=$?
-MODE="--bootstrap"
-START_TIME=""
-summary_output="$(show_summary)"
-toolkit_exit_code
-summary_status=$?
-
-if [[ $ERROR_COUNT -eq 1 && $WARNING_COUNT -eq 0 &&
-      $orchestration_status -eq 2 && $summary_status -eq 2 &&
-      -z "$PROCESSED_ITEMS" &&
-      "$summary_output" == *'Modules Checked :'* &&
-      "$summary_output" != *'Applications'* &&
-      "$summary_output" != *'selected'* ]]; then
-    pass "malformed Blueprint records error, blocks consumers, and suppresses Blueprint Summary"
-else
-    fail "malformed Blueprint Summary gating (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, orchestration_status=$orchestration_status, summary_status=$summary_status, processed='$PROCESSED_ITEMS')"
-fi
-
-write_blueprint
-sed -i.bak 's/selected-package/stale-package/' "$BLUEPRINT_FILE"
-rm -f "$BLUEPRINT_FILE.bak"
-reset_orchestration
-run_bootstrap_orchestration >/dev/null
-toolkit_exit_code
-orchestration_status=$?
-expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings macos-settings"
-
-if [[ $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
-      $orchestration_status -eq 1 && "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
-    pass "stale Blueprint warning survives successful Bootstrap orchestration"
-else
-    fail "stale Blueprint orchestration (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, status=$orchestration_status, processed='$PROCESSED_ITEMS')"
-fi
 
 rm -f "$BLUEPRINT_FILE"
 reset_orchestration
