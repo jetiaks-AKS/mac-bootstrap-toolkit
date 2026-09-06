@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Added
 
+* Added non-mutating Preview for Homebrew formulae and casks, App Store
+  applications, and VS Code extensions. Preview reuses Bootstrap validation,
+  Blueprint selection, and presence inspection, including the existing cask
+  reinstall decision, while reporting planned actions without installation or
+  Bootstrap Changed-state accounting.
+
 * Added the `--dry-run` Preview foundation with exclusive execution-mode
   parsing, selected-input validation, read-only preflight without `sudo`, and
   non-mutating Homebrew availability inspection. Preview has its own Summary

@@ -78,6 +78,63 @@ is_cask_installed() {
 
 }
 
+# ==========================================
+# Preview Homebrew Casks
+# ==========================================
+
+preview_brew_casks() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items homebrew-casks)" ]]; then
+        return 0
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-casks)"
+
+    local casks
+    if ! casks="$(read_brew_casks_configuration "$config_file")"; then
+        error "Cask configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        error "Homebrew is not installed"
+        return 2
+    fi
+
+    local cask
+    local inspection_result
+
+    while IFS= read -r cask || [[ -n "$cask" ]]; do
+        [[ -z "$cask" ]] && continue
+        [[ "$cask" =~ ^# ]] && continue
+        blueprint_item_selected homebrew-casks "$cask" || continue
+
+        is_cask_installed "$cask"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
+            detail "$cask is already installed"
+            continue
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect Homebrew cask: $cask"
+            return 2
+        fi
+
+        if [[ "${CASK_REINSTALL_REQUIRED:-false}" == true ]]; then
+            action "Would reinstall Homebrew cask: $cask"
+        else
+            action "Would install Homebrew cask: $cask"
+        fi
+    done <<< "$casks"
+
+    return 0
+
+}
+
 install_brew_cask() {
 
     local cask="$1"

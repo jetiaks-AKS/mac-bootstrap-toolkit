@@ -14,6 +14,7 @@ INPUT_STATUS=0
 STARTUP_STEPS=""
 BLUEPRINT_BOOTSTRAP_SUMMARY=false
 ERROR_COUNT=0
+MODE="--bootstrap"
 
 blueprint_exists() {
     [[ "$BLUEPRINT_PRESENT" == true ]]
@@ -31,6 +32,10 @@ bootstrap_validate_selected_inputs() {
 run_module() {
     STARTUP_STEPS="${STARTUP_STEPS}${STARTUP_STEPS:+ }$1"
     "$2"
+}
+
+run_inspection() {
+    run_module "$@"
 }
 
 startup_function="$(awk '
@@ -52,6 +57,7 @@ reset_case() {
     STARTUP_STEPS=""
     BLUEPRINT_BOOTSTRAP_SUMMARY=false
     ERROR_COUNT=0
+    MODE="--bootstrap"
 }
 
 expect_case() {

@@ -64,18 +64,22 @@ write_fixture_file modules/core/terminal/terminal.sh \
 
 write_fixture_file modules/apps/brew-packages.sh \
     'read_brew_packages_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'preview_brew_packages() { printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
     'install_brew_packages() { printf "%s\n" brew-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/apps/brew-casks.sh \
     'read_brew_casks_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'preview_brew_casks() { printf "%s\n" cask-preview >> "$TEST_SPY_FILE"; }' \
     'install_brew_casks() { printf "%s\n" brew-cask-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/apps/appstore.sh \
     'read_appstore_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'preview_appstore_apps() { printf "%s\n" appstore-preview >> "$TEST_SPY_FILE"; }' \
     'install_appstore_apps() { printf "%s\n" mas-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/vscode/extensions.sh \
     'read_vscode_extensions_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'preview_vscode_extensions() { printf "%s\n" extensions-preview >> "$TEST_SPY_FILE"; }' \
     'install_vscode_extensions() { printf "%s\n" code-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/vscode/settings.sh \

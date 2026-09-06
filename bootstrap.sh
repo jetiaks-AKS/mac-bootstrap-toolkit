@@ -293,7 +293,11 @@ bootstrap_run_startup_validation() {
     local bootstrap_validation_result
 
     if blueprint_exists; then
-        run_module "Blueprint Validation" blueprint_validate
+        if [[ "$MODE" == "--dry-run" ]]; then
+            run_inspection "Blueprint Validation" blueprint_validate
+        else
+            run_module "Blueprint Validation" blueprint_validate
+        fi
         blueprint_result=$?
         [[ $blueprint_result -ne 2 ]] && BLUEPRINT_BOOTSTRAP_SUMMARY=true
     fi
@@ -316,8 +320,13 @@ bootstrap_run_startup_validation() {
 
 run_preview() {
 
+    run_inspection "Homebrew Packages Preview" preview_brew_packages
+    run_inspection "Homebrew Casks Preview" preview_brew_casks
+    run_inspection "App Store Preview" preview_appstore_apps
+    run_inspection "VS Code Extensions Preview" preview_vscode_extensions
+
     section "Preview"
-    info "Domain-specific Preview actions are not implemented yet"
+    info "Git, Workspace, VS Code settings, and macOS Preview are not implemented yet"
     return 0
 
 }
@@ -384,13 +393,19 @@ fi
 # ==========================================
 
 if [[ "$MODE" == "--dry-run" ]]; then
-    run_module "Homebrew" check_homebrew_read_only
+    run_inspection "Homebrew" check_homebrew_read_only
 else
     run_module "Homebrew" check_homebrew
 fi
-run_module "Git" check_git
-run_module "SSH" check_ssh
-run_module "Terminal" check_terminal
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_inspection "Git" check_git
+    run_inspection "SSH" check_ssh
+    run_inspection "Terminal" check_terminal
+else
+    run_module "Git" check_git
+    run_module "SSH" check_ssh
+    run_module "Terminal" check_terminal
+fi
 
 
 # ==========================================

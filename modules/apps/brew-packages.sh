@@ -54,6 +54,56 @@ is_brew_package_installed() {
 }
 
 # ==========================================
+# Preview Homebrew Packages
+# ==========================================
+
+preview_brew_packages() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items homebrew-packages)" ]]; then
+        return 0
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        error "Homebrew is not installed"
+        return 2
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-packages)"
+
+    local packages
+    if ! packages="$(read_brew_packages_configuration "$config_file")"; then
+        error "Formula configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    local package
+    local inspection_result
+
+    while IFS= read -r package || [[ -n "$package" ]]; do
+        [[ -z "$package" ]] && continue
+        [[ "$package" =~ ^# ]] && continue
+        blueprint_item_selected homebrew-packages "$package" || continue
+
+        is_brew_package_installed "$package"
+        inspection_result=$?
+
+        case $inspection_result in
+            0) detail "$package is already installed" ;;
+            1) action "Would install Homebrew formula: $package" ;;
+            *)
+                error "Failed to inspect Homebrew formula: $package"
+                return 2
+                ;;
+        esac
+    done <<< "$packages"
+
+    return 0
+
+}
+
+# ==========================================
 # Install Homebrew Packages
 # ==========================================
 

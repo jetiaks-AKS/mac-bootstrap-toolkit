@@ -127,6 +127,18 @@ expect_status 2 "$status" "failed Apply preserves retained consumer change"
 [[ "$MODULE_CHANGED" == true && $INSTALLED_COUNT -eq 1 && $ERROR_COUNT -eq 1 ]] ||
     fail "failed Apply lost consumer MODULE_CHANGED state"
 
+inspection_check() { return "$INSPECTION_STATUS"; }
+for INSPECTION_STATUS in 0 1 2; do
+    reset_case
+    MODULE_CHANGED=true
+    run_inspection "Inspection Test" inspection_check > "$TEST_ROOT/output" 2>&1
+    status=$?
+    expect_status "$INSPECTION_STATUS" "$status" "inspection status $INSPECTION_STATUS is preserved"
+    [[ "$MODULE_CHANGED" == true && $MODULES_CHECKED -eq 1 &&
+       $INSTALLED_COUNT -eq 0 && $SKIPPED_COUNT -eq 0 ]] ||
+        fail "inspection status $INSPECTION_STATUS used Bootstrap change accounting"
+done
+
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Core lifecycle tests passed"

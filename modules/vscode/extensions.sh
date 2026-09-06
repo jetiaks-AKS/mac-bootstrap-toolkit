@@ -47,6 +47,53 @@ is_vscode_extension_installed() {
 
 }
 
+# ==========================================
+# Preview VS Code Extensions
+# ==========================================
+
+preview_vscode_extensions() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items vscode-extensions)" ]]; then
+        return 0
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file vscode-extensions)"
+
+    local extensions
+    if ! extensions="$(read_vscode_extensions_configuration "$config_file")"; then
+        error "VS Code extensions configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    check_vscode_cli || return 1
+
+    local extension
+    local inspection_result
+
+    while IFS= read -r extension || [[ -n "$extension" ]]; do
+        [[ -z "$extension" ]] && continue
+        [[ "$extension" =~ ^# ]] && continue
+        blueprint_item_selected vscode-extensions "$extension" || continue
+
+        is_vscode_extension_installed "$extension"
+        inspection_result=$?
+
+        case $inspection_result in
+            0) detail "$extension is already installed" ;;
+            1) action "Would install VS Code extension: $extension" ;;
+            *)
+                error "Failed to inspect VS Code extension: $extension"
+                return 2
+                ;;
+        esac
+    done <<< "$extensions"
+
+    return 0
+
+}
+
 install_vscode_extension() {
 
     local extension="$1"

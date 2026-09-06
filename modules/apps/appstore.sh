@@ -37,6 +37,57 @@ is_appstore_app_installed() {
 
 }
 
+# ==========================================
+# Preview App Store Applications
+# ==========================================
+
+preview_appstore_apps() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items app-store)" ]]; then
+        return 0
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file app-store)"
+
+    local applications
+    if ! applications="$(read_appstore_configuration "$config_file")"; then
+        error "App Store configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    if ! command -v mas >/dev/null 2>&1; then
+        warning "mas is not installed"
+        return 1
+    fi
+
+    local app_id
+    local app_name
+    local inspection_result
+
+    while IFS='|' read -r app_id app_name || [[ -n "$app_id" ]]; do
+        [[ -z "$app_id" ]] && continue
+        [[ "$app_id" =~ ^# ]] && continue
+        blueprint_item_selected app-store "$app_id" || continue
+
+        is_appstore_app_installed "$app_id"
+        inspection_result=$?
+
+        case $inspection_result in
+            0) detail "$app_name is already installed" ;;
+            1) action "Would install App Store app: $app_name ($app_id)" ;;
+            *)
+                error "Failed to inspect App Store application: $app_name"
+                return 2
+                ;;
+        esac
+    done <<< "$applications"
+
+    return 0
+
+}
+
 install_appstore_app() {
 
     local app_id="$1"

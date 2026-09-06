@@ -160,17 +160,22 @@ Bootstrap
 Global Verification
 ```
 
-CLI `--dry-run` и его read-only startup path реализованы. Domain Preview actions
-и Global Verification остаются запланированными и пока не реализованы.
+CLI `--dry-run`, его read-only startup path и Applications Preview реализованы.
+Preview остальных domains и Global Verification остаются запланированными и
+пока не реализованы.
 
 ### Dry-run / Preview
 
 Dry-run / Preview — неизменяющий режим существующей Bootstrap-модели. Текущая
 foundation валидирует Blueprint и обязательные inputs выбранного scope,
 выполняет read-only inspection prerequisites без sudo и установки, затем
-переходит к явному Preview dispatch. Domain-specific вывод planned changes пока
-не реализован. Preview не является источником конфигурации или обязательным
-отдельным planning engine.
+переходит к явному Preview dispatch. Planned actions для Homebrew formulae и
+casks, App Store applications и VS Code extensions формируются с повторным
+использованием Bootstrap validators, Blueprint filters и presence readers.
+Preview для Git, Workspace, VS Code settings и macOS пока не реализован.
+Preview inspections используют только inspection accounting и не используют
+Bootstrap state `MODULE_CHANGED`. Preview не является источником конфигурации
+или обязательным отдельным planning engine.
 
 ### Global Verification
 

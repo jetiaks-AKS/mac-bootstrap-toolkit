@@ -377,10 +377,23 @@ CLI parse → Logger → Blueprint validation → selected input validation
 ```
 
 Он не вызывает `sudo -v`, не устанавливает Homebrew и не запускает Bootstrap
-consumers. Domain-specific planned actions пока не формируются. Summary Preview
-показывает `Modules Inspected`, `Warnings` и `Errors`, без Bootstrap-полей
-`Installed` и `Skipped`. Stale Blueprint сохраняет warning status; malformed
-Blueprint или обязательный selected input возвращает `2`.
+mutations. Applications Preview использует существующие validators, Blueprint
+selection и presence inspection и может вывести:
+
+```text
+Would install Homebrew formula: <name>
+Would install Homebrew cask: <name>
+Would reinstall Homebrew cask: <name>
+Would install App Store app: <name> (<id>)
+Would install VS Code extension: <id>
+```
+
+Уже соответствующие состоянию и невыбранные элементы не выводятся как planned
+actions. Сами planned actions сохраняют status `0`; observation error возвращает
+`2`. Summary Preview показывает `Modules Inspected`, `Warnings` и `Errors`, без
+Bootstrap-полей `Installed` и `Skipped`. Stale Blueprint сохраняет warning
+status; malformed Blueprint или обязательный selected input возвращает `2`.
+Preview для Git, Workspace, VS Code settings и macOS пока не реализован.
 
 ---
 
@@ -410,4 +423,5 @@ Bootstrap
 Preview foundation (`--dry-run`)
 ```
 
-Domain-specific Preview output остаётся запланированной возможностью.
+Preview для Git, Workspace, VS Code settings и macOS остаётся запланированной
+возможностью.

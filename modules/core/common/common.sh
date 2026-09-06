@@ -162,6 +162,46 @@ run_module() {
 }
 
 # ==========================================
+# Run Read-only Inspection
+# ==========================================
+
+run_inspection() {
+
+    local inspection_name="$1"
+    local inspection_function="$2"
+
+    section "$inspection_name"
+    ((MODULES_CHECKED++))
+    log "[MODULE] START: $inspection_name"
+
+    "$inspection_function"
+    local result=$?
+
+    case $result in
+        0)
+            log "[MODULE] RESULT: SUCCESS"
+            return 0
+            ;;
+        1)
+            ((WARNING_COUNT++))
+            log "[MODULE] RESULT: WARNING"
+            return 1
+            ;;
+        2)
+            ((ERROR_COUNT++))
+            log "[MODULE] RESULT: ERROR"
+            return 2
+            ;;
+        *)
+            ((ERROR_COUNT++))
+            log "[MODULE] RESULT: UNKNOWN ($result)"
+            return 2
+            ;;
+    esac
+
+}
+
+# ==========================================
 # Run Configuration
 # ==========================================
 

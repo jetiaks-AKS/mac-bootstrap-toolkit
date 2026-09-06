@@ -157,8 +157,9 @@ Bootstrap
 Global Verification
 ```
 
-The `--dry-run` CLI and its read-only startup path are implemented. Domain
-Preview actions and Global Verification remain planned and unimplemented.
+The `--dry-run` CLI, its read-only startup path, and Applications Preview are
+implemented. Preview for the remaining domains and Global Verification remain
+planned and unimplemented.
 
 ### Dry-run / Preview
 
@@ -166,8 +167,12 @@ Dry-run / Preview is a non-mutating mode of the existing Bootstrap model. Its
 current foundation validates Blueprint and selected required inputs, performs
 read-only prerequisite inspection without sudo or installation, and then
 reaches an explicit Preview dispatch. Domain-specific planned-change output is
-not implemented yet. Preview is not a configuration source or a separately
-required planning engine.
+implemented for Homebrew formulae and casks, App Store applications, and VS
+Code extensions by reusing their Bootstrap validators, Blueprint filters, and
+presence readers. Git, Workspace, VS Code settings, and macOS Preview remain
+unimplemented. Preview inspections use inspection-only lifecycle accounting and
+do not use Bootstrap `MODULE_CHANGED` state. Preview is not a configuration
+source or a separately required planning engine.
 
 ### Global Verification
 
