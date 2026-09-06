@@ -69,7 +69,8 @@ source config/toolkit.conf
 # Toolkit Mode
 # ==========================================
 
-MODE="--check"
+MODE=""
+EXECUTION_MODE_COUNT=0
 VERBOSE=false
 
 for arg in "$@"; do
@@ -79,21 +80,31 @@ for arg in "$@"; do
         --check)
 
             MODE="--check"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --bootstrap)
 
             MODE="--bootstrap"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --discover)
 
             MODE="--discover"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --blueprint)
 
             MODE="--blueprint"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
+        --dry-run)
+
+            MODE="--dry-run"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         -v|--verbose)
@@ -130,6 +141,9 @@ Usage:
   ./bootstrap.sh --blueprint
       Select what Bootstrap should restore
 
+  ./bootstrap.sh --dry-run
+      Validate selected state and run the Preview foundation
+
 
 Options:
 
@@ -162,6 +176,14 @@ EOF
 
 done
 
+if [[ $EXECUTION_MODE_COUNT -ne 1 ]]; then
+    error "Select exactly one execution mode"
+    echo
+    echo "Use:"
+    echo "  ./bootstrap.sh --help"
+    exit 1
+fi
+
 MODE_NAME="Unknown"
 
 case "$MODE" in
@@ -180,6 +202,10 @@ case "$MODE" in
 
     --blueprint)
         MODE_NAME="Blueprint"
+        ;;
+
+    --dry-run)
+        MODE_NAME="Preview"
         ;;
 
 esac
@@ -288,6 +314,14 @@ bootstrap_run_startup_validation() {
 
 }
 
+run_preview() {
+
+    section "Preview"
+    info "Domain-specific Preview actions are not implemented yet"
+    return 0
+
+}
+
 # ==========================================
 # Initialize Logger
 # ==========================================
@@ -316,7 +350,7 @@ if [[ "$MODE" == "--blueprint" ]]; then
     exit "$blueprint_result"
 fi
 
-if [[ "$MODE" == "--bootstrap" ]]; then
+if [[ "$MODE" == "--bootstrap" || "$MODE" == "--dry-run" ]]; then
     if ! bootstrap_run_startup_validation; then
         show_summary
         close_logger
@@ -329,7 +363,11 @@ fi
 # Preflight Checks
 # ==========================================
 
-run_preflight_checks
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_read_only_preflight_checks
+else
+    run_preflight_checks
+fi
 
 if [[ $? -ne 0 ]]; then
 
@@ -345,7 +383,11 @@ fi
 # System Check
 # ==========================================
 
-run_module "Homebrew" check_homebrew
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_module "Homebrew" check_homebrew_read_only
+else
+    run_module "Homebrew" check_homebrew
+fi
 run_module "Git" check_git
 run_module "SSH" check_ssh
 run_module "Terminal" check_terminal
@@ -396,6 +438,12 @@ case "$MODE" in
     --discover)
 
         run_discovery
+
+        ;;
+
+    --dry-run)
+
+        run_preview
 
         ;;
 

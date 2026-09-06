@@ -22,6 +22,28 @@ is_homebrew_installed() {
 
 }
 
+check_homebrew_read_only() {
+
+    homebrew_availability
+    local availability_result=$?
+
+    case $availability_result in
+        0)
+            success "Homebrew already installed"
+            return 0
+            ;;
+        1)
+            warning "Homebrew is not installed"
+            return 1
+            ;;
+        *)
+            error "Failed to inspect Homebrew availability"
+            return 2
+            ;;
+    esac
+
+}
+
 # ==========================================
 # Install Homebrew
 # ==========================================

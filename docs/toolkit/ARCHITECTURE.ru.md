@@ -128,8 +128,8 @@ Bootstrap-модули остаются идемпотентными: наблю
 В Bootstrap Blueprint и обязательные generated inputs выбранного scope
 валидируются после настройки logger, но до preflight и Core checks. Это
 блокирует malformed input до установки Homebrew или изменения target state.
-Текущий preflight по-прежнему выполняет аутентификацию через `sudo -v`; будущий
-Preview должен использовать отдельный read-only startup path, а не этот.
+Текущий mutating preflight по-прежнему выполняет аутентификацию через `sudo -v`;
+Preview использует отдельный read-only startup path, а не этот.
 
 Discovery метаданных VS Code Workspace и генерация
 `vscode-workspaces.conf` реализованы. Bootstrap-восстановление
@@ -160,15 +160,17 @@ Bootstrap
 Global Verification
 ```
 
-Dry-run / Preview и Global Verification остаются запланированными и пока не
-реализованы.
+CLI `--dry-run` и его read-only startup path реализованы. Domain Preview actions
+и Global Verification остаются запланированными и пока не реализованы.
 
 ### Dry-run / Preview
 
-Dry-run / Preview — будущий неизменяющий режим существующей Bootstrap-модели.
-Он будет показывать запланированные изменения для выбранного поддерживаемого
-состояния. Это не источник конфигурации и не обязательный отдельный planning
-engine.
+Dry-run / Preview — неизменяющий режим существующей Bootstrap-модели. Текущая
+foundation валидирует Blueprint и обязательные inputs выбранного scope,
+выполняет read-only inspection prerequisites без sudo и установки, затем
+переходит к явному Preview dispatch. Domain-specific вывод planned changes пока
+не реализован. Preview не является источником конфигурации или обязательным
+отдельным planning engine.
 
 ### Global Verification
 

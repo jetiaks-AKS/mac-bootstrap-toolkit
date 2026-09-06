@@ -363,25 +363,24 @@ Status   : Interrupted
 
 ---
 
-# Future Dry-run / Preview
+# Dry-run / Preview foundation
 
-Dry-run / Preview запланирован и пока не реализован.
+`--dry-run` является отдельным execution mode. Одновременно можно выбрать
+ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint` и
+`--dry-run`; отсутствие mode или конфликтующие mode-флаги возвращают `1`.
 
-Будущий режим должен показывать планируемые изменения без их применения и
-следовать тем же принципам разделения компактного пользовательского вывода и
-диагностической истории.
+Текущий Preview foundation выполняет последовательность:
 
 ```text
-Desired State
-    ↓
-Plan
-    ↓
-Presentation
+CLI parse → Logger → Blueprint validation → selected input validation
+→ read-only prerequisite inspection → Preview dispatch
 ```
 
-Конкретные CLI-статусы, schema и Summary будущего режима ещё не спроектированы.
-Plan computation и presentation следует разделять там, где это практично,
-сохраняя общую change-plan semantics для Preview и Apply.
+Он не вызывает `sudo -v`, не устанавливает Homebrew и не запускает Bootstrap
+consumers. Domain-specific planned actions пока не формируются. Summary Preview
+показывает `Modules Inspected`, `Warnings` и `Errors`, без Bootstrap-полей
+`Installed` и `Skipped`. Stale Blueprint сохраняет warning status; malformed
+Blueprint или обязательный selected input возвращает `2`.
 
 ---
 
@@ -408,6 +407,7 @@ Check
 Discovery
 Blueprint
 Bootstrap
+Preview foundation (`--dry-run`)
 ```
 
-Dry-run / Preview остаётся запланированной возможностью.
+Domain-specific Preview output остаётся запланированной возможностью.

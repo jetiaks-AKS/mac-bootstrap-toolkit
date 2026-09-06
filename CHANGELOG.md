@@ -11,6 +11,13 @@ The format is based on the principles of **Keep a Changelog**.
 
 Current development after the **3.0.0 Stable** release.
 
+### Added
+
+* Added the `--dry-run` Preview foundation with exclusive execution-mode
+  parsing, selected-input validation, read-only preflight without `sudo`, and
+  non-mutating Homebrew availability inspection. Preview has its own Summary
+  semantics; domain-specific planned-action output remains deferred.
+
 ### Fixed
 
 * Bootstrap now validates Blueprint and the required generated inputs of the

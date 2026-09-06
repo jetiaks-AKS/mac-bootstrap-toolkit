@@ -20,6 +20,24 @@ run_preflight_checks() {
 }
 
 # ==========================================
+# Run Read-only Preflight Checks
+# ==========================================
+
+run_read_only_preflight_checks() {
+
+    section "Preflight Checks"
+
+    check_internet || return 2
+    check_xcode || return 2
+    check_macos || return 2
+
+    success "All read-only preflight checks passed"
+
+    return 0
+
+}
+
+# ==========================================
 # Internet
 # ==========================================
 

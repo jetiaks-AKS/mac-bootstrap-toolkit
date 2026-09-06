@@ -99,7 +99,7 @@ expect_case "missing Blueprint keeps all-inclusive validation path" 0 \
     "Bootstrap Input Validation"
 
 preflight_line="$(rg -n '^[[:space:]]*run_preflight_checks$' "$PROJECT_ROOT/bootstrap.sh" | cut -d: -f1)"
-validation_line="$(rg -n '^[[:space:]]*if \[\[ "\$MODE" == "--bootstrap" \]\]; then$' "$PROJECT_ROOT/bootstrap.sh" | head -n1 | cut -d: -f1)"
+validation_line="$(rg -n '^[[:space:]]*if ! bootstrap_run_startup_validation; then$' "$PROJECT_ROOT/bootstrap.sh" | cut -d: -f1)"
 
 if [[ -n "$preflight_line" && -n "$validation_line" && $validation_line -lt $preflight_line ]]; then
     pass "startup validation runs before preflight and Core modules"

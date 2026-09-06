@@ -62,6 +62,16 @@ verify_summary() {
         else
             fail "$label: misleading Discovery fields"
         fi
+    elif [[ "$MODE" == "--dry-run" ]]; then
+        if [[ "$output" == *"Modules Inspected : $MODULES_CHECKED"* &&
+              "$output" == *"Warnings          : $WARNING_COUNT"* &&
+              "$output" == *"Errors            : $ERROR_COUNT"* &&
+              "$output" != *Installed* && "$output" != *Skipped* &&
+              "$output" != *"Modules Checked"* ]]; then
+            pass "$label: Preview fields"
+        else
+            fail "$label: misleading Preview fields"
+        fi
     else
         if [[ "$output" == *"Modules Checked : $MODULES_CHECKED"* &&
               "$output" == *"Installed       : $INSTALLED_COUNT"* &&
@@ -134,6 +144,18 @@ for MODE in --check --bootstrap; do
     ERROR_COUNT=1
     verify_summary "$MODE error" 2 "[ERROR] $mode_name completed with errors"
 done
+
+MODE=--dry-run
+MODULES_CHECKED=4
+INSTALLED_COUNT=0
+SKIPPED_COUNT=4
+WARNING_COUNT=0
+ERROR_COUNT=0
+verify_summary 'Preview success' 0 '[ OK ] Preview completed successfully'
+WARNING_COUNT=1
+verify_summary 'Preview warning' 1 '[WARN] Preview completed with warnings'
+ERROR_COUNT=1
+verify_summary 'Preview error' 2 '[ERROR] Preview completed with errors'
 
 if [[ $TEST_FAILURES -gt 0 ]]; then
     echo "$TEST_FAILURES failure(s)"

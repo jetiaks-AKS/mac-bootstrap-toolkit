@@ -79,6 +79,18 @@ else
     fail "present Homebrew changed behavior (status=$status, read=$READ_CALLS, install=$INSTALL_CALLS)"
 fi
 
+for expected_status in 0 1 2; do
+    reset_case
+    AVAILABILITY_SEQUENCE=("$expected_status")
+    check_homebrew_read_only >/dev/null
+    status=$?
+    if [[ $status -eq $expected_status && $READ_CALLS -eq 0 && $INSTALL_CALLS -eq 0 ]]; then
+        pass "read-only Homebrew status $expected_status performs no installer action"
+    else
+        fail "read-only Homebrew status $expected_status mutated or returned $status"
+    fi
+done
+
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Homebrew availability tests passed"
     exit 0

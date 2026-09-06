@@ -37,6 +37,9 @@ init_logger() {
         --check)
             LOG_PREFIX="check"
             ;;
+        --dry-run)
+            LOG_PREFIX="preview"
+            ;;
         *)
             LOG_PREFIX="unknown"
             ;;
@@ -66,6 +69,9 @@ init_logger() {
             ;;
         --check)
             log "Mode     : Check"
+            ;;
+        --dry-run)
+            log "Mode     : Preview"
             ;;
         *)
             log "Mode     : Unknown"

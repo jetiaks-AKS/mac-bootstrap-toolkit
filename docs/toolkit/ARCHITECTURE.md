@@ -126,7 +126,7 @@ For Bootstrap, Blueprint and the required generated inputs of the selected
 scope are validated after logger setup and before preflight or Core checks.
 This blocks malformed input before Homebrew installation or target-state
 mutation. The current preflight still authenticates through `sudo -v`; a future
-Preview must use a separate read-only startup path rather than this one.
+Preview execution uses a separate read-only startup path rather than this one.
 
 Discovery of VS Code Workspace metadata and generation of
 `vscode-workspaces.conf` are implemented. Bootstrap restoration of
@@ -157,13 +157,17 @@ Bootstrap
 Global Verification
 ```
 
-Dry-run / Preview and Global Verification remain planned and unimplemented.
+The `--dry-run` CLI and its read-only startup path are implemented. Domain
+Preview actions and Global Verification remain planned and unimplemented.
 
 ### Dry-run / Preview
 
-Dry-run / Preview is a future non-mutating mode of the existing Bootstrap
-model. It will show planned changes from the selected supported state. It is
-not a configuration source or a separately required planning engine.
+Dry-run / Preview is a non-mutating mode of the existing Bootstrap model. Its
+current foundation validates Blueprint and selected required inputs, performs
+read-only prerequisite inspection without sudo or installation, and then
+reaches an explicit Preview dispatch. Domain-specific planned-change output is
+not implemented yet. Preview is not a configuration source or a separately
+required planning engine.
 
 ### Global Verification
 

@@ -317,6 +317,10 @@ show_summary() {
                 error "System check completed with errors"
                 ;;
 
+            --dry-run)
+                error "Preview completed with errors"
+                ;;
+
         esac
 
     elif [[ $WARNING_COUNT -gt 0 ]]; then
@@ -333,6 +337,10 @@ show_summary() {
 
             --check)
                 warning "System check completed with warnings"
+                ;;
+
+            --dry-run)
+                warning "Preview completed with warnings"
                 ;;
 
         esac
@@ -353,6 +361,10 @@ show_summary() {
                 success "System check completed successfully"
                 ;;
 
+            --dry-run)
+                success "Preview completed successfully"
+                ;;
+
         esac
 
     fi
@@ -369,6 +381,14 @@ show_summary() {
         echo "Errors            : $ERROR_COUNT"
 
         log "Modules Processed : $MODULES_CHECKED"
+        log "Warnings          : $WARNING_COUNT"
+        log "Errors            : $ERROR_COUNT"
+    elif [[ "$MODE" == "--dry-run" ]]; then
+        echo "Modules Inspected : $MODULES_CHECKED"
+        echo "Warnings          : $WARNING_COUNT"
+        echo "Errors            : $ERROR_COUNT"
+
+        log "Modules Inspected : $MODULES_CHECKED"
         log "Warnings          : $WARNING_COUNT"
         log "Errors            : $ERROR_COUNT"
     elif [[ "$MODE" == "--bootstrap" &&
