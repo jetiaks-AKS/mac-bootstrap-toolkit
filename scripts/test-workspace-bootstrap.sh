@@ -347,7 +347,12 @@ git() {
     if [[ "$1" == check-ref-format ]]; then command git "$@"; return $?; fi
     if [[ "$1" == clone ]]; then
         printf 'clone:%s\n' "$3" >> "$MUTATION_LOG"
-        mkdir -p "$3/.git"
+        [[ "$CLONE_STATUS" -eq 0 ]] || return "$CLONE_STATUS"
+        if [[ "$CLONE_CREATES_REPOSITORY" == true ]]; then
+            mkdir -p "$3/.git"
+        fi
+        OBSERVED_REMOTE="$CLONE_OBSERVED_REMOTE"
+        [[ "$CLONE_VERIFY_MODE" == normal ]] || OBSERVATION_MODE="$CLONE_VERIFY_MODE"
         return 0
     fi
     local repo_path="$2"
@@ -368,7 +373,9 @@ git() {
             ;;
         checkout)
             printf 'checkout:%s:%s\n' "$repo_path" "$2" >> "$MUTATION_LOG"
-            OBSERVED_BRANCH="$2"
+            [[ "$CHECKOUT_STATUS" -eq 0 ]] || return "$CHECKOUT_STATUS"
+            [[ "$CHECKOUT_UPDATES_BRANCH" != true ]] || OBSERVED_BRANCH="$2"
+            [[ "$CHECKOUT_VERIFY_MODE" == normal ]] || OBSERVATION_MODE="$CHECKOUT_VERIFY_MODE"
             ;;
         *) return 128 ;;
     esac
@@ -382,6 +389,13 @@ reset_observation() {
     WORKTREE_STATUS=0
     INDEX_STATUS=0
     FAIL_BRANCH_PATH=""
+    CLONE_STATUS=0
+    CLONE_CREATES_REPOSITORY=true
+    CLONE_OBSERVED_REMOTE='git@example.com:example.git'
+    CLONE_VERIFY_MODE=normal
+    CHECKOUT_STATUS=0
+    CHECKOUT_UPDATES_BRANCH=true
+    CHECKOUT_VERIFY_MODE=normal
 }
 for scenario in clean worktree-file empty-remote dirty staged-error dirty-and-error branch-error detached different remote-error remote-mismatch worktree-error non-git absent; do
     reset_observation
@@ -439,6 +453,82 @@ SELECTED_REPOSITORIES=example
 bootstrap_workspace_repositories >/dev/null 2>&1; status=$?
 expect_status 0 "$status" 'Blueprint excludes failing unselected repository'
 [[ ! -s "$MUTATION_LOG" ]] || fail 'selected correct repository changed'
+
+# W3 clone and checkout mutations must complete production Verify before success.
+for clone_case in success failure missing-destination worktree-error remote-error remote-mismatch; do
+    reset_observation
+    rmdir "$HOME/Projects/example/.git" "$HOME/Projects/example"
+    expected=2
+    case "$clone_case" in
+        success) expected=0 ;;
+        failure) CLONE_STATUS=128 ;;
+        missing-destination) CLONE_CREATES_REPOSITORY=false ;;
+        worktree-error) CLONE_VERIFY_MODE=worktree-error ;;
+        remote-error) CLONE_VERIFY_MODE=remote-error ;;
+        remote-mismatch) CLONE_OBSERVED_REMOTE='git@example.com:wrong.git' ;;
+    esac
+    repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main > "$TEST_ROOT/mutation-output" 2>&1
+    status=$?
+    expect_status "$expected" "$status" "clone lifecycle: $clone_case"
+    if [[ "$clone_case" == failure ]]; then
+        [[ "$MODULE_CHANGED" == false ]] || fail 'failed clone set Changed'
+    else
+        [[ "$MODULE_CHANGED" == true ]] || fail "$clone_case lost retained clone mutation"
+    fi
+    if [[ "$expected" == 2 && "$(cat "$TEST_ROOT/mutation-output")" == *'SUCCESS:Repository cloned'* ]]; then
+        fail "$clone_case reported clone success before Verify"
+    fi
+    if [[ "$clone_case" == success ]]; then
+        : > "$MUTATION_LOG"
+        MODULE_CHANGED=false
+        repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main >/dev/null 2>&1; status=$?
+        expect_status 0 "$status" 'verified clone rerun succeeds'
+        [[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail 'verified clone rerun mutated'
+    fi
+done
+
+for checkout_case in success failure verify-mismatch verify-error detached; do
+    reset_observation
+    OBSERVED_BRANCH=other
+    expected=2
+    case "$checkout_case" in
+        success) expected=0 ;;
+        failure) CHECKOUT_STATUS=128 ;;
+        verify-mismatch) CHECKOUT_UPDATES_BRANCH=false ;;
+        verify-error) CHECKOUT_VERIFY_MODE=branch-error ;;
+        detached) OBSERVED_BRANCH=""; expected=0 ;;
+    esac
+    repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main > "$TEST_ROOT/mutation-output" 2>&1
+    status=$?
+    expect_status "$expected" "$status" "checkout lifecycle: $checkout_case"
+    if [[ "$checkout_case" == failure ]]; then
+        [[ "$MODULE_CHANGED" == false ]] || fail 'failed checkout set Changed'
+    else
+        [[ "$MODULE_CHANGED" == true ]] || fail "$checkout_case lost retained checkout mutation"
+    fi
+    if [[ "$expected" == 2 && "$(cat "$TEST_ROOT/mutation-output")" == *'SUCCESS:Branch restored'* ]]; then
+        fail "$checkout_case reported branch success before Verify"
+    fi
+    if [[ "$expected" == 0 ]]; then
+        : > "$MUTATION_LOG"
+        MODULE_CHANGED=false
+        repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main >/dev/null 2>&1; status=$?
+        expect_status 0 "$status" "$checkout_case branch rerun succeeds"
+        [[ ! -s "$MUTATION_LOG" && "$MODULE_CHANGED" == false ]] || fail "$checkout_case branch rerun mutated"
+    fi
+done
+
+reset_observation
+mkdir -p "$HOME/Projects/second/.git"
+OBSERVED_BRANCH=other
+CHECKOUT_STATUS=0
+repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main >/dev/null 2>&1
+[[ "$MODULE_CHANGED" == true ]] || fail 'first successful checkout did not set Changed'
+CHECKOUT_STATUS=128
+OBSERVED_BRANCH=other
+repository_verify "$HOME/Projects/second" 'git@example.com:second.git' main >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'later checkout failure returns 2'
+[[ "$MODULE_CHANGED" == true ]] || fail 'later checkout failure cleared earlier Changed'
 
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then

@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Workspace repository clone and branch restoration now report success only
+  after local verification. Clone verifies the destination, usable Git worktree,
+  and exact origin; checkout verifies the exact resulting branch. Mutation and
+  verification failures return error 2 while retaining earlier Changed state.
+
 * Workspace repository inspection now distinguishes dirty/mismatched state from
   filesystem and Git read errors. Failed worktree, origin, branch or clean-state
   observation blocks restore actions and propagates error 2 instead of becoming

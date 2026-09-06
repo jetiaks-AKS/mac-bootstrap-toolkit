@@ -138,13 +138,18 @@ repository_verify() {
 
         if ! repository_clone "$expected_remote" "$path"; then
             error "Failed to clone repository"
-            return 1
+            return 2
         fi
-
-        success "Repository cloned"
 
         MODULE_CHANGED=true
         repository_cloned=true
+
+        repository_exists "$path"
+        inspection_result=$?
+        if [[ $inspection_result -ne 0 ]]; then
+            error "Failed to verify cloned repository destination"
+            return 2
+        fi
 
     fi
 
@@ -159,6 +164,10 @@ repository_verify() {
         return 2
     fi
     if [[ $inspection_result -eq 1 ]]; then
+        if [[ "$repository_cloned" == true ]]; then
+            error "Cloned destination is not a usable Git repository"
+            return 2
+        fi
         warning "Directory is not a Git repository"
         return 1
     fi
@@ -173,11 +182,19 @@ repository_verify() {
     fi
 
     if [[ "$current_remote" != "$expected_remote" ]]; then
+        if [[ "$repository_cloned" == true ]]; then
+            error "Cloned repository origin verification failed"
+            return 2
+        fi
         warning "Remote does not match"
         return 1
     fi
 
     success "Remote verified"
+
+    if [[ "$repository_cloned" == true ]]; then
+        success "Repository cloned"
+    fi
 
     local current_branch
 
@@ -205,12 +222,10 @@ if [[ "$current_branch" != "$expected_branch" ]]; then
 
     if ! repository_checkout "$path" "$expected_branch"; then
         error "Failed to restore branch"
-        return 1
+        return 2
     fi
 
     MODULE_CHANGED=true
-
-    success "Branch restored"
 
     if ! current_branch=$(repository_branch "$path"); then
         error "Failed to observe repository branch"
@@ -219,8 +234,10 @@ if [[ "$current_branch" != "$expected_branch" ]]; then
 
     if [[ "$current_branch" != "$expected_branch" ]]; then
         error "Branch verification failed"
-        return 1
+        return 2
     fi
+
+    success "Branch restored"
 
 fi
 

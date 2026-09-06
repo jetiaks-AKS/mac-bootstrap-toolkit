@@ -237,8 +237,21 @@ Clean-state по-прежнему учитывает только tracked/staged
 --quiet` проверяются отдельно. `0` — оба clean, `1` — есть изменения, `2` — хотя бы
 одна ошибка чтения, даже если другая проверка обнаружила dirty state. Untracked
 файлы не становятся новым критерием dirty. Inspection error блокирует действие
-для этого repository и немедленно возвращает module error `2`. Clone/checkout
-команды, mutation accounting и существующие post-action проверки не расширяются.
+для этого repository и немедленно возвращает module error `2`.
+
+Clone выполняется только после подтверждённого отсутствия destination. После
+успешной команды устанавливается `MODULE_CHANGED=true`, затем повторно
+проверяются наличие destination, usable Git worktree и точный origin. Любая
+ошибка или несовпадение Verify возвращает `2`; success о clone выводится только
+после этих проверок.
+
+Checkout выполняется только для подтверждённого branch mismatch или detached
+HEAD после clean-state `0`. После успешной команды устанавливается
+`MODULE_CHANGED=true`, затем branch читается повторно и должен точно совпадать с
+`CURRENT_BRANCH`. Ошибка чтения или mismatch возвращает `2`; сообщение о
+восстановлении ветки выводится после Verify. Ошибка mutating-команды также
+возвращает `2`. Ранее успешное изменение сохраняет Changed при поздней ошибке;
+rollback не выполняется.
 
 ### VS Code settings lifecycle
 
