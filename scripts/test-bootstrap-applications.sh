@@ -360,6 +360,151 @@ assert_status 2 "$status" "verbose formula install failure returns 2"
 [[ "$MODULE_CHANGED" == false ]] || fail "verbose failed formula install set Changed"
 assert_no_false_success "$output" "verbose failed formula install emits no success"
 
+# Complete required application inputs must validate before observation/apply.
+run_application_input_case() {
+    "$validation_consumer" > "$TEST_DIR/input-validation.out" 2>&1
+    status=$?
+    output="$(cat "$TEST_DIR/input-validation.out")"
+}
+
+for input_domain in casks appstore extensions; do
+    case "$input_domain" in
+        casks)
+            validation_consumer=install_brew_casks
+            input_file="$TEST_DIR/brew-casks.conf"
+            valid_first=example-cask
+            valid_last=other-cask@2
+            selected_item=other-cask@2
+            expected_install='brew install other-cask@2'
+            invalid_records=('-force' 'bad token' '../local' '/tmp/local.rb' 'owner/tap/cask' 'https://example.org/cask' 'local.rb' 'local.json' 'local.sh' 'local.dmg' 'local.pkg' 'bad|token' $'bad\r')
+            ;;
+        appstore)
+            validation_consumer=install_appstore_apps
+            input_file="$TEST_DIR/appstore.conf"
+            valid_first='111|Installed App'
+            valid_last='222|Приложение (Test) & Tools'
+            selected_item=222
+            expected_install='mas install 222'
+            invalid_records=('abc|Name' '-1|Name' '|Name' '123' '123|' '123|Name|Extra' '12 3|Name' '123|   ' '123| Name' '123|Name ' '123|--help' $'123|Bad\tName' 'https://example.org|Name' '$(command)|Name' $'123|Name\r')
+            ;;
+        extensions)
+            validation_consumer=install_vscode_extensions
+            input_file="$TEST_DIR/vscode-extensions.conf"
+            valid_first=installed.extension
+            valid_last=Publisher-2.extension_name-3
+            selected_item=Publisher-2.extension_name-3
+            expected_install='code install Publisher-2.extension_name-3'
+            invalid_records=('-force' 'publisher' '.extension' 'publisher.' 'publisher.extension.extra' 'publisher.bad name' 'publisher/extension' './local.vsix' 'local.vsix' 'https://example.org/ext' 'publisher.extension@1.0' 'publisher.ext;command' $'publisher.ext\r')
+            ;;
+    esac
+
+    reset_state
+    BREW_INSTALL_MAKES_PRESENT=true
+    printf '# comment\n\n%s\n%s' "$valid_first" "$valid_last" > "$input_file"
+    run_application_input_case
+    assert_status 0 "$status" "$input_domain valid input and final line without newline"
+    [[ "$(wc -l < "$COMMAND_LOG" | tr -d ' ')" -eq 2 && "$MODULE_CHANGED" == true ]] || fail "$input_domain lost a valid record"
+    pass "$input_domain preserves names, comments, blank lines, and last record"
+
+    for invalid_record in "${invalid_records[@]}"; do
+        for invalid_position in early late; do
+            reset_state
+            if [[ "$invalid_position" == early ]]; then
+                printf '%s\n%s\n' "$invalid_record" "$valid_first" > "$input_file"
+            else
+                printf '%s\n%s' "$valid_first" "$invalid_record" > "$input_file"
+            fi
+            run_application_input_case
+            assert_status 2 "$status" "$input_domain rejects $invalid_position invalid record '$invalid_record'"
+            [[ ! -s "$COMMAND_LOG" && ! -s "$OBSERVATION_LOG" && "$MODULE_CHANGED" == false ]] || fail "$input_domain validation reached observation/mutation"
+            assert_no_false_success "$output" "$input_domain invalid input has no false success"
+        done
+    done
+
+    for invalid_file in missing unreadable directory; do
+        reset_state
+        printf '%s\n' "$valid_first" > "$input_file"
+        case "$invalid_file" in
+            missing) rm "$input_file" ;;
+            unreadable) chmod 000 "$input_file" ;;
+            directory) rm "$input_file"; mkdir "$input_file" ;;
+        esac
+        run_application_input_case
+        case "$invalid_file" in
+            unreadable) chmod 600 "$input_file" ;;
+            directory) rmdir "$input_file" ;;
+        esac
+        assert_status 2 "$status" "$input_domain $invalid_file required input returns 2"
+        [[ ! -s "$COMMAND_LOG" && ! -s "$OBSERVATION_LOG" && "$MODULE_CHANGED" == false ]] || fail "$input_domain invalid file changed state"
+    done
+
+    reset_state
+    printf '# only a comment\n\n' > "$input_file"
+    run_application_input_case
+    assert_status 0 "$status" "$input_domain comment-only input remains valid"
+    assert_no_mutation "$input_domain empty input performs no installs"
+
+    reset_state
+    BREW_INSTALL_MAKES_PRESENT=true
+    BLUEPRINT_PRESENT=true
+    SELECTED_ITEMS="$selected_item"
+    printf '%s\n%s' "$valid_first" "$valid_last" > "$input_file"
+    run_application_input_case
+    assert_status 0 "$status" "$input_domain Blueprint subset remains supported"
+    [[ "$(cat "$COMMAND_LOG")" == "$expected_install" ]] || fail "$input_domain Blueprint selection changed"
+    pass "$input_domain installs exactly the selected item"
+
+    # A nonempty scope requires the complete file, even a late unselected row.
+    reset_state
+    BLUEPRINT_PRESENT=true
+    SELECTED_ITEMS="$selected_item"
+    printf '%s\n-bad' "$valid_last" > "$input_file"
+    run_application_input_case
+    assert_status 2 "$status" "$input_domain selected scope validates its complete required input"
+    assert_no_mutation "$input_domain late invalid unselected record blocks partial apply"
+
+    for unused_input in missing malformed; do
+        reset_state
+        BLUEPRINT_PRESENT=true
+        if [[ "$unused_input" == missing ]]; then
+            rm -f "$input_file"
+        else
+            printf '%s\n' '-bad' > "$input_file"
+        fi
+        run_application_input_case
+        assert_status 0 "$status" "$input_domain empty Blueprint scope ignores $unused_input input"
+        [[ ! -s "$COMMAND_LOG" && ! -s "$OBSERVATION_LOG" && "$MODULE_CHANGED" == false ]] || fail "$input_domain empty scope inspected input"
+    done
+done
+
+# Required input errors take precedence over optional CLI availability warnings.
+command() {
+    if [[ "${1:-}" == -v && "${2:-}" == "$missing_cli" ]]; then
+        return 1
+    fi
+    builtin command "$@"
+}
+for missing_cli in brew mas code; do
+    reset_state
+    case "$missing_cli" in
+        brew) validation_consumer=install_brew_casks; input_file="$TEST_DIR/brew-casks.conf"; valid_first=example-cask; missing_cli_status=2 ;;
+        mas) validation_consumer=install_appstore_apps; input_file="$TEST_DIR/appstore.conf"; valid_first='111|Installed App'; missing_cli_status=1 ;;
+        code) validation_consumer=install_vscode_extensions; input_file="$TEST_DIR/vscode-extensions.conf"; valid_first=installed.extension; missing_cli_status=1 ;;
+    esac
+    printf '%s\n' '-bad' > "$input_file"
+    run_application_input_case
+    assert_status 2 "$status" "invalid input returns 2 even without $missing_cli"
+    printf '%s\n' "$valid_first" > "$input_file"
+    run_application_input_case
+    assert_status "$missing_cli_status" "$status" "valid input preserves missing $missing_cli status"
+    assert_no_mutation "missing $missing_cli performs no installs"
+done
+unset -f command
+# Restore fixtures for the existing consumer lifecycle regression cases.
+printf '111|Installed App\n222|Missing App\n' > "$TEST_DIR/appstore.conf"
+printf 'installed.extension\nmissing.extension\n' > "$TEST_DIR/vscode-extensions.conf"
+printf 'example-cask\n' > "$TEST_DIR/brew-casks.conf"
+
 # App Store observation, apply, and failure semantics.
 reset_state
 MAS_LIST_OUTPUT=$'111 Installed App (1.0)\n'

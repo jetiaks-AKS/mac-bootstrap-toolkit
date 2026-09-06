@@ -4,6 +4,25 @@
 # Check VS Code CLI
 # ==========================================
 
+read_vscode_extensions_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    LC_ALL=C awk '
+        /^$/ || /^#/ { next }
+        {
+            if ($0 !~ /^[A-Za-z0-9][A-Za-z0-9_-]*\.[A-Za-z0-9][A-Za-z0-9_-]*$/ ||
+                tolower($0) ~ /\.vsix$/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
 check_vscode_cli() {
 
     if command -v code >/dev/null 2>&1; then
@@ -59,17 +78,18 @@ install_vscode_extensions() {
         return 0
     fi
 
-    check_vscode_cli || return 1
-
     local config_file
     config_file="$(blueprint_generated_file vscode-extensions)"
 
-    if [[ ! -f "$config_file" ]]; then
+    local extensions
+    if ! extensions="$(read_vscode_extensions_configuration "$config_file")"; then
 
-        error "Configuration file $config_file not found"
+        error "VS Code extensions configuration missing, unreadable, or malformed: $config_file"
         return 2
 
     fi
+
+    check_vscode_cli || return 1
 
     local installed_extensions
     if ! installed_extensions="$(code --list-extensions)"; then
@@ -109,7 +129,7 @@ install_vscode_extensions() {
 
         MODULE_CHANGED=true
 
-    done < "$config_file"
+    done <<< "$extensions"
 
     if [[ $missing_extensions -eq 0 ]]; then
 

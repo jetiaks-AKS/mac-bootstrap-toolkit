@@ -4,6 +4,26 @@
 # Install App Store Application
 # ==========================================
 
+read_appstore_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    LC_ALL=C awk -F "|" '
+        /^$/ || /^#/ { next }
+        {
+            if (NF != 2 || $1 !~ /^[0-9]+$/ || $2 == "" || $2 ~ /^-/ ||
+                $2 ~ /^[[:space:]]/ || $2 ~ /[[:space:]]$/ ||
+                $2 ~ /[[:cntrl:]]/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
 install_appstore_app() {
 
     local app_id="$1"
@@ -45,21 +65,20 @@ install_appstore_apps() {
         return 0
     fi
 
-    if ! command -v mas >/dev/null 2>&1; then
-
-        warning "mas is not installed"
-        return 1
-
-    fi
-
     local config_file
     config_file="$(blueprint_generated_file app-store)"
 
-    if [[ ! -f "$config_file" ]]; then
+    local applications
+    if ! applications="$(read_appstore_configuration "$config_file")"; then
 
-        error "Configuration file $config_file not found"
+        error "App Store configuration missing, unreadable, or malformed: $config_file"
         return 2
 
+    fi
+
+    if ! command -v mas >/dev/null 2>&1; then
+        warning "mas is not installed"
+        return 1
     fi
 
     local installed_apps
@@ -100,7 +119,7 @@ install_appstore_apps() {
 
         MODULE_CHANGED=true
 
-    done < "$config_file"
+    done <<< "$applications"
 
     if [[ $missing_apps -eq 0 ]]; then
 

@@ -4,6 +4,25 @@
 # Install Homebrew Cask
 # ==========================================
 
+read_brew_casks_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    LC_ALL=C awk '
+        /^$/ || /^#/ { next }
+        {
+            if ($0 !~ /^[A-Za-z0-9][A-Za-z0-9+_.@-]*$/ ||
+                tolower($0) ~ /\.(rb|json|sh|bash|zsh|dmg|pkg|zip)$/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
 # ==========================================
 # Check Homebrew Cask
 # ==========================================
@@ -120,21 +139,20 @@ install_brew_casks() {
         return 0
     fi
 
-    if ! command -v brew >/dev/null 2>&1; then
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-casks)"
 
-        error "Homebrew is not installed"
+    local casks
+    if ! casks="$(read_brew_casks_configuration "$config_file")"; then
+
+        error "Cask configuration missing, unreadable, or malformed: $config_file"
         return 2
 
     fi
 
-    local config_file
-    config_file="$(blueprint_generated_file homebrew-casks)"
-
-    if [[ ! -f "$config_file" ]]; then
-
-        error "Configuration file $config_file not found"
+    if ! command -v brew >/dev/null 2>&1; then
+        error "Homebrew is not installed"
         return 2
-
     fi
 
     local missing_casks=0
@@ -180,7 +198,7 @@ install_brew_casks() {
 
         MODULE_CHANGED=true
 
-    done < "$config_file"
+    done <<< "$casks"
 
     if [[ $missing_casks -eq 0 ]]; then
 
