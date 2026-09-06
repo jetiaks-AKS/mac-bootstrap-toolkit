@@ -157,9 +157,9 @@ Bootstrap
 Global Verification
 ```
 
-The `--dry-run` CLI, its read-only startup path, and Preview for Applications,
-Git configuration, VS Code settings, and Workspace are implemented. macOS
-Preview and Global Verification remain planned and unimplemented.
+The `--dry-run` CLI, its read-only startup path, and domain Preview for
+Applications, Git configuration, VS Code settings, Workspace, and macOS are
+implemented. Global Verification remains planned and unimplemented.
 
 ### Dry-run / Preview
 
@@ -174,9 +174,25 @@ validation and global-value inspection; VS Code settings Preview reuses source
 validation and byte comparison. Workspace Preview reuses its validated selected
 records and folder/repository inspection helpers. An absent repository produces
 only a clone plan; Preview does not infer its future branch state. macOS Preview
-remains unimplemented. Preview inspections use inspection-only lifecycle
-accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview is not a
-configuration source or a separately required planning engine.
+reuses typed defaults validation and observation and reports related process
+restarts once per changed category. Preview inspections use inspection-only
+lifecycle accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview
+is not a configuration source or a separately required planning engine.
+
+Screenshots Bootstrap currently creates the hard-coded `$HOME/Screenshots`
+directory whenever its defaults category requires Apply, independently of the
+generated desired location. Preview reports this actual behavior. Aligning the
+directory with generated state remains technical debt rather than inferred
+Preview behavior.
+
+Startup order is CLI → logger → Blueprint validation → selected-input
+validation → read-only preflight → read-only Core inspection → domain Preview
+→ Summary → exit code. Startup validation/preflight errors stop execution.
+Core and domain errors remain in shared accounting while later read-only
+inspections continue. Each domain may stop its own inspection on error.
+Errors take precedence (`2`), then warnings (`1`); plans alone return `0`.
+The production-entrypoint integration harness checks all domains together,
+external mutation spies, target snapshots, and terminal/logger Summary parity.
 
 ### Global Verification
 

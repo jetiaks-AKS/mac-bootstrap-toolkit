@@ -13,6 +13,15 @@ Current development after the **3.0.0 Stable** release.
 
 ### Added
 
+* Completed Preview integration coverage through the real entrypoint and all
+  production domain helpers, with external mutation spies, target snapshots,
+  stable mixed-domain plans, warning/error propagation, and Summary log parity.
+
+* Added non-mutating macOS Preview for Finder, Dock, Keyboard, Trackpad, and
+  Screenshots. It reuses typed defaults validation and observation, reports
+  current-to-desired or absent-to-desired changes, and plans category process
+  restarts and the existing Screenshots directory creation without mutation.
+
 * Added non-mutating Workspace Preview for selected folders and repositories.
   It reuses Workspace validation and inspection, reports folder creation,
   repository cloning, and eligible branch switching without mutation, and
@@ -33,7 +42,7 @@ Current development after the **3.0.0 Stable** release.
 * Added the `--dry-run` Preview foundation with exclusive execution-mode
   parsing, selected-input validation, read-only preflight without `sudo`, and
   non-mutating Homebrew availability inspection. Preview has its own Summary
-  semantics; domain-specific planned-action output remains deferred.
+  semantics; domain-specific coverage is described above.
 
 ### Fixed
 

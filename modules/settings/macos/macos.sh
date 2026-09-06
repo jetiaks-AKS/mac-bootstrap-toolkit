@@ -12,6 +12,59 @@ source modules/settings/macos/trackpad.sh
 source modules/settings/macos/screenshots.sh
 
 # ==========================================
+# Preview macOS Settings
+# ==========================================
+
+preview_macos_category() {
+    local config_file="$1"
+    local restart_process="${2:-}"
+
+    preview_defaults_config "$config_file" || return 2
+
+    if [[ "$DEFAULTS_PREVIEW_CHANGED" == true && -n "$restart_process" ]]; then
+        action "Would restart process: $restart_process"
+    fi
+
+    return 0
+}
+
+preview_screenshots_settings() {
+    preview_defaults_config "$SCREENSHOTS_CONFIG" || return 2
+
+    [[ "$DEFAULTS_PREVIEW_CHANGED" == true ]] || return 0
+
+    if [[ ! -e "$HOME/Screenshots" && ! -L "$HOME/Screenshots" ]]; then
+        action "Would create screenshots directory: $HOME/Screenshots"
+    elif [[ ! -d "$HOME/Screenshots" || ! -r "$HOME/Screenshots" ||
+            ! -x "$HOME/Screenshots" ]]; then
+        error "Failed to inspect Screenshots directory"
+        return 2
+    fi
+
+    action "Would restart process: SystemUIServer"
+    return 0
+}
+
+preview_macos_settings() {
+    if blueprint_category_enabled macos-finder; then
+        preview_macos_category "$FINDER_CONFIG" Finder || return 2
+    fi
+    if blueprint_category_enabled macos-dock; then
+        preview_macos_category "$DOCK_CONFIG" Dock || return 2
+    fi
+    if blueprint_category_enabled macos-keyboard; then
+        preview_macos_category "$KEYBOARD_CONFIG" || return 2
+    fi
+    if blueprint_category_enabled macos-trackpad; then
+        preview_macos_category "$TRACKPAD_CONFIG" || return 2
+    fi
+    if blueprint_category_enabled macos-screenshots; then
+        preview_screenshots_settings || return 2
+    fi
+    return 0
+}
+
+# ==========================================
 # Check macOS Settings
 # ==========================================
 

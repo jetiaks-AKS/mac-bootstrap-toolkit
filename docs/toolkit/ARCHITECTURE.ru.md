@@ -160,9 +160,9 @@ Bootstrap
 Global Verification
 ```
 
-CLI `--dry-run`, его read-only startup path и Preview для Applications, Git
-configuration, VS Code settings и Workspace реализованы. macOS Preview и
-Global Verification остаются запланированными и пока не реализованы.
+CLI `--dry-run`, его read-only startup path и domain Preview для Applications,
+Git configuration, VS Code settings, Workspace и macOS реализованы. Global
+Verification остаётся запланированной и пока не реализована.
 
 ### Dry-run / Preview
 
@@ -177,10 +177,26 @@ inspection глобальных значений; VS Code settings Preview по�
 валидацию source и byte comparison. Workspace Preview повторно использует
 валидированные selected records и inspection helpers папок и репозиториев.
 Отсутствующий репозиторий формирует только clone-план: Preview не предполагает
-его будущую branch state. macOS Preview пока не реализован. Preview inspections
-используют только inspection accounting и не используют Bootstrap state
-`MODULE_CHANGED`. Preview не является источником конфигурации или обязательным
-отдельным planning engine.
+его будущую branch state. macOS Preview повторно использует typed defaults
+validation и observation и выводит связанный restart один раз для изменяемой
+category. Preview inspections используют только inspection accounting и не
+используют Bootstrap state `MODULE_CHANGED`. Preview не является источником
+конфигурации или обязательным отдельным planning engine.
+
+Screenshots Bootstrap сейчас создаёт жёстко заданный каталог
+`$HOME/Screenshots`, когда defaults category требует Apply, независимо от
+generated desired location. Preview сообщает это фактическое поведение.
+Согласование каталога с generated state остаётся техническим долгом, а не
+предполагаемым поведением Preview.
+
+Порядок startup: CLI → logger → Blueprint validation → selected-input
+validation → read-only preflight → read-only Core inspection → domain Preview
+→ Summary → exit code. Ошибки startup validation/preflight останавливают запуск.
+Ошибки Core и domains сохраняются в общем accounting, а последующие read-only
+inspections продолжаются. Каждый domain может остановить собственную проверку
+при ошибке. Приоритет статусов: error `2`, затем warning `1`; планы без проблем
+возвращают `0`. Integration harness реального entrypoint проверяет все domains
+совместно, mutation spies, snapshots targets и parity terminal/logger Summary.
 
 ### Global Verification
 

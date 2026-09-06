@@ -332,6 +332,114 @@ state_set test.domain key string desired
 apply_macos_settings >/dev/null 2>&1; status=$?
 expect_status 0 "$status" "no-Blueprint all-category behavior remains compatible"
 
+# Preview uses production validation, typed reads, and comparisons without mutation.
+run_macos_preview() {
+    preview_macos_settings > "$TEST_ROOT/preview-output" 2>&1
+    status=$?
+    output="$(cat "$TEST_ROOT/preview-output")"
+}
+reset_case
+printf 'test.domain|boolKey|bool|true\ntest.domain|intKey|int|-3\n' > "$FINDER_CONFIG"
+state_set test.domain boolKey bool 1
+state_set test.domain intKey int -03
+ENABLED_CATEGORIES='macos-finder'
+MODULE_CHANGED=preserved
+run_macos_preview
+expect_status 0 "$status" "Preview accepts already-correct typed settings"
+[[ "$output" != *'Would change macOS setting'* ]] && pass "matching macOS Preview emits no plan" || fail "matching macOS Preview emitted a plan"
+assert_no_mutation "matching macOS Preview performs no mutation"
+[[ "$MODULE_CHANGED" == preserved ]] && pass "matching macOS Preview preserves Changed state" || fail "matching macOS Preview touched Changed state"
+
+reset_case
+printf 'test.domain|boolKey|bool|true\ntest.domain|intKey|int|2\ntest.domain|missing|string|desired\n' > "$FINDER_CONFIG"
+state_set test.domain boolKey bool false
+state_set test.domain intKey int 1
+ENABLED_CATEGORIES='macos-finder'
+MODULE_CHANGED=preserved
+run_macos_preview
+expect_status 0 "$status" "Preview reports multiple Finder changes"
+if [[ "$output" == *'Would change macOS setting: test.domain/boolKey (false -> true)'* &&
+      "$output" == *'Would change macOS setting: test.domain/intKey (1 -> 2)'* &&
+      "$output" == *'Would change macOS setting: test.domain/missing (absent -> desired)'* ]]; then
+    pass "Preview reports typed current, desired, and absent values"
+else
+    fail "Preview setting context is incomplete"
+fi
+[[ "$(grep -c 'Would restart process: Finder' <<< "$output")" -eq 1 ]] && pass "Finder restart is planned once" || fail "Finder restart plan is missing or duplicated"
+assert_no_mutation "Finder Preview performs no defaults write or restart"
+[[ "$MODULE_CHANGED" == preserved ]] && pass "changed Finder Preview preserves Changed state" || fail "changed Finder Preview touched Changed state"
+first_preview="$output"
+run_macos_preview
+[[ $status -eq 0 && "$output" == "$first_preview" ]] && pass "repeated macOS Preview is stable" || fail "repeated macOS Preview output changed"
+assert_no_mutation "repeated macOS Preview remains non-mutating"
+
+reset_case
+printf 'test.domain|key|string|desired\n' > "$DOCK_CONFIG"
+state_set test.domain key string current
+READ_FAILURE='test.domain|key'
+ENABLED_CATEGORIES='macos-dock'
+run_macos_preview
+expect_status 2 "$status" "Preview observation failure returns 2"
+[[ "$output" != *'Would change macOS setting'* && "$output" != *'Would restart process'* ]] || fail "observation failure produced an invented plan"
+assert_no_mutation "macOS observation failure performs no mutation"
+
+reset_case
+printf 'test.domain|first|string|desired\ntest.domain|second|bool|true\n' > "$DOCK_CONFIG"
+state_set test.domain first string current
+state_set test.domain second bool false
+ENABLED_CATEGORIES='macos-dock'
+run_macos_preview
+expect_status 0 "$status" "Preview reports multiple Dock changes"
+[[ "$(grep -c 'Would restart process: Dock' <<< "$output")" -eq 1 ]] && pass "Dock restart is planned once" || fail "Dock restart plan is duplicated"
+assert_no_mutation "Dock Preview performs no defaults write or restart"
+
+reset_case
+printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
+state_set test.domain location string current
+ENABLED_CATEGORIES='macos-screenshots'
+command mkdir -p "$HOME/Screenshots"
+: > "$MUTATION_LOG"
+run_macos_preview
+expect_status 0 "$status" "Screenshots Preview accepts existing directory"
+[[ "$output" != *'Would create screenshots directory'* &&
+   "$(grep -c 'Would restart process: SystemUIServer' <<< "$output")" -eq 1 ]] || fail "existing Screenshots directory plan is incorrect"
+assert_no_mutation "existing-directory Screenshots Preview performs no mutation"
+
+reset_case
+printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
+state_set test.domain location string current
+ENABLED_CATEGORIES='macos-screenshots'
+run_macos_preview
+expect_status 0 "$status" "Screenshots Preview plans required directory"
+if [[ "$output" == *"Would create screenshots directory: $HOME/Screenshots"* &&
+      "$(grep -c 'Would restart process: SystemUIServer' <<< "$output")" -eq 1 ]]; then
+    pass "Screenshots directory and restart plans match Bootstrap Apply"
+else
+    fail "Screenshots directory or restart plan is incorrect"
+fi
+[[ ! -e "$HOME/Screenshots" ]] || fail "Screenshots Preview created the directory"
+assert_no_mutation "absent-directory Screenshots Preview performs no mutation"
+
+reset_case
+printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
+state_set test.domain location string desired
+ENABLED_CATEGORIES='macos-screenshots'
+run_macos_preview
+expect_status 0 "$status" "matching Screenshots defaults preserve current lifecycle"
+[[ "$output" != *'Would create screenshots directory'* && "$output" != *'Would restart process'* ]] || fail "Preview invented Screenshots Apply for matching defaults"
+assert_no_mutation "matching Screenshots Preview performs no mutation"
+
+reset_case
+printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
+printf 'test.domain|disabled|string|desired\n' > "$DOCK_CONFIG"
+state_set test.domain key string desired
+READ_TYPE_FAILURE='test.domain|disabled'
+ENABLED_CATEGORIES='macos-finder'
+run_macos_preview
+expect_status 0 "$status" "Blueprint-disabled macOS category is not inspected"
+[[ "$output" != *disabled* ]] || fail "disabled macOS category reached Preview"
+assert_no_mutation "Blueprint-selected macOS Preview performs no mutation"
+
 # Local errors retain lifecycle status 2.
 reset_case
 printf 'test.domain|key|int|invalid\n' > "$FINDER_CONFIG"

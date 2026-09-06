@@ -142,7 +142,7 @@ Usage:
       Select what Bootstrap should restore
 
   ./bootstrap.sh --dry-run
-      Validate selected state and run the Preview foundation
+      Preview selected Bootstrap changes without target mutation
 
 
 Options:
@@ -320,6 +320,8 @@ bootstrap_run_startup_validation() {
 
 run_preview() {
 
+    # Continue later read-only inspections; run_inspection retains every status.
+
     run_inspection "Homebrew Packages Preview" preview_brew_packages
     run_inspection "Homebrew Casks Preview" preview_brew_casks
     run_inspection "App Store Preview" preview_appstore_apps
@@ -335,9 +337,7 @@ run_preview() {
 
     run_inspection "Workspace Folders Preview" preview_workspace_folders
     run_inspection "Workspace Repositories Preview" preview_workspace_repositories
-
-    section "Preview"
-    info "macOS Preview is not implemented yet"
+    run_inspection "macOS Settings Preview" preview_macos_settings
     return 0
 
 }

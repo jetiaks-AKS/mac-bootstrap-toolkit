@@ -21,8 +21,8 @@ Blueprint реализован, E2E-проверен и входит в стаб
 Локальный post-apply Verify уже является частью lifecycle модулей,
 когда результат наблюдаем их текущими средствами. Отдельная глобальная
 Verification-возможность пока не реализована. `--dry-run` и Preview для
-Applications, Git configuration, VS Code settings и Workspace реализованы;
-macOS Preview остаётся запланированным.
+Applications, Git configuration, VS Code settings, Workspace и macOS
+реализованы.
 
 ## Рабочая директория и точка входа
 
@@ -52,7 +52,7 @@ macOS Preview остаётся запланированным.
 - `--version`
 
 `--dry-run` использует read-only startup path и не должен выполнять целевые
-мутации. Domain Preview для macOS пока не реализован.
+мутации.
 
 ## Структура проекта
 
@@ -201,9 +201,9 @@ Verify здесь означает локальную post-apply проверк�
 
 Текущая последовательность Bootstrap в `bootstrap.sh`:
 
-1. preflight;
-2. проверка Homebrew, Git, SSH и Terminal;
-3. валидация Blueprint, если он существует;
+1. валидация Blueprint и обязательного generated input выбранного scope;
+2. preflight;
+3. проверка Homebrew, Git, SSH и Terminal;
 4. восстановление Workspace;
 5. настройка Git;
 6. Homebrew packages и casks;
@@ -214,6 +214,20 @@ Verify здесь означает локальную post-apply проверк�
 Не переставляй эти шаги без необходимости: порядок отражает
 зависимости, в частности доступность Git/Homebrew и конфигурации,
 полученной Discovery.
+
+### Preview
+
+`--dry-run`: CLI → logger → Blueprint validation → selected-input validation
+→ read-only preflight → Core inspection → domain Preview → Summary → exit code.
+Startup validation/preflight errors останавливают запуск. Core/domain errors
+сохраняются в accounting, последующие read-only inspections продолжаются.
+Planned actions дают `0`, warnings — `1`, errors имеют приоритет `2`.
+Preview не использует `MODULE_CHANGED`. Summary считает вызовы inspection
+wrapper (включая Core), warnings и errors, а не установки или отдельные items.
+
+Screenshots Preview отражает текущий hard-coded `$HOME/Screenshots` при Apply;
+согласование каталога с generated location остаётся техническим долгом.
+Global Verification остаётся запланированной.
 
 ### Workspace
 

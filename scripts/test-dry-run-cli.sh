@@ -103,6 +103,7 @@ write_fixture_file modules/settings/macos/macos.sh \
     'SCREENSHOTS_CONFIG=screenshots' \
     'validate_defaults_config() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'check_macos_settings() { return 1; }' \
+    'preview_macos_settings() { printf "%s\n" macos-preview >> "$TEST_SPY_FILE"; }' \
     'apply_macos_settings() { printf "%s\n" defaults-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/bootstrap/workspace/workspace.sh \
@@ -181,8 +182,9 @@ fi
 if [[ "$ENTRYPOINT_SPY" == *git-config-preview* &&
       "$ENTRYPOINT_SPY" == *vscode-settings-preview* &&
       "$ENTRYPOINT_SPY" == *workspace-folders-preview* &&
-      "$ENTRYPOINT_SPY" == *workspace-repositories-preview* ]]; then
-    pass "Preview dispatch includes configuration and Workspace domains"
+      "$ENTRYPOINT_SPY" == *workspace-repositories-preview* &&
+      "$ENTRYPOINT_SPY" == *macos-preview* ]]; then
+    pass "Preview dispatch includes all implemented domains"
 else
     fail "Preview dispatch omitted a completed domain"
 fi
@@ -204,6 +206,13 @@ assert_status 0 "--version behavior is preserved"
 
 run_entrypoint --check
 assert_status 0 "a single existing mode still works"
+
+run_entrypoint --discover
+assert_status 0 "Discovery dispatch remains available"
+[[ "$ENTRYPOINT_SPY" == *discovery* ]] || fail "Discovery dispatch was skipped"
+run_entrypoint --blueprint
+assert_status 0 "Blueprint selector dispatch remains available"
+[[ "$ENTRYPOINT_SPY" == blueprint-selector ]] || fail "Blueprint selector reached normal preflight"
 
 run_entrypoint --dry-run --verbose
 assert_status 0 "--verbose remains compatible with Preview"
