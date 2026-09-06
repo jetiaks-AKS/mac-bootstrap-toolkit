@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Homebrew cask inspection now checks every reported artifact target instead of
+  only the first. Invalid metadata blocks Apply; install/reinstall success is
+  reported only after the same inspection verifies the resulting state.
+  Successful mutations retain Changed state if verification or a later cask fails.
+
 * App Store Bootstrap now checks exact numeric IDs instead of application-name
   substrings. App Store applications and VS Code extensions re-read inventory
   after successful installs and report success only after local verification.

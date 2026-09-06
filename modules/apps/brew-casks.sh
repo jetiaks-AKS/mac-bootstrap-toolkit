@@ -51,18 +51,28 @@ is_cask_installed() {
         return 2
     fi
 
-    if ! app_paths="$(jq -r \
-        '.casks[0].artifacts[]? | select(.target != null) | .target' \
+    if ! app_paths="$(jq -er \
+        'if (.casks | type) != "array" or (.casks | length) != 1 then
+            error("Expected one cask")
+         else .casks[0].artifacts end |
+         if type != "array" then error("Expected artifacts array") else . end |
+         map(if type != "object" then error("Invalid artifact") else . end |
+             select(.target != null) | .target |
+             if type != "string" then error("Invalid artifact target")
+             elif (startswith("/") | not) or (explode | any(. < 32 or . == 127)) then
+                 error("Invalid artifact path")
+             else . end) | join("\n")' \
         <<< "$metadata")"; then
         return 2
     fi
 
-    IFS= read -r app_path <<< "$app_paths"
+    while IFS= read -r app_path; do
+        if [[ -n "$app_path" && ! -e "$app_path" ]]; then
+            CASK_REINSTALL_REQUIRED=true
+        fi
+    done <<< "$app_paths"
 
-    if [[ -n "$app_path" && ! -e "$app_path" ]]; then
-        CASK_REINSTALL_REQUIRED=true
-        return 1
-    fi
+    [[ "$CASK_REINSTALL_REQUIRED" == false ]] || return 1
 
     return 0
 
@@ -73,13 +83,15 @@ install_brew_cask() {
     local cask="$1"
     local install_command="${2:-}"
 
-    action "Installing $cask..."
-
     if [[ -z "$install_command" ]]; then
         is_cask_installed "$cask"
         local inspection_result=$?
 
-        if [[ $inspection_result -eq 2 ]]; then
+        if [[ $inspection_result -eq 0 ]]; then
+            return 0
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
             error "Failed to inspect Homebrew cask: $cask"
             return 2
         fi
@@ -89,6 +101,8 @@ install_brew_cask() {
             install_command="reinstall"
         fi
     fi
+
+    action "Installing $cask..."
 
     if [[ "$VERBOSE" == true ]]; then
 
@@ -107,23 +121,15 @@ install_brew_cask() {
         return 2
     fi
 
-is_cask_installed "$cask"
-local verification_result=$?
+    MODULE_CHANGED=true
 
-if [[ $verification_result -eq 0 ]]; then
+    if ! is_cask_installed "$cask"; then
+        error "Failed to verify Homebrew cask: $cask"
+        return 2
+    fi
 
     success "$cask installed successfully"
     return 0
-
-fi
-
-if [[ $verification_result -eq 2 ]]; then
-    error "Failed to verify Homebrew cask: $cask"
-    return 2
-fi
-
-error "Failed to install $cask"
-return 2
 
 }
 
@@ -195,8 +201,6 @@ install_brew_casks() {
         if [[ $? -ne 0 ]]; then
             return 2
         fi
-
-        MODULE_CHANGED=true
 
     done <<< "$casks"
 

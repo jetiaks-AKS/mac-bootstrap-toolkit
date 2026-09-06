@@ -173,6 +173,18 @@ Verify требует точного App Store ID или полного case-sen
 возвращает `2`. Ранее успешные мутации сохраняют `MODULE_CHANGED=true`;
 отката нет. Это локальный Verify, а не будущая Global Verification.
 
+Homebrew casks используют тот же локальный lifecycle. Check требует точного
+токена в `brew list --cask` и наличия всех top-level `target` из
+`brew info --json=v2 --cask`: это разрешённые Homebrew пути relocated artifacts,
+а не только первый app target. Отсутствующий токен требует install; отсутствующий
+целевой путь установленного cask требует reinstall. Artifacts без `target`
+(например, pkg, uninstall, zap) не получают дополнительных проверок.
+Нечитаемый inventory, невалидная структура metadata или target (не абсолютная
+строка либо содержит управляющие символы) возвращают `2` без Apply.
+После успешного install/reinstall сразу устанавливается `MODULE_CHANGED=true`,
+затем повторяется тот же Check. Success возможен только после Verify;
+его ошибка или ошибка следующего cask не сбрасывает уже установленный Changed.
+
 ### Git generated state
 
 `config/generated/git.conf` использует native non-executable Git config format

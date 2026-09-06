@@ -90,8 +90,7 @@ BREW_INFO_STATUS=0
 BREW_INSTALL_STATUS=0
 BREW_INSTALL_MAKES_PRESENT=false
 BREW_INSTALLED_FILE="$TEST_DIR/brew-installed"
-JQ_STATUS=0
-JQ_OUTPUT=""
+CASK_METADATA='{"casks":[{"artifacts":[]}]}'
 FORMULA_INSTALLED_FILE="$TEST_DIR/formula-installed"
 FORMULA_READ_STATUS=0
 FORMULA_READ_FAIL_AT=0
@@ -130,24 +129,28 @@ brew() {
     fi
 
     if [[ "$1" == info ]]; then
-        printf '{"casks":[{"artifacts":[]}]}\n'
+        printf '%s\n' "$CASK_METADATA"
         return "$BREW_INFO_STATUS"
     fi
 
     if [[ "$1" == install || "$1" == reinstall ]]; then
         printf 'brew %s %s\n' "$1" "$3" >> "$COMMAND_LOG"
-        if [[ "$BREW_INSTALL_STATUS" -eq 0 && "$BREW_INSTALL_MAKES_PRESENT" == true ]]; then
-            printf '%s\n' "$3" > "$BREW_INSTALLED_FILE"
+        [[ "$3" != "$CASK_FAIL_ITEM" ]] || return 2
+        if [[ "$BREW_INSTALL_STATUS" -eq 0 ]]; then
+            if [[ "$BREW_INSTALL_MAKES_PRESENT" == true ]]; then
+                printf '%s\n' "$3" >> "$BREW_INSTALLED_FILE"
+            fi
+            if [[ "$CASK_REPAIR_TARGETS" == true ]]; then
+                mkdir -p "$TEST_DIR/First App.app" "$TEST_DIR/Second App.app"
+            fi
+            BREW_INFO_STATUS="$CASK_VERIFY_INFO_STATUS"
         fi
         return "$BREW_INSTALL_STATUS"
     fi
 
     return 2
 }
-jq() {
-    printf '%s' "$JQ_OUTPUT"
-    return "$JQ_STATUS"
-}
+command -v jq >/dev/null 2>&1 || { echo "Tests require jq" >&2; exit 1; }
 
 source modules/apps/appstore.sh
 source modules/vscode/extensions.sh
@@ -206,8 +209,11 @@ reset_state() {
     BREW_INFO_STATUS=0
     BREW_INSTALL_STATUS=0
     BREW_INSTALL_MAKES_PRESENT=false
-    JQ_STATUS=0
-    JQ_OUTPUT=""
+    CASK_METADATA='{"casks":[{"artifacts":[]}]}'
+    CASK_FAIL_ITEM=""
+    CASK_REPAIR_TARGETS=false
+    CASK_VERIFY_INFO_STATUS=0
+    rm -rf "$TEST_DIR/First App.app" "$TEST_DIR/Second App.app"
 }
 
 printf '111|Installed App\n222|Missing App\n' > "$TEST_DIR/appstore.conf"
@@ -716,7 +722,7 @@ assert_no_mutation "Homebrew cask metadata failure performs zero installs"
 
 reset_state
 printf 'example-cask\n' > "$BREW_INSTALLED_FILE"
-JQ_STATUS=2
+CASK_METADATA='{invalid json'
 output="$(install_brew_casks 2>&1)"; status=$?
 assert_status 2 "$status" "Homebrew cask metadata parsing failure returns 2"
 assert_no_mutation "Homebrew cask parsing failure performs zero installs"
@@ -746,7 +752,7 @@ pass "failed cask install skips post-install verification"
 
 reset_state
 printf 'example-cask\n' > "$BREW_INSTALLED_FILE"
-JQ_OUTPUT="$TEST_DIR/missing-example.app"
+CASK_METADATA="$(jq -n --arg target "$TEST_DIR/missing-example.app" '{casks:[{artifacts:[{app:["Example.app"],target:$target}]}]}')"
 BREW_INSTALL_STATUS=2
 install_brew_casks > "$TEST_DIR/mutation.out" 2>&1; status=$?
 output="$(cat "$TEST_DIR/mutation.out")"
@@ -767,6 +773,78 @@ assert_status 2 "$status" "verbose Homebrew cask mutation failure returns 2"
 assert_no_false_success "$output" "verbose cask mutation failure emits no false success"
 [[ ! -s "$OBSERVATION_LOG" ]] || fail "verbose failed cask mutation skips verification"
 pass "verbose failed cask mutation skips verification"
+
+# Real jq and filesystem inspection of every relocated artifact target.
+cask_artifact_fixture() {
+    CASK_METADATA="$(jq -n --arg first "$TEST_DIR/First App.app" --arg second "$TEST_DIR/Second App.app" '
+        {casks:[{token:"example-cask",artifacts:[
+            {app:["First App.app"],target:$first},
+            {app:["Second App.app"],target:$second},
+            {uninstall:[{quit:"org.example.app"}]}, {zap:[{trash:"~/Library/Example"}]}]}]}')"
+}
+validation_consumer=install_brew_casks
+for cask_case in correct install reinstall verify-install verify-reinstall observation-error later-failure; do
+    reset_state
+    printf 'example-cask\n' > "$TEST_DIR/brew-casks.conf"
+    cask_artifact_fixture
+    BREW_INSTALL_MAKES_PRESENT=true
+    CASK_REPAIR_TARGETS=true
+    expected_status=0
+    case "$cask_case" in
+        correct)
+            printf 'example-cask\n' > "$BREW_INSTALLED_FILE"
+            mkdir -p "$TEST_DIR/First App.app" "$TEST_DIR/Second App.app"
+            ;;
+        reinstall|verify-reinstall)
+            printf 'example-cask\n' > "$BREW_INSTALLED_FILE"
+            mkdir -p "$TEST_DIR/First App.app"
+            ;;
+        later-failure)
+            printf 'example-cask\nother-cask\n' > "$TEST_DIR/brew-casks.conf"
+            CASK_FAIL_ITEM=other-cask
+            expected_status=2
+            ;;
+        observation-error) CASK_VERIFY_INFO_STATUS=2; expected_status=2 ;;
+    esac
+    if [[ "$cask_case" == verify-* ]]; then
+        CASK_REPAIR_TARGETS=false
+        expected_status=2
+    fi
+    run_application_input_case
+    assert_status "$expected_status" "$status" "cask lifecycle $cask_case"
+    if [[ "$cask_case" == correct ]]; then
+        assert_no_mutation "all cask targets present skips Apply"
+        [[ "$MODULE_CHANGED" == false ]] || fail "correct cask set Changed"
+    else
+        [[ "$MODULE_CHANGED" == true ]] || fail "$cask_case lost successful mutation"
+        if [[ "$cask_case" == *reinstall ]]; then
+            [[ "$(cat "$COMMAND_LOG")" == 'brew reinstall example-cask' ]] || fail "missing second target must select reinstall"
+        fi
+        if [[ "$cask_case" == verify-* || "$cask_case" == observation-error ]]; then
+            assert_no_false_success "$output" "cask $cask_case emits no success"
+        fi
+    fi
+    if [[ "$expected_status" == 0 ]]; then
+        : > "$COMMAND_LOG"
+        MODULE_CHANGED=false
+        run_application_input_case
+        assert_status 0 "$status" "cask $cask_case rerun succeeds"
+        assert_no_mutation "cask $cask_case rerun is idempotent"
+        [[ "$MODULE_CHANGED" == false ]] || fail "cask rerun set Changed"
+    fi
+done
+
+# Invalid metadata is observation failure, including a malformed later target.
+for bad_metadata in '{}' '{"casks":[]}' '{"casks":[{"artifacts":{}}]}' '{"casks":[{"artifacts":[{"target":"/missing"},{"target":42}]}]}' '{"casks":[{"artifacts":[{"target":"relative.app"}]}]}'; do
+    reset_state
+    printf 'example-cask\n' > "$BREW_INSTALLED_FILE"
+    printf 'example-cask\n' > "$TEST_DIR/brew-casks.conf"
+    CASK_METADATA="$bad_metadata"
+    run_application_input_case
+    assert_status 2 "$status" "malformed cask metadata is observation error"
+    assert_no_mutation "malformed cask metadata blocks reinstall"
+    [[ "$MODULE_CHANGED" == false ]] || fail "metadata error set Changed"
+done
 
 # Blueprint-disabled item categories do not observe or mutate.
 reset_state
