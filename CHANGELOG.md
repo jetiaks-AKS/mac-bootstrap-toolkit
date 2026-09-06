@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* VS Code settings Bootstrap validates source access before mutation, separates
+  comparison errors from differences, and verifies byte equality before success.
+  Settings and backups are staged before publication to avoid partial copies;
+  retained directory, backup and settings changes are recorded even on later failure.
+
 * Homebrew cask inspection now checks every reported artifact target instead of
   only the first. Invalid metadata blocks Apply; install/reinstall success is
   reported only after the same inspection verifies the resulting state.

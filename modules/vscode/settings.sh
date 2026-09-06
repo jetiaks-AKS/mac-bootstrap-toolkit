@@ -1,5 +1,42 @@
 #!/bin/bash
 
+# Comparison: 0 equal, 1 absent/different, 2 observation error.
+inspect_vscode_settings() {
+
+    local source_file="$1"
+    local target_file="$2"
+    local result
+
+    [[ -f "$source_file" && -r "$source_file" ]] || return 2
+    if [[ ! -e "$target_file" && ! -L "$target_file" ]]; then
+        return 1
+    fi
+    [[ -f "$target_file" && -r "$target_file" ]] || return 2
+    cmp -s "$source_file" "$target_file"
+    result=$?
+    [[ $result -le 1 ]] || return 2
+    return "$result"
+
+}
+
+# Publish a complete copy; failed staging leaves the destination unchanged.
+copy_vscode_settings() {
+
+    local source_file="$1"
+    local target_file="$2"
+    local temporary_file
+
+    temporary_file="$(mktemp "${target_file}.tmp.XXXXXX")" || return 2
+    if ! cp -p "$source_file" "$temporary_file" ||
+       ! mv -f "$temporary_file" "$target_file"; then
+        rm -f "$temporary_file"
+        return 2
+    fi
+    MODULE_CHANGED=true
+    return 0
+
+}
+
 # ==========================================
 # Apply VS Code Settings
 # ==========================================
@@ -9,50 +46,79 @@ apply_vscode_settings() {
     local source_file="config/generated/vscode/settings.json"
     local target_dir="$HOME/Library/Application Support/Code/User"
     local target_file="$target_dir/settings.json"
+    local inspection_result
+    local parent_dir="$target_dir"
+    local first_missing_dir=""
 
-    if [[ ! -f "$source_file" ]]; then
-
+    if [[ ! -e "$source_file" && ! -L "$source_file" ]]; then
         warning "Configuration file $source_file not found"
         return 1
-
     fi
 
-    if ! mkdir -p "$target_dir"; then
-
-        error "Failed to create VS Code settings directory"
+    # Settings are copied verbatim, including comments; validate file access.
+    if [[ ! -f "$source_file" || ! -r "$source_file" ]] ||
+       ! cat "$source_file" >/dev/null; then
+        error "VS Code settings source is not a readable regular file"
         return 2
+    fi
 
+    # Check the existing ancestor before interpreting a missing target as absence.
+    while [[ ! -e "$parent_dir" && ! -L "$parent_dir" ]]; do
+        first_missing_dir="$parent_dir"
+        parent_dir="$(dirname "$parent_dir")"
+    done
+    if [[ ! -d "$parent_dir" || ! -x "$parent_dir" ]]; then
+        error "Failed to inspect VS Code settings directory"
+        return 2
+    fi
+
+    inspect_vscode_settings "$source_file" "$target_file"
+    inspection_result=$?
+    if [[ $inspection_result -eq 0 ]]; then
+        success "VS Code Settings already configured"
+        return 0
+    fi
+    if [[ $inspection_result -ne 1 ]]; then
+        error "Failed to inspect VS Code Settings"
+        return 2
+    fi
+
+    # Atomic publication must not replace links or directories with regular files.
+    if [[ -L "$target_file" || -L "$target_file.bootstrap.bak" ||
+          ( -e "$target_file.bootstrap.bak" && ! -f "$target_file.bootstrap.bak" ) ]]; then
+        error "Unsupported VS Code settings destination or backup type"
+        return 2
+    fi
+
+    if [[ ! -d "$target_dir" ]]; then
+        if ! mkdir -p "$target_dir"; then
+            # mkdir -p can create an ancestor before failing on a later component.
+            [[ -z "$first_missing_dir" || ! -d "$first_missing_dir" ]] || MODULE_CHANGED=true
+            error "Failed to create VS Code settings directory"
+            return 2
+        fi
+        MODULE_CHANGED=true
     fi
 
     if [[ -f "$target_file" ]]; then
-
-        if cmp -s "$source_file" "$target_file"; then
-
-            success "VS Code Settings already configured"
-            return 0
-
-        fi
-
         action "Creating backup of current VS Code Settings..."
-
-        if ! cp "$target_file" "$target_file.bootstrap.bak"; then
-
+        if ! copy_vscode_settings "$target_file" "$target_file.bootstrap.bak"; then
             error "Failed to back up current VS Code Settings"
             return 2
-
         fi
-
     fi
 
-    if ! cp "$source_file" "$target_file"; then
-
+    if ! copy_vscode_settings "$source_file" "$target_file"; then
         error "Failed to apply VS Code Settings"
         return 2
+    fi
 
+    if ! inspect_vscode_settings "$source_file" "$target_file"; then
+        error "Failed to verify VS Code Settings"
+        return 2
     fi
 
     success "VS Code Settings applied successfully"
-
     return 0
 
 }

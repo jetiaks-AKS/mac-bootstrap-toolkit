@@ -185,6 +185,31 @@ Homebrew casks используют тот же локальный lifecycle. Ch
 затем повторяется тот же Check. Success возможен только после Verify;
 его ошибка или ошибка следующего cask не сбрасывает уже установленный Changed.
 
+### VS Code settings lifecycle
+
+`config/generated/vscode/settings.json` остаётся optional byte-for-byte snapshot:
+отсутствующий файл возвращает warning `1`; существующий источник должен быть
+читаемым обычным файлом, иначе `2`. Содержимое (включая комментарии JSONC)
+не преобразуется и не проверяется новым JSON-парсером.
+
+До Apply источник полностью читается, а `cmp` различает равенство (`0`),
+отсутствие/различие (`1`) и ошибку наблюдения (`2`). При равенстве нет mkdir,
+backup или copy. При различии создаётся недостающий destination directory,
+существующий settings сохраняется в `settings.json.bootstrap.bak`, затем
+публикуется новый settings. Копии сначала пишутся во временный файл рядом
+с destination и публикуются через rename; неудачный copy не оставляет
+усечённый settings или backup. Временные файлы удаляются при обработанной ошибке.
+Отличающийся settings-symlink и backup-symlink не заменяются: Apply возвращает
+`2`; уже равный settings-symlink сохраняет успешный no-op.
+
+Созданные каталоги (включая частичный mkdir), опубликованный backup и settings
+считаются target-visible изменениями и устанавливают `MODULE_CHANGED=true`.
+Неудачная staging-копия сама по себе не устанавливает Changed. Успешный backup
+с последующей ошибкой settings-copy сохраняет Changed; старый settings остаётся
+целым. После публикации тот же comparison должен подтвердить полное равенство;
+ошибка или несовпадение возвращают `2`, без success и без сброса Changed.
+Blueprint category gate остаётся в Bootstrap orchestration.
+
 ### Git generated state
 
 `config/generated/git.conf` использует native non-executable Git config format
