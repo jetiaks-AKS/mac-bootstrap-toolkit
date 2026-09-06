@@ -220,6 +220,26 @@ CURRENT_BRANCH проверяется локальным `git check-ref-format -
 элементов через существующий Blueprint API. Discovery validators, generated
 форматы и clone/checkout lifecycle этим изменением не расширяются.
 
+### Workspace repository inspection
+
+Repository inspection использует явные статусы: `0` — подтверждённое состояние,
+`1` — отсутствие/несоответствие, `2` — ошибка наблюдения. Перед clone проверяется
+доступность существующего предка destination. Существующий каталог без `.git`
+остаётся warning `1`; `.git` directory или worktree-file проверяется локальным
+`git rev-parse --is-inside-work-tree`. Ошибка Git или доступа возвращает `2`.
+
+Origin mismatch остаётся warning `1`; ошибка чтения origin (включая отсутствующий
+origin) возвращает `2`. Успешный `branch --show-current` с пустым выводом означает
+текущий detached HEAD: сохраняется прежняя возможность восстановить выбранную
+ветку после подтверждения clean state. Ошибка чтения ветки не считается mismatch.
+
+Clean-state по-прежнему учитывает только tracked/staged изменения: оба `git diff
+--quiet` проверяются отдельно. `0` — оба clean, `1` — есть изменения, `2` — хотя бы
+одна ошибка чтения, даже если другая проверка обнаружила dirty state. Untracked
+файлы не становятся новым критерием dirty. Inspection error блокирует действие
+для этого repository и немедленно возвращает module error `2`. Clone/checkout
+команды, mutation accounting и существующие post-action проверки не расширяются.
+
 ### VS Code settings lifecycle
 
 `config/generated/vscode/settings.json` остаётся optional byte-for-byte snapshot:

@@ -5,26 +5,41 @@
 # ==========================================
 
 # ==========================================
-# Repository Exists
+# Repository Exists (0 present, 1 absent, 2 observation error)
 # ==========================================
 
 repository_exists() {
 
     local repository_path="$1"
 
-    [[ -d "$repository_path" ]]
+    local ancestor="$repository_path"
+    while [[ ! -e "$ancestor" && ! -L "$ancestor" ]]; do
+        ancestor="$(dirname "$ancestor")"
+    done
+    [[ -d "$ancestor" && -r "$ancestor" && -x "$ancestor" ]] || return 2
+    [[ -e "$repository_path" || -L "$repository_path" ]] || return 1
+    return 0
 
 }
 
 # ==========================================
-# Repository Is Git
+# Repository Is Git (0 usable worktree, 1 non-worktree, 2 read error)
 # ==========================================
 
 repository_is_git() {
 
     local repository_path="$1"
 
-    [[ -d "$repository_path/.git" ]]
+    local worktree
+    [[ -d "$repository_path" && -r "$repository_path" && -x "$repository_path" ]] || return 2
+    # Require a repository rooted here, not an enclosing parent repository.
+    [[ -e "$repository_path/.git" || -L "$repository_path/.git" ]] || return 1
+    worktree="$(git -C "$repository_path" rev-parse --is-inside-work-tree)" || return 2
+    case "$worktree" in
+        true) return 0 ;;
+        false) return 1 ;;
+        *) return 2 ;;
+    esac
 
 }
 
@@ -36,7 +51,7 @@ repository_origin() {
 
     local repository_path="$1"
 
-    git -C "$repository_path" remote get-url origin 2>/dev/null
+    git -C "$repository_path" remote get-url origin || return 2
 
 }
 
@@ -48,7 +63,7 @@ repository_branch() {
 
     local repository_path="$1"
 
-    git -C "$repository_path" branch --show-current 2>/dev/null
+    git -C "$repository_path" branch --show-current || return 2
 
 }
 
@@ -66,15 +81,21 @@ repository_clone() {
 }
 
 # ==========================================
-# Repository Is Clean
+# Repository Is Clean (0 clean, 1 tracked/staged changes, 2 read error)
 # ==========================================
 
 repository_is_clean() {
 
     local repository_path="$1"
 
-    git -C "$repository_path" diff --quiet &&
+    local worktree_result index_result
+    git -C "$repository_path" diff --quiet
+    worktree_result=$?
     git -C "$repository_path" diff --cached --quiet
+    index_result=$?
+    [[ $worktree_result -le 1 && $index_result -le 1 ]] || return 2
+    [[ $worktree_result -eq 0 && $index_result -eq 0 ]] || return 1
+    return 0
 
 }
 
@@ -103,7 +124,15 @@ repository_verify() {
 
     local repository_cloned=false
 
-    if ! repository_exists "$path"; then
+    local inspection_result
+    repository_exists "$path"
+    inspection_result=$?
+    if [[ $inspection_result -eq 2 ]]; then
+        error "Failed to inspect repository destination"
+        return 2
+    fi
+
+    if [[ $inspection_result -eq 1 ]]; then
 
         action "Cloning repository..."
 
@@ -123,7 +152,13 @@ repository_verify() {
         success "Repository found"
     fi
 
-    if ! repository_is_git "$path"; then
+    repository_is_git "$path"
+    inspection_result=$?
+    if [[ $inspection_result -eq 2 ]]; then
+        error "Failed to inspect Git worktree"
+        return 2
+    fi
+    if [[ $inspection_result -eq 1 ]]; then
         warning "Directory is not a Git repository"
         return 1
     fi
@@ -132,7 +167,10 @@ repository_verify() {
 
     local current_remote
 
-    current_remote=$(repository_origin "$path")
+    if ! current_remote=$(repository_origin "$path") || [[ -z "$current_remote" ]]; then
+        error "Failed to observe repository origin"
+        return 2
+    fi
 
     if [[ "$current_remote" != "$expected_remote" ]]; then
         warning "Remote does not match"
@@ -143,13 +181,22 @@ repository_verify() {
 
     local current_branch
 
-    current_branch=$(repository_branch "$path")
+    if ! current_branch=$(repository_branch "$path"); then
+        error "Failed to observe repository branch"
+        return 2
+    fi
 
 if [[ "$current_branch" != "$expected_branch" ]]; then
 
     warning "Branch does not match"
 
-    if ! repository_is_clean "$path"; then
+    repository_is_clean "$path"
+    inspection_result=$?
+    if [[ $inspection_result -eq 2 ]]; then
+        error "Failed to inspect repository changes"
+        return 2
+    fi
+    if [[ $inspection_result -eq 1 ]]; then
         warning "Repository has uncommitted changes"
         return 1
     fi
@@ -165,7 +212,10 @@ if [[ "$current_branch" != "$expected_branch" ]]; then
 
     success "Branch restored"
 
-    current_branch=$(repository_branch "$path")
+    if ! current_branch=$(repository_branch "$path"); then
+        error "Failed to observe repository branch"
+        return 2
+    fi
 
     if [[ "$current_branch" != "$expected_branch" ]]; then
         error "Branch verification failed"

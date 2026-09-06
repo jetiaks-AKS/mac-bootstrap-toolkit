@@ -341,6 +341,105 @@ toolkit_exit_code; status=$?
 expect_status 2 "$status" "later success cannot erase Workspace validation error"
 assert_no_mutation "Workspace lifecycle failure performs zero mutations"
 
+# W2 exercises production observation and restore decisions, mocking only Git.
+source modules/bootstrap/workspace/repositories-helpers.sh
+git() {
+    if [[ "$1" == check-ref-format ]]; then command git "$@"; return $?; fi
+    if [[ "$1" == clone ]]; then
+        printf 'clone:%s\n' "$3" >> "$MUTATION_LOG"
+        mkdir -p "$3/.git"
+        return 0
+    fi
+    local repo_path="$2"
+    shift 2
+    case "$1" in
+        rev-parse) [[ "$OBSERVATION_MODE" != worktree-error ]] || return 128; echo true ;;
+        remote)
+            [[ "$OBSERVATION_MODE" != remote-error ]] || return 128
+            if [[ "$repo_path" == */second ]]; then echo git@example.com:second.git; else echo "$OBSERVED_REMOTE"; fi
+            ;;
+        branch)
+            [[ "$OBSERVATION_MODE" != branch-error && "$repo_path" != "$FAIL_BRANCH_PATH" ]] || return 128
+            echo "$OBSERVED_BRANCH"
+            ;;
+        diff)
+            if [[ "$*" == 'diff --cached --quiet' ]]; then return "$INDEX_STATUS"; fi
+            return "$WORKTREE_STATUS"
+            ;;
+        checkout)
+            printf 'checkout:%s:%s\n' "$repo_path" "$2" >> "$MUTATION_LOG"
+            OBSERVED_BRANCH="$2"
+            ;;
+        *) return 128 ;;
+    esac
+}
+reset_observation() {
+    reset_case
+    mkdir -p "$HOME/Projects/example/.git"
+    OBSERVATION_MODE=normal
+    OBSERVED_REMOTE='git@example.com:example.git'
+    OBSERVED_BRANCH=main
+    WORKTREE_STATUS=0
+    INDEX_STATUS=0
+    FAIL_BRANCH_PATH=""
+}
+for scenario in clean worktree-file empty-remote dirty staged-error dirty-and-error branch-error detached different remote-error remote-mismatch worktree-error non-git absent; do
+    reset_observation
+    expected=0
+    expected_mutations=0
+    case "$scenario" in
+        worktree-file) rmdir "$HOME/Projects/example/.git"; printf 'gitdir: /mock/worktree\n' > "$HOME/Projects/example/.git" ;;
+        empty-remote) OBSERVED_REMOTE=""; expected=2 ;;
+        dirty) OBSERVED_BRANCH=other; WORKTREE_STATUS=1; expected=1 ;;
+        staged-error) OBSERVED_BRANCH=other; INDEX_STATUS=128; expected=2 ;;
+        dirty-and-error) OBSERVED_BRANCH=other; WORKTREE_STATUS=1; INDEX_STATUS=128; expected=2 ;;
+        branch-error|remote-error|worktree-error) OBSERVATION_MODE="$scenario"; expected=2 ;;
+        remote-mismatch) OBSERVED_REMOTE=git@example.com:other.git; expected=1 ;;
+        different) OBSERVED_BRANCH=other; expected_mutations=1 ;;
+        detached) OBSERVED_BRANCH=""; expected_mutations=1 ;;
+        non-git) rmdir "$HOME/Projects/example/.git"; expected=1 ;;
+        absent) rmdir "$HOME/Projects/example/.git" "$HOME/Projects/example"; expected_mutations=1 ;;
+    esac
+    repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main > "$TEST_ROOT/observation-output" 2>&1
+    status=$?
+    expect_status "$expected" "$status" "repository observation: $scenario"
+    [[ "$(wc -l < "$MUTATION_LOG" | tr -d ' ')" == "$expected_mutations" ]] || fail "$scenario made an unexpected mutation"
+    if [[ "$expected_mutations" == 0 && "$MODULE_CHANGED" != false ]]; then fail "$scenario set Changed"; fi
+    if [[ "$scenario" == dirty ]]; then
+        [[ "$(cat "$TEST_ROOT/observation-output")" == *'uncommitted changes'* ]] || fail 'dirty state lost warning'
+    fi
+done
+
+for status_pair in '0 0 0' '1 0 1' '0 1 1' '128 0 2' '1 128 2'; do
+    reset_observation
+    read -r WORKTREE_STATUS INDEX_STATUS expected <<< "$status_pair"
+    repository_is_clean "$HOME/Projects/example"; status=$?
+    expect_status "$expected" "$status" "clean-state statuses: $status_pair"
+done
+
+reset_observation
+chmod 000 "$HOME/Projects/example"
+repository_verify "$HOME/Projects/example" 'git@example.com:example.git' main >/dev/null 2>&1; status=$?
+chmod 700 "$HOME/Projects/example"
+expect_status 2 "$status" 'unreadable destination is an inspection error'
+[[ ! -s "$MUTATION_LOG" ]] || fail 'unreadable destination caused mutation'
+
+reset_observation
+mkdir -p "$HOME/Projects/second/.git"
+{
+    write_repository_section example "$HOME/Projects/example"
+    write_repository_section second "$HOME/Projects/second"
+} > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
+FAIL_BRANCH_PATH="$HOME/Projects/second"
+bootstrap_workspace_repositories >/dev/null 2>&1; status=$?
+expect_status 2 "$status" 'later inspection error propagates as module error 2'
+[[ ! -s "$MUTATION_LOG" ]] || fail 'later ambiguous branch caused mutation'
+BLUEPRINT_PRESENT=true
+SELECTED_REPOSITORIES=example
+bootstrap_workspace_repositories >/dev/null 2>&1; status=$?
+expect_status 0 "$status" 'Blueprint excludes failing unselected repository'
+[[ ! -s "$MUTATION_LOG" ]] || fail 'selected correct repository changed'
+
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Workspace Bootstrap validation tests passed"

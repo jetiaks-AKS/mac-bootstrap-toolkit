@@ -28,6 +28,7 @@ bootstrap_workspace_repositories() {
     echo
 
     local has_warnings=false
+    local repository_result
 
     local repository path remote branch
     while IFS=$'\t' read -r repository path remote branch; do
@@ -35,7 +36,13 @@ bootstrap_workspace_repositories() {
 
     info "Repository: $repository"
 
-        if ! repository_verify "$path" "$remote" "$branch"; then
+        repository_verify "$path" "$remote" "$branch"
+        repository_result=$?
+        if [[ $repository_result -eq 2 ]]; then
+            error "Repository inspection failed: $repository"
+            return 2
+        fi
+        if [[ $repository_result -ne 0 ]]; then
             warning "Repository requires manual attention: $repository"
             has_warnings=true
         fi

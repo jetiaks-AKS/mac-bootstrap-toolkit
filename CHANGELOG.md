@@ -13,6 +13,12 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Workspace repository inspection now distinguishes dirty/mismatched state from
+  filesystem and Git read errors. Failed worktree, origin, branch or clean-state
+  observation blocks restore actions and propagates error 2 instead of becoming
+  a checkout decision or an ordinary warning. Tracked/staged dirty-state policy
+  and detached-HEAD restoration behavior are preserved.
+
 * Workspace Bootstrap validates required selected paths and repository action
   fields before mutation, rejecting traversal outside HOME and incomplete inputs.
   Repository IDs with spaces and final records without a newline are preserved
