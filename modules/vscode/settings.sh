@@ -1,5 +1,8 @@
 #!/bin/bash
 
+VSCODE_SETTINGS_FIRST_MISSING_DIR=""
+VSCODE_SETTINGS_INSPECTION_ERROR=""
+
 # Comparison: 0 equal, 1 absent/different, 2 observation error.
 inspect_vscode_settings() {
 
@@ -17,6 +20,33 @@ inspect_vscode_settings() {
     [[ $result -le 1 ]] || return 2
     return "$result"
 
+}
+
+# Inspect the destination path and settings contents without mutation.
+inspect_vscode_settings_target() {
+
+    local source_file="$1"
+    local target_dir="$2"
+    local target_file="$3"
+    local parent_dir="$target_dir"
+
+    VSCODE_SETTINGS_FIRST_MISSING_DIR=""
+    VSCODE_SETTINGS_INSPECTION_ERROR=""
+
+    while [[ ! -e "$parent_dir" && ! -L "$parent_dir" ]]; do
+        VSCODE_SETTINGS_FIRST_MISSING_DIR="$parent_dir"
+        parent_dir="$(dirname "$parent_dir")"
+    done
+
+    if [[ ! -d "$parent_dir" || ! -x "$parent_dir" ]]; then
+        VSCODE_SETTINGS_INSPECTION_ERROR=directory
+        return 2
+    fi
+
+    inspect_vscode_settings "$source_file" "$target_file"
+    local result=$?
+    [[ $result -ne 2 ]] || VSCODE_SETTINGS_INSPECTION_ERROR=settings
+    return "$result"
 }
 
 # Publish a complete copy; failed staging leaves the destination unchanged.
@@ -66,7 +96,6 @@ apply_vscode_settings() {
     local target_dir="$HOME/Library/Application Support/Code/User"
     local target_file="$target_dir/settings.json"
     local inspection_result
-    local parent_dir="$target_dir"
     local first_missing_dir=""
 
     validate_vscode_settings_source "$source_file"
@@ -81,24 +110,19 @@ apply_vscode_settings() {
         return 2
     fi
 
-    # Check the existing ancestor before interpreting a missing target as absence.
-    while [[ ! -e "$parent_dir" && ! -L "$parent_dir" ]]; do
-        first_missing_dir="$parent_dir"
-        parent_dir="$(dirname "$parent_dir")"
-    done
-    if [[ ! -d "$parent_dir" || ! -x "$parent_dir" ]]; then
-        error "Failed to inspect VS Code settings directory"
-        return 2
-    fi
-
-    inspect_vscode_settings "$source_file" "$target_file"
+    inspect_vscode_settings_target "$source_file" "$target_dir" "$target_file"
     inspection_result=$?
+    first_missing_dir="$VSCODE_SETTINGS_FIRST_MISSING_DIR"
     if [[ $inspection_result -eq 0 ]]; then
         success "VS Code Settings already configured"
         return 0
     fi
     if [[ $inspection_result -ne 1 ]]; then
-        error "Failed to inspect VS Code Settings"
+        if [[ "$VSCODE_SETTINGS_INSPECTION_ERROR" == directory ]]; then
+            error "Failed to inspect VS Code settings directory"
+        else
+            error "Failed to inspect VS Code Settings"
+        fi
         return 2
     fi
 
@@ -140,4 +164,44 @@ apply_vscode_settings() {
     success "VS Code Settings applied successfully"
     return 0
 
+}
+
+# ==========================================
+# Preview VS Code Settings
+# ==========================================
+
+preview_vscode_settings() {
+
+    local source_file="config/generated/vscode/settings.json"
+    local target_dir="$HOME/Library/Application Support/Code/User"
+    local target_file="$target_dir/settings.json"
+    local source_result
+    local inspection_result
+
+    validate_vscode_settings_source "$source_file"
+    source_result=$?
+
+    if [[ $source_result -eq 1 ]]; then
+        warning "Configuration file $source_file not found"
+        return 1
+    fi
+
+    [[ $source_result -eq 0 ]] || return 2
+
+    inspect_vscode_settings_target "$source_file" "$target_dir" "$target_file"
+    inspection_result=$?
+
+    case $inspection_result in
+        0)
+            return 0
+            ;;
+        1)
+            action "Would update VS Code settings"
+            return 0
+            ;;
+        *)
+            error "Failed to inspect VS Code Settings"
+            return 2
+            ;;
+    esac
 }

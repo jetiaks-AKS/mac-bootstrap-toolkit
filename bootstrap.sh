@@ -325,8 +325,16 @@ run_preview() {
     run_inspection "App Store Preview" preview_appstore_apps
     run_inspection "VS Code Extensions Preview" preview_vscode_extensions
 
+    if blueprint_category_enabled git-configuration; then
+        run_inspection "Git Configuration Preview" preview_git_configuration
+    fi
+
+    if blueprint_category_enabled vscode-settings; then
+        run_inspection "VS Code Settings Preview" preview_vscode_settings
+    fi
+
     section "Preview"
-    info "Git, Workspace, VS Code settings, and macOS Preview are not implemented yet"
+    info "Workspace and macOS Preview are not implemented yet"
     return 0
 
 }

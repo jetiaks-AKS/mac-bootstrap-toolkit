@@ -13,6 +13,11 @@ Current development after the **3.0.0 Stable** release.
 
 ### Added
 
+* Added non-mutating Preview for Git configuration and VS Code settings. Git
+  Preview reports every mismatched supported key after a complete inspection;
+  VS Code settings Preview preserves the optional-source warning and reports an
+  update only for an absent or byte-different target.
+
 * Added non-mutating Preview for Homebrew formulae and casks, App Store
   applications, and VS Code extensions. Preview reuses Bootstrap validation,
   Blueprint selection, and presence inspection, including the existing cask

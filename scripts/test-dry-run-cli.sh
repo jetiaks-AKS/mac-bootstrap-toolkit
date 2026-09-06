@@ -48,13 +48,21 @@ write_fixture_file modules/blueprint/blueprint.sh \
     'blueprint_exists() { [[ "${TEST_BLUEPRINT_PRESENT:-false}" == true ]]; }' \
     'blueprint_validate() { return "${TEST_BLUEPRINT_STATUS:-0}"; }' \
     'blueprint_selected_items() { printf "%s\n" selected; }' \
-    'blueprint_category_enabled() { return 0; }' \
+    'blueprint_category_enabled() {' \
+    '    blueprint_exists || return 0' \
+    '    case "$1" in' \
+    '        git-configuration) [[ "${TEST_GIT_ENABLED:-true}" == true ]] ;;' \
+    '        vscode-settings) [[ "${TEST_VSCODE_SETTINGS_ENABLED:-true}" == true ]] ;;' \
+    '        *) return 0 ;;' \
+    '    esac' \
+    '}' \
     'blueprint_generated_file() { printf "%s\n" generated; }'
 
 write_fixture_file modules/core/git/git.sh \
     'load_git_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'check_git() { return 0; }' \
-    'configure_git() { printf "%s\n" git-config >> "$TEST_SPY_FILE"; }'
+    'preview_git_configuration() { printf "%s\n" git-config-preview >> "$TEST_SPY_FILE"; }' \
+    'configure_git() { printf "%s\n" git-config-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/core/ssh/ssh.sh \
     'check_ssh() { return 0; }'
@@ -84,6 +92,7 @@ write_fixture_file modules/vscode/extensions.sh \
 
 write_fixture_file modules/vscode/settings.sh \
     'validate_vscode_settings_source() { return 1; }' \
+    'preview_vscode_settings() { printf "%s\n" vscode-settings-preview >> "$TEST_SPY_FILE"; }' \
     'apply_vscode_settings() { printf "%s\n" vscode-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/settings/macos/macos.sh \
@@ -136,6 +145,8 @@ run_entrypoint() {
         TEST_BLUEPRINT_PRESENT="${TEST_BLUEPRINT_PRESENT:-false}" \
         TEST_BLUEPRINT_STATUS="${TEST_BLUEPRINT_STATUS:-0}" \
         TEST_INPUT_STATUS="${TEST_INPUT_STATUS:-0}" \
+        TEST_GIT_ENABLED="${TEST_GIT_ENABLED:-true}" \
+        TEST_VSCODE_SETTINGS_ENABLED="${TEST_VSCODE_SETTINGS_ENABLED:-true}" \
             ./bootstrap.sh "$@"
     ) > "$TEST_ROOT/output" 2>&1
     ENTRYPOINT_STATUS=$?
@@ -164,6 +175,12 @@ if [[ "$ENTRYPOINT_OUTPUT" == *'Mode    : Preview'* &&
     pass "Preview uses mode-appropriate Summary"
 else
     fail "Preview output or Summary is incorrect"
+fi
+if [[ "$ENTRYPOINT_SPY" == *git-config-preview* &&
+      "$ENTRYPOINT_SPY" == *vscode-settings-preview* ]]; then
+    pass "Preview dispatch includes Git and VS Code settings"
+else
+    fail "Preview dispatch omitted a configuration domain"
 fi
 
 run_entrypoint --check --discover
@@ -197,7 +214,7 @@ else
 fi
 
 for forbidden in brew-install brew-cask-install mas-install code-install \
-    workspace-mutation vscode-write defaults-write defaults-command killall git-config; do
+    workspace-mutation vscode-write defaults-write defaults-command killall git-config-write; do
     if [[ "$ENTRYPOINT_SPY" == *"$forbidden"* ]]; then
         fail "Preview performed forbidden action: $forbidden"
     fi
@@ -238,6 +255,17 @@ fi
 TEST_BLUEPRINT_PRESENT=false TEST_BLUEPRINT_STATUS=0 TEST_INPUT_STATUS=0 \
     run_entrypoint --dry-run
 assert_status 0 "Preview without Blueprint keeps all-inclusive compatibility"
+
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=0 TEST_INPUT_STATUS=0 \
+TEST_GIT_ENABLED=false TEST_VSCODE_SETTINGS_ENABLED=false \
+    run_entrypoint --dry-run
+assert_status 0 "disabled configuration categories keep Preview successful"
+if [[ "$ENTRYPOINT_SPY" != *git-config-preview* &&
+      "$ENTRYPOINT_SPY" != *vscode-settings-preview* ]]; then
+    pass "Blueprint-disabled Git and VS Code settings are not inspected"
+else
+    fail "Blueprint-disabled configuration category reached Preview"
+fi
 
 TEST_BLUEPRINT_PRESENT=false TEST_BLUEPRINT_STATUS=0 TEST_INPUT_STATUS=0 \
     run_entrypoint --bootstrap
