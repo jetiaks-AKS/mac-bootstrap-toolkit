@@ -134,7 +134,8 @@ Blueprint — необязательный локальный слой выбо�
 Discovery → Generated Configuration → Blueprint → Bootstrap
 ```
 
-Dry-run / Preview и глобальный Verification остаются будущими возможностями.
+Dry-run / Preview реализован в `develop` после релиза 3.0.0. Глобальный
+Verification остаётся будущей возможностью.
 
 Дальнейшее развитие описано в [ROADMAP.md](ROADMAP.md).
 

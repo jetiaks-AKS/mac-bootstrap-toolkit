@@ -133,7 +133,8 @@ Current architecture:
 Discovery → Generated Configuration → Blueprint → Bootstrap
 ```
 
-Dry-run / Preview and global Verification are planned future capabilities.
+Dry-run / Preview is implemented on `develop` after the 3.0.0 release. Global
+Verification remains a planned future capability.
 
 See [ROADMAP.md](ROADMAP.md) for further development.
 

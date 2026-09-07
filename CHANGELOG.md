@@ -46,6 +46,10 @@ Current development after the **3.0.0 Stable** release.
 
 ### Fixed
 
+* Startup validation now suppresses normalized application records, keeping
+  generated input out of normal Bootstrap and Preview terminal output while
+  preserving validation status.
+
 * Bootstrap now validates Blueprint and the required generated inputs of the
   selected scope before preflight and Core checks, blocking malformed input
   before Homebrew installation or target-state mutation. Homebrew availability

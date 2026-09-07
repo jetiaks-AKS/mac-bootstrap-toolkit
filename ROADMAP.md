@@ -185,23 +185,24 @@ Toolkit 3.0.0 выпущен как Stable. Release commit `c36902d` входи�
 - [x] Завершить release verification
 
 Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview и
-Global Verification остаются post-3.0 planned capabilities.
+Global Verification относятся к post-3.0 scope; Preview реализован на `develop`,
+Global Verification остаётся planned.
 
 ---
 
 # Этап 8 — Dry-run / Preview
 
-**Статус: Planned**
+**Статус: Completed (develop, post-3.0)**
 
 Неизменяющий предварительный просмотр поведения существующего Bootstrap.
 
-- [ ] Добавить `--dry-run`
-- [ ] Выполнять checks без mutation
-- [ ] Формировать и показывать planned changes
-- [ ] Интегрировать Preview с текущими lifecycle, Logger и Summary
-- [ ] Поддержать Applications, VS Code, Workspace и macOS consumers
-- [ ] Сохранять соответствие Preview фактическому Bootstrap
-- [ ] Отделять вычисление плана от CLI-представления там, где это практично
+- [x] Добавить `--dry-run`
+- [x] Выполнять checks без mutation
+- [x] Формировать и показывать planned changes
+- [x] Интегрировать Preview с текущими lifecycle, Logger и Summary
+- [x] Поддержать Applications, VS Code, Workspace и macOS consumers
+- [x] Сохранять соответствие Preview фактическому Bootstrap
+- [x] Отделять вычисление плана от CLI-представления там, где это практично
 
 Dry-run остаётся capability существующей Bootstrap-модели, а не новым planner
 framework.
@@ -278,7 +279,7 @@ coverage; scalable catalog стоит рассматривать лишь тог
 
 # Продуктовая модель
 
-Текущая модель 3.0.0 Stable и `develop`:
+Модель релиза 3.0.0 Stable:
 
 ```text
 Discovery
@@ -290,7 +291,7 @@ Blueprint
 Bootstrap
 ```
 
-Будущая post-3.0 модель:
+Post-3.0 модель (`develop` реализует Preview; Global Verification planned):
 
 ```text
 Discovery
@@ -306,7 +307,7 @@ Bootstrap
 Global Verification
 ```
 
-Preview будет неизменяющей capability вокруг существующей Bootstrap planning
+Preview является неизменяющей capability вокруг существующей Bootstrap planning
 и check-логики. Global Verification станет общей post-Bootstrap проверкой; ни
 одна из возможностей не требует заранее вводить heavyweight framework.
 

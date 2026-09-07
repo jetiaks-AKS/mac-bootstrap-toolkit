@@ -239,22 +239,22 @@ bootstrap_validate_selected_inputs() {
 
     if bootstrap_item_scope_selected homebrew-packages; then
         config_file="$(blueprint_generated_file homebrew-packages)"
-        read_brew_packages_configuration "$config_file" || return 2
+        read_brew_packages_configuration "$config_file" >/dev/null || return 2
     fi
 
     if bootstrap_item_scope_selected homebrew-casks; then
         config_file="$(blueprint_generated_file homebrew-casks)"
-        read_brew_casks_configuration "$config_file" || return 2
+        read_brew_casks_configuration "$config_file" >/dev/null || return 2
     fi
 
     if bootstrap_item_scope_selected app-store; then
         config_file="$(blueprint_generated_file app-store)"
-        read_appstore_configuration "$config_file" || return 2
+        read_appstore_configuration "$config_file" >/dev/null || return 2
     fi
 
     if bootstrap_item_scope_selected vscode-extensions; then
         config_file="$(blueprint_generated_file vscode-extensions)"
-        read_vscode_extensions_configuration "$config_file" || return 2
+        read_vscode_extensions_configuration "$config_file" >/dev/null || return 2
     fi
 
     if blueprint_category_enabled vscode-settings; then

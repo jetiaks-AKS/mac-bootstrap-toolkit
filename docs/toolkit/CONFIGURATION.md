@@ -321,12 +321,12 @@ Configuration, а не дублироваться как фиксированн�
 эту проверку до preflight и Core checks; пустой item scope и отключённая
 категория не добавляют проверку несвязанного файла.
 
-## Будущие потребители
+## Preview и будущие потребители
 
-Dry-run / Preview и Global Verification запланированы и пока не реализованы.
+Dry-run / Preview реализован; Global Verification остаётся запланированным.
 
-- **Dry-run / Preview** будет неизменяющим режимом Bootstrap и станет
-  использовать те же Generated Configuration и Blueprint Desired Selection.
+- **Dry-run / Preview** является неизменяющим режимом Bootstrap и использует
+  те же Generated Configuration и Blueprint Desired Selection.
   Он не является источником конфигурации и не владеет Desired Selection.
 - **Global Verification** станет aggregate post-Bootstrap проверкой выбранного
   итогового состояния. Она отличается от текущего локального
