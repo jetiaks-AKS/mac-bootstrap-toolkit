@@ -139,9 +139,9 @@ Bootstrap orchestration.
 configuration, and common environment services. Domain-specific Discovery and
 Bootstrap behavior remains outside Core.
 
-## Planned architecture extension
+## Architecture extension status
 
-The planned extension is:
+The architecture path is:
 
 ```text
 Discovery

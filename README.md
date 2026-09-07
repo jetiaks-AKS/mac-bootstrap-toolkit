@@ -5,7 +5,7 @@ English | [Русский](README.ru.md)
 A modular Bash toolkit for reproducibly preparing and restoring a macOS
 working environment.
 
-**Current version: 3.0.0 Stable**
+**Current version: 3.1.0 Stable**
 
 ---
 
@@ -78,6 +78,14 @@ the full supported scope.
 Toolkit operations are designed to be idempotent and verify supported state
 before and after changes where applicable.
 
+### Preview
+
+- non-mutating `--dry-run` inspection for Applications, Git configuration,
+  VS Code settings, Workspace, and macOS;
+- Blueprint-aware planned actions using the same validation and inspection
+  logic as Bootstrap;
+- Summary reporting for inspected modules, warnings, errors, and duration.
+
 ---
 
 ## Quick Start
@@ -106,6 +114,12 @@ Restore the environment:
 ./bootstrap.sh --bootstrap
 ```
 
+Preview the selected changes without modifying target state:
+
+```bash
+./bootstrap.sh --dry-run
+```
+
 Use `--verbose` with Check, Discovery, or Bootstrap for detailed output.
 
 See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.
@@ -125,7 +139,7 @@ See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.
 
 ## Project Status
 
-**3.0.0 Stable**
+**3.1.0 Stable**
 
 Current architecture:
 
@@ -133,8 +147,8 @@ Current architecture:
 Discovery → Generated Configuration → Blueprint → Bootstrap
 ```
 
-Dry-run / Preview is implemented on `develop` after the 3.0.0 release. Global
-Verification remains a planned future capability.
+Dry-run / Preview is included in 3.1.0. Global Verification remains a planned
+future capability.
 
 See [ROADMAP.md](ROADMAP.md) for further development.
 

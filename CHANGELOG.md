@@ -7,113 +7,63 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
-## [Unreleased]
+## [3.1.0] - 07.09.2026
 
-Current development after the **3.0.0 Stable** release.
+Minor release adding a complete read-only Preview of the selected Bootstrap
+scope and strengthening the lifecycle guarantees that Preview relies on.
 
 ### Added
 
-* Completed Preview integration coverage through the real entrypoint and all
-  production domain helpers, with external mutation spies, target snapshots,
-  stable mixed-domain plans, warning/error propagation, and Summary log parity.
+* Added `--dry-run` as an exclusive execution mode with read-only startup,
+  Blueprint-aware selection, status `0 / 1 / 2`, and a Preview Summary using
+  Modules Inspected, Warnings, Errors, and Duration.
+* Added planned actions for Homebrew formulae and casks, App Store applications,
+  VS Code extensions and settings, Git configuration, Workspace folders,
+  repository clones and branch switches, and typed macOS settings.
+* Added macOS plans for the existing Screenshots directory action and required
+  Finder, Dock, and SystemUIServer restarts.
 
-* Added non-mutating macOS Preview for Finder, Dock, Keyboard, Trackpad, and
-  Screenshots. It reuses typed defaults validation and observation, reports
-  current-to-desired or absent-to-desired changes, and plans category process
-  restarts and the existing Screenshots directory creation without mutation.
+### Changed
 
-* Added non-mutating Workspace Preview for selected folders and repositories.
-  It reuses Workspace validation and inspection, reports folder creation,
-  repository cloning, and eligible branch switching without mutation, and
-  preserves warnings for dirty repositories, remote mismatches, and non-Git
-  destinations.
-
-* Added non-mutating Preview for Git configuration and VS Code settings. Git
-  Preview reports every mismatched supported key after a complete inspection;
-  VS Code settings Preview preserves the optional-source warning and reports an
-  update only for an absent or byte-different target.
-
-* Added non-mutating Preview for Homebrew formulae and casks, App Store
-  applications, and VS Code extensions. Preview reuses Bootstrap validation,
-  Blueprint selection, and presence inspection, including the existing cask
-  reinstall decision, while reporting planned actions without installation or
-  Bootstrap Changed-state accounting.
-
-* Added the `--dry-run` Preview foundation with exclusive execution-mode
-  parsing, selected-input validation, read-only preflight without `sudo`, and
-  non-mutating Homebrew availability inspection. Preview has its own Summary
-  semantics; domain-specific coverage is described above.
+* Preview reuses production validation, selection, and inspection helpers.
+  Planned changes remain successful observations rather than warnings and do
+  not affect Bootstrap Changed-state accounting.
+* Bootstrap startup validates Blueprint and selected required generated input
+  before prerequisite or target-state mutation.
+* Discovery Summary now uses Discovery-specific Modules Processed, Warnings,
+  and Errors labels while Check and Bootstrap summaries retain their contracts.
 
 ### Fixed
 
-* Startup validation now suppresses normalized application records, keeping
-  generated input out of normal Bootstrap and Preview terminal output while
-  preserving validation status.
+* Corrected generic `Check -> Apply -> Verify` propagation so Apply failures
+  cannot be hidden by a later Check.
+* Hardened formula, cask, App Store, VS Code extension, VS Code settings, and
+  Workspace consumers against malformed input, observation failures, false
+  success, partial inspection, and missing post-Apply verification.
+* App Store presence checks now use exact numeric IDs; cask verification checks
+  every supported artifact target.
+* Workspace folder, clone, and branch restoration now verify retained mutations
+  and preserve accurate Changed state across later failures.
 
-* Bootstrap now validates Blueprint and the required generated inputs of the
-  selected scope before preflight and Core checks, blocking malformed input
-  before Homebrew installation or target-state mutation. Homebrew availability
-  now distinguishes an inspection error from confirmed absence, so an
-  observation error cannot enter the installer path.
+### Safety / Reliability
 
-* `run_configuration()` now returns error 2 immediately when Apply fails and
-  verifies only after successful Apply. Verify mismatch or observation failure
-  returns error 2, while consumer-owned Changed state is preserved. The macOS
-  Apply-failure guard is no longer needed by the generic lifecycle.
+* Preview performs no target-state mutation: it skips `sudo` authentication,
+  installers, configuration writes, filesystem restoration, macOS defaults
+  writes, and process restarts. Internal Toolkit logging and temporary
+  validation files remain allowed.
+* Homebrew prerequisite inspection distinguishes confirmed absence from an
+  observation error, preventing inspection failures from entering the installer
+  path.
 
-* Workspace folder restoration now distinguishes present, absent, and erroneous
-  paths, creates only confirmed-absent folders, and verifies the resulting
-  directory before success. Retained folder creation is recorded in Changed,
-  and a folder error now blocks subsequent repository mutations.
+### Tests / Documentation
 
-* Workspace repository clone and branch restoration now report success only
-  after local verification. Clone verifies the destination, usable Git worktree,
-  and exact origin; checkout verifies the exact resulting branch. Mutation and
-  verification failures return error 2 while retaining earlier Changed state.
-
-* Workspace repository inspection now distinguishes dirty/mismatched state from
-  filesystem and Git read errors. Failed worktree, origin, branch or clean-state
-  observation blocks restore actions and propagates error 2 instead of becoming
-  a checkout decision or an ordinary warning. Tracked/staged dirty-state policy
-  and detached-HEAD restoration behavior are preserved.
-
-* Workspace Bootstrap validates required selected paths and repository action
-  fields before mutation, rejecting traversal outside HOME and incomplete inputs.
-  Repository IDs with spaces and final records without a newline are preserved
-  by line-oriented consumer parsing. Blueprint selection and clone/checkout
-  lifecycle behavior are unchanged.
-
-* VS Code settings Bootstrap validates source access before mutation, separates
-  comparison errors from differences, and verifies byte equality before success.
-  Settings and backups are staged before publication to avoid partial copies;
-  retained directory, backup and settings changes are recorded even on later failure.
-
-* Homebrew cask inspection now checks every reported artifact target instead of
-  only the first. Invalid metadata blocks Apply; install/reinstall success is
-  reported only after the same inspection verifies the resulting state.
-  Successful mutations retain Changed state if verification or a later cask fails.
-
-* App Store Bootstrap now checks exact numeric IDs instead of application-name
-  substrings. App Store applications and VS Code extensions re-read inventory
-  after successful installs and report success only after local verification.
-  Observation or verification failure returns error 2; successful mutations
-  remain recorded even if verification or a later installation fails.
-
-* Homebrew casks, App Store applications, and VS Code extensions now validate
-  their complete required generated input before observation or installation.
-  Malformed or unreadable input returns error 2 without partial installation;
-  empty Blueprint scopes retain their early successful skip. Generated formats
-  are unchanged.
-
-* Homebrew formula Bootstrap validates the complete generated list before
-  installation, distinguishes inventory errors from absence, and verifies
-  presence after successful installs. Changed state is recorded only after a
-  successful install and remains recorded if a later install or verification
-  fails; Bootstrap does not roll back earlier successful installations.
-
-* Discovery Summary now reports modules processed, warnings, and errors instead
-  of Bootstrap-oriented Installed / Skipped counts, in both terminal and log.
-  Existing lifecycle accounting and Check / Bootstrap summaries are unchanged.
+* Added focused lifecycle coverage across Applications, VS Code, Workspace,
+  macOS, startup, and Blueprint behavior.
+* Added real-entrypoint Preview integration coverage with mutation spies,
+  target-state snapshots, mixed-domain plans, stable output, warning/error
+  propagation, and terminal/logger Summary parity.
+* Updated CLI, configuration, architecture, agent, roadmap, and user guidance
+  for the completed Preview contract. Global Verification remains planned.
 
 ## [3.0.0] - 18.08.2026
 

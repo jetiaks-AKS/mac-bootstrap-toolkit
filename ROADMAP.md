@@ -6,8 +6,9 @@ Roadmap описывает последовательность развития
 Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`, ближайшие
 технические задачи — в `TODO.md`, а история изменений — в `CHANGELOG.md`.
 
-Roadmap показывает завершённые крупные этапы, завершённый release gate 3.0.0 и
-утверждённое направление дальнейшего развития без деталей реализации модулей.
+Roadmap показывает завершённые крупные этапы, выпущенный baseline 3.0.0,
+завершённый scope 3.1.0 и утверждённое направление дальнейшего развития без
+деталей реализации модулей.
 
 ---
 
@@ -184,15 +185,14 @@ Toolkit 3.0.0 выпущен как Stable. Release commit `c36902d` входи�
 - [x] Создать tag `v3.0.0`
 - [x] Завершить release verification
 
-Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview и
-Global Verification относятся к post-3.0 scope; Preview реализован на `develop`,
-Global Verification остаётся planned.
+Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview вошёл в
+scope 3.1.0; Global Verification остаётся planned.
 
 ---
 
 # Этап 8 — Dry-run / Preview
 
-**Статус: Completed (develop, post-3.0)**
+**Статус: Completed (Release 3.1.0)**
 
 Неизменяющий предварительный просмотр поведения существующего Bootstrap.
 
@@ -291,7 +291,7 @@ Blueprint
 Bootstrap
 ```
 
-Post-3.0 модель (`develop` реализует Preview; Global Verification planned):
+Модель релиза 3.1.0 (Global Verification planned):
 
 ```text
 Discovery
@@ -303,13 +303,12 @@ Blueprint
 Dry-run / Preview
     ↓
 Bootstrap
-    ↓
-Global Verification
 ```
 
 Preview является неизменяющей capability вокруг существующей Bootstrap planning
-и check-логики. Global Verification станет общей post-Bootstrap проверкой; ни
-одна из возможностей не требует заранее вводить heavyweight framework.
+и check-логики. Global Verification станет общей post-Bootstrap проверкой и не
+входит в релиз 3.1.0; ни одна из возможностей не требует заранее вводить
+heavyweight framework.
 
 ---
 
@@ -331,6 +330,8 @@ Reliability & Release Hardening
 Release 3.0.0
   ↓
 Dry-run / Preview
+  ↓
+Release 3.1.0
   ↓
 Global Verification
   ↓
