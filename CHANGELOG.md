@@ -7,9 +7,63 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
-## [Unreleased]
+## [3.1.0] - 07.09.2026
 
-Current development after the **3.0.0 Stable** release.
+Minor release adding a complete read-only Preview of the selected Bootstrap
+scope and strengthening the lifecycle guarantees that Preview relies on.
+
+### Added
+
+* Added `--dry-run` as an exclusive execution mode with read-only startup,
+  Blueprint-aware selection, status `0 / 1 / 2`, and a Preview Summary using
+  Modules Inspected, Warnings, Errors, and Duration.
+* Added planned actions for Homebrew formulae and casks, App Store applications,
+  VS Code extensions and settings, Git configuration, Workspace folders,
+  repository clones and branch switches, and typed macOS settings.
+* Added macOS plans for the existing Screenshots directory action and required
+  Finder, Dock, and SystemUIServer restarts.
+
+### Changed
+
+* Preview reuses production validation, selection, and inspection helpers.
+  Planned changes remain successful observations rather than warnings and do
+  not affect Bootstrap Changed-state accounting.
+* Bootstrap startup validates Blueprint and selected required generated input
+  before prerequisite or target-state mutation.
+* Discovery Summary now uses Discovery-specific Modules Processed, Warnings,
+  and Errors labels while Check and Bootstrap summaries retain their contracts.
+
+### Fixed
+
+* Corrected generic `Check -> Apply -> Verify` propagation so Apply failures
+  cannot be hidden by a later Check.
+* Hardened formula, cask, App Store, VS Code extension, VS Code settings, and
+  Workspace consumers against malformed input, observation failures, false
+  success, partial inspection, and missing post-Apply verification.
+* App Store presence checks now use exact numeric IDs; cask verification checks
+  every supported artifact target.
+* Workspace folder, clone, and branch restoration now verify retained mutations
+  and preserve accurate Changed state across later failures.
+
+### Safety / Reliability
+
+* Preview performs no target-state mutation: it skips `sudo` authentication,
+  installers, configuration writes, filesystem restoration, macOS defaults
+  writes, and process restarts. Internal Toolkit logging and temporary
+  validation files remain allowed.
+* Homebrew prerequisite inspection distinguishes confirmed absence from an
+  observation error, preventing inspection failures from entering the installer
+  path.
+
+### Tests / Documentation
+
+* Added focused lifecycle coverage across Applications, VS Code, Workspace,
+  macOS, startup, and Blueprint behavior.
+* Added real-entrypoint Preview integration coverage with mutation spies,
+  target-state snapshots, mixed-domain plans, stable output, warning/error
+  propagation, and terminal/logger Summary parity.
+* Updated CLI, configuration, architecture, agent, roadmap, and user guidance
+  for the completed Preview contract. Global Verification remains planned.
 
 ## [3.0.0] - 18.08.2026
 

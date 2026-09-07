@@ -17,10 +17,13 @@ Discovery → Generated Configuration → Blueprint → Bootstrap
 - **Bootstrap** использует сформированную конфигурацию для восстановления
   поддерживаемых частей рабочего окружения.
 
-Blueprint реализован и E2E-проверен в `develop`, но ещё не входит в стабильный
-релиз 2.0.1. Локальный post-apply Verify уже является частью lifecycle модулей,
+Blueprint реализован, E2E-проверен и входит в стабильные релизы начиная с
+3.0.0. Текущая версия Toolkit — 3.1.0.
+Локальный post-apply Verify уже является частью lifecycle модулей,
 когда результат наблюдаем их текущими средствами. Отдельная глобальная
-Verification-возможность и Dry-run пока не реализованы.
+Verification-возможность пока не реализована. `--dry-run` и Preview для
+Applications, Git configuration, VS Code settings, Workspace и macOS
+реализованы.
 
 ## Рабочая директория и точка входа
 
@@ -31,6 +34,7 @@ Verification-возможность и Dry-run пока не реализова�
 ./bootstrap.sh --discover
 ./bootstrap.sh --blueprint
 ./bootstrap.sh --bootstrap
+./bootstrap.sh --dry-run
 ```
 
 `bootstrap.sh` использует относительные `source`-пути и относительные
@@ -43,12 +47,13 @@ Verification-возможность и Dry-run пока не реализова�
 - `--discover`
 - `--blueprint`
 - `--bootstrap`
+- `--dry-run`
 - `--verbose`
 - `--help`
 - `--version`
 
-`--dry-run` описан в документации как будущая возможность и пока не
-должен считаться доступным CLI-режимом.
+`--dry-run` использует read-only startup path и не должен выполнять целевые
+мутации.
 
 ## Структура проекта
 
@@ -197,9 +202,9 @@ Verify здесь означает локальную post-apply проверк�
 
 Текущая последовательность Bootstrap в `bootstrap.sh`:
 
-1. preflight;
-2. проверка Homebrew, Git, SSH и Terminal;
-3. валидация Blueprint, если он существует;
+1. валидация Blueprint и обязательного generated input выбранного scope;
+2. preflight;
+3. проверка Homebrew, Git, SSH и Terminal;
 4. восстановление Workspace;
 5. настройка Git;
 6. Homebrew packages и casks;
@@ -210,6 +215,20 @@ Verify здесь означает локальную post-apply проверк�
 Не переставляй эти шаги без необходимости: порядок отражает
 зависимости, в частности доступность Git/Homebrew и конфигурации,
 полученной Discovery.
+
+### Preview
+
+`--dry-run`: CLI → logger → Blueprint validation → selected-input validation
+→ read-only preflight → Core inspection → domain Preview → Summary → exit code.
+Startup validation/preflight errors останавливают запуск. Core/domain errors
+сохраняются в accounting, последующие read-only inspections продолжаются.
+Planned actions дают `0`, warnings — `1`, errors имеют приоритет `2`.
+Preview не использует `MODULE_CHANGED`. Summary считает вызовы inspection
+wrapper (включая Core), warnings и errors, а не установки или отдельные items.
+
+Screenshots Preview отражает текущий hard-coded `$HOME/Screenshots` при Apply;
+согласование каталога с generated location остаётся техническим долгом.
+Global Verification остаётся запланированной.
 
 ### Workspace
 
@@ -273,6 +292,34 @@ Discovery метаданных `.code-workspace` и генерация
 запрашивает административную аутентификацию и при отсутствии Homebrew
 может предложить его установить. Запускай его только с учётом этих
 побочных эффектов.
+
+## Автономная работа агента
+
+Для крупных многошаговых задач сначала определи scope, затрагиваемые подсистемы
+и зависимости, затем переходи к реализации.
+
+Не расширяй scope самостоятельно. Найденные соседние проблемы, которые не
+требуются для выполнения текущей задачи, фиксируй отдельно и не исправляй
+без явной необходимости или запроса пользователя.
+
+Большие изменения выполняй логическими этапами с проверкой после каждого
+завершённого этапа, если это практически возможно.
+
+Предпочитай существующие архитектуру, API, helpers и contracts проекта.
+Не вводи новую абстракцию, если существующий механизм адекватно решает задачу.
+
+Audit и review по умолчанию являются read-only задачами. Найденные замечания
+сами по себе не являются разрешением на их реализацию, если пользователь явно
+не попросил внести изменения.
+
+После крупного изменения выполни финальный self-review diff и проверь:
+
+- отсутствие scope creep;
+- отсутствие нежелательных destructive side effects;
+- соблюдение существующих contracts;
+- отсутствие случайного добавления generated-файлов;
+- корректность exit codes;
+- необходимость обновления документации.
 
 ## Логирование и вывод
 

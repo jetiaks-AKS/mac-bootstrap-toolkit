@@ -4,6 +4,10 @@
 # macOS Defaults Executor
 # ==========================================
 
+DEFAULTS_OBSERVED_PRESENT=false
+DEFAULTS_OBSERVED_VALUE=""
+DEFAULTS_PREVIEW_CHANGED=false
+
 validate_defaults_config() {
     local config_file="$1"
 
@@ -99,6 +103,9 @@ check_defaults_record() {
     local expected="$4"
     local expected_native_type native_type actual
 
+    DEFAULTS_OBSERVED_PRESENT=false
+    DEFAULTS_OBSERVED_VALUE=""
+
     expected_native_type="$(defaults_native_type "$type")" || return 2
 
     native_type="$(defaults read-type "$domain" "$key" 2>&1)"
@@ -123,6 +130,9 @@ check_defaults_record() {
         return 2
     fi
 
+    DEFAULTS_OBSERVED_PRESENT=true
+    DEFAULTS_OBSERVED_VALUE="$actual"
+
     defaults_values_match "$type" "$expected" "$actual"
     local comparison_result=$?
 
@@ -131,6 +141,70 @@ check_defaults_record() {
     fi
 
     return "$comparison_result"
+}
+
+defaults_preview_display_value() {
+    local type="$1"
+    local value="$2"
+
+    case "$type" in
+        bool)
+            case "$value" in
+                1|true) printf 'true\n' ;;
+                0|false) printf 'false\n' ;;
+                *) return 2 ;;
+            esac
+            ;;
+        int)
+            normalize_defaults_integer "$value"
+            ;;
+        string)
+            [[ "$value" != *[[:cntrl:]]* ]] || return 2
+            printf '%s\n' "$value"
+            ;;
+        *)
+            return 2
+            ;;
+    esac
+}
+
+preview_defaults_config() {
+    local config_file="$1"
+    local domain key type desired
+    local record_result
+    local current_display desired_display
+
+    validate_defaults_config "$config_file" || return 2
+    DEFAULTS_PREVIEW_CHANGED=false
+
+    while IFS='|' read -r domain key type desired; do
+        [[ -z "$domain" ]] && continue
+
+        check_defaults_record "$domain" "$key" "$type" "$desired"
+        record_result=$?
+
+        [[ $record_result -ne 2 ]] || return 2
+        [[ $record_result -ne 0 ]] || continue
+
+        DEFAULTS_PREVIEW_CHANGED=true
+        desired_display="$(defaults_preview_display_value "$type" "$desired")" || {
+            action "Would change macOS setting: $domain/$key"
+            continue
+        }
+
+        if [[ "$DEFAULTS_OBSERVED_PRESENT" == false ]]; then
+            action "Would change macOS setting: $domain/$key (absent -> $desired_display)"
+            continue
+        fi
+
+        current_display="$(defaults_preview_display_value "$type" "$DEFAULTS_OBSERVED_VALUE")" || {
+            action "Would change macOS setting: $domain/$key"
+            continue
+        }
+        action "Would change macOS setting: $domain/$key ($current_display -> $desired_display)"
+    done < "$config_file"
+
+    return 0
 }
 
 check_defaults_config() {

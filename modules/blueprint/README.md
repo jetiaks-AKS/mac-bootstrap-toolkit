@@ -2,10 +2,10 @@
 
 [Русская версия](README.ru.md)
 
-Blueprint is the user-selection layer between Discovery and Bootstrap. It
-provides parsing, validation, item-level and category/module-level Bootstrap
-filtering, plus the interactive `--blueprint` selector. Stages 1–5 are complete
-and end-to-end verified on `develop`; they are not part of stable release 2.0.1.
+Blueprint is the user-selection layer between Generated Configuration and
+Bootstrap. It provides parsing, validation, item-level and category/module-level
+Bootstrap filtering, plus the interactive `--blueprint` selector. Stages 1–5 are complete
+and end-to-end verified; Blueprint is included in stable release 3.0.0.
 
 The user-specific file is `config/blueprint.conf`. It is ignored by Git and is
 never generated automatically. `config/blueprint.example.conf` contains the

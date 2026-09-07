@@ -162,6 +162,46 @@ run_module() {
 }
 
 # ==========================================
+# Run Read-only Inspection
+# ==========================================
+
+run_inspection() {
+
+    local inspection_name="$1"
+    local inspection_function="$2"
+
+    section "$inspection_name"
+    ((MODULES_CHECKED++))
+    log "[MODULE] START: $inspection_name"
+
+    "$inspection_function"
+    local result=$?
+
+    case $result in
+        0)
+            log "[MODULE] RESULT: SUCCESS"
+            return 0
+            ;;
+        1)
+            ((WARNING_COUNT++))
+            log "[MODULE] RESULT: WARNING"
+            return 1
+            ;;
+        2)
+            ((ERROR_COUNT++))
+            log "[MODULE] RESULT: ERROR"
+            return 2
+            ;;
+        *)
+            ((ERROR_COUNT++))
+            log "[MODULE] RESULT: UNKNOWN ($result)"
+            return 2
+            ;;
+    esac
+
+}
+
+# ==========================================
 # Run Configuration
 # ==========================================
 
@@ -179,9 +219,10 @@ run_configuration() {
 
     log "[MODULE] START: $module_name"
 
-    $check_function >/dev/null 2>&1
+    local result
 
-    local result=$?
+    $check_function >/dev/null 2>&1
+    result=$?
 
     case $result in
 
@@ -199,23 +240,48 @@ run_configuration() {
 
         1)
 
-            if $apply_function; then
-                MODULE_CHANGED=true
+            $apply_function
+            result=$?
+
+            if [[ $result -ne 0 ]]; then
+                if [[ "$MODULE_CHANGED" == true ]]; then
+                    ((INSTALLED_COUNT++))
+                else
+                    ((SKIPPED_COUNT++))
+                fi
+
+                log "[MODULE] Changed: $MODULE_CHANGED"
+                log "[MODULE] RESULT: ERROR"
+
+                error "$module_name configuration failed"
+
+                ((ERROR_COUNT++))
+                return 2
             fi
 
             $check_function >/dev/null 2>&1
+            result=$?
 
-            if [[ $? -eq 0 ]]; then
+            if [[ $result -eq 0 ]]; then
+                if [[ "$MODULE_CHANGED" == true ]]; then
+                    ((INSTALLED_COUNT++))
+                else
+                    ((SKIPPED_COUNT++))
+                fi
 
-                ((INSTALLED_COUNT++))
-
-                log "[MODULE] Changed: Yes"
+                log "[MODULE] Changed: $MODULE_CHANGED"
                 log "[MODULE] RESULT: SUCCESS"
 
                 success "$module_name configured successfully"
 
                 return 0
 
+            fi
+
+            if [[ "$MODULE_CHANGED" == true ]]; then
+                ((INSTALLED_COUNT++))
+            else
+                ((SKIPPED_COUNT++))
             fi
 
             log "[MODULE] Changed: $MODULE_CHANGED"
@@ -291,6 +357,10 @@ show_summary() {
                 error "System check completed with errors"
                 ;;
 
+            --dry-run)
+                error "Preview completed with errors"
+                ;;
+
         esac
 
     elif [[ $WARNING_COUNT -gt 0 ]]; then
@@ -307,6 +377,10 @@ show_summary() {
 
             --check)
                 warning "System check completed with warnings"
+                ;;
+
+            --dry-run)
+                warning "Preview completed with warnings"
                 ;;
 
         esac
@@ -327,6 +401,10 @@ show_summary() {
                 success "System check completed successfully"
                 ;;
 
+            --dry-run)
+                success "Preview completed successfully"
+                ;;
+
         esac
 
     fi
@@ -337,7 +415,23 @@ show_summary() {
     echo "------------------------------------------"
     log "------------------------------------------"
 
-    if [[ "$MODE" == "--bootstrap" &&
+    if [[ "$MODE" == "--discover" ]]; then
+        echo "Modules Processed : $MODULES_CHECKED"
+        echo "Warnings          : $WARNING_COUNT"
+        echo "Errors            : $ERROR_COUNT"
+
+        log "Modules Processed : $MODULES_CHECKED"
+        log "Warnings          : $WARNING_COUNT"
+        log "Errors            : $ERROR_COUNT"
+    elif [[ "$MODE" == "--dry-run" ]]; then
+        echo "Modules Inspected : $MODULES_CHECKED"
+        echo "Warnings          : $WARNING_COUNT"
+        echo "Errors            : $ERROR_COUNT"
+
+        log "Modules Inspected : $MODULES_CHECKED"
+        log "Warnings          : $WARNING_COUNT"
+        log "Errors            : $ERROR_COUNT"
+    elif [[ "$MODE" == "--bootstrap" &&
           "${BLUEPRINT_BOOTSTRAP_SUMMARY:-false}" == true ]] &&
        blueprint_exists &&
        command -v blueprint_show_bootstrap_summary >/dev/null 2>&1; then

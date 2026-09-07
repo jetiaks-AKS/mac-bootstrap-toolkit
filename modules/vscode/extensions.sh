@@ -4,6 +4,25 @@
 # Check VS Code CLI
 # ==========================================
 
+read_vscode_extensions_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    LC_ALL=C awk '
+        /^$/ || /^#/ { next }
+        {
+            if ($0 !~ /^[A-Za-z0-9][A-Za-z0-9_-]*\.[A-Za-z0-9][A-Za-z0-9_-]*$/ ||
+                tolower($0) ~ /\.vsix$/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
 check_vscode_cli() {
 
     if command -v code >/dev/null 2>&1; then
@@ -18,6 +37,62 @@ check_vscode_cli() {
 # ==========================================
 # Install VS Code Extension
 # ==========================================
+
+# Presence: 0 installed, 1 absent, 2 observation error.
+is_vscode_extension_installed() {
+
+    local inventory
+    inventory="$(code --list-extensions)" || return 2
+    grep -Fxq -- "$1" <<< "$inventory"
+
+}
+
+# ==========================================
+# Preview VS Code Extensions
+# ==========================================
+
+preview_vscode_extensions() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items vscode-extensions)" ]]; then
+        return 0
+    fi
+
+    local config_file
+    config_file="$(blueprint_generated_file vscode-extensions)"
+
+    local extensions
+    if ! extensions="$(read_vscode_extensions_configuration "$config_file")"; then
+        error "VS Code extensions configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    check_vscode_cli || return 1
+
+    local extension
+    local inspection_result
+
+    while IFS= read -r extension || [[ -n "$extension" ]]; do
+        [[ -z "$extension" ]] && continue
+        [[ "$extension" =~ ^# ]] && continue
+        blueprint_item_selected vscode-extensions "$extension" || continue
+
+        is_vscode_extension_installed "$extension"
+        inspection_result=$?
+
+        case $inspection_result in
+            0) detail "$extension is already installed" ;;
+            1) action "Would install VS Code extension: $extension" ;;
+            *)
+                error "Failed to inspect VS Code extension: $extension"
+                return 2
+                ;;
+        esac
+    done <<< "$extensions"
+
+    return 0
+
+}
 
 install_vscode_extension() {
 
@@ -37,7 +112,6 @@ fi
 
 if [[ $? -eq 0 ]]; then
 
-    success "$extension installed successfully"
     return 0
 
 fi
@@ -59,25 +133,21 @@ install_vscode_extensions() {
         return 0
     fi
 
-    check_vscode_cli || return 1
-
     local config_file
     config_file="$(blueprint_generated_file vscode-extensions)"
 
-    if [[ ! -f "$config_file" ]]; then
+    local extensions
+    if ! extensions="$(read_vscode_extensions_configuration "$config_file")"; then
 
-        error "Configuration file $config_file not found"
+        error "VS Code extensions configuration missing, unreadable, or malformed: $config_file"
         return 2
 
     fi
 
-    local installed_extensions
-    if ! installed_extensions="$(code --list-extensions)"; then
-        error "Failed to inspect installed VS Code extensions"
-        return 2
-    fi
+    check_vscode_cli || return 1
 
     local missing_extensions=0
+    local inspection_result
 
     while IFS= read -r extension || [[ -n "$extension" ]]; do
 
@@ -85,11 +155,19 @@ install_vscode_extensions() {
         [[ "$extension" =~ ^# ]] && continue
         blueprint_item_selected vscode-extensions "$extension" || continue
 
-        if grep -Fxq "$extension" <<< "$installed_extensions"; then
+        is_vscode_extension_installed "$extension"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
 
             detail "$extension is already installed"
             continue
 
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect VS Code extension: $extension"
+            return 2
         fi
 
         ((missing_extensions++))
@@ -109,7 +187,14 @@ install_vscode_extensions() {
 
         MODULE_CHANGED=true
 
-    done < "$config_file"
+        if ! is_vscode_extension_installed "$extension"; then
+            error "Failed to verify VS Code extension: $extension"
+            return 2
+        fi
+
+        success "$extension installed successfully"
+
+    done <<< "$extensions"
 
     if [[ $missing_extensions -eq 0 ]]; then
 

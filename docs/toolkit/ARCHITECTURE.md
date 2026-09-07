@@ -122,6 +122,12 @@ remains distinct from legitimate absence or mismatch and must not be converted
 into “apply required.” Unsafe existing state is reported rather than corrected
 destructively.
 
+For Bootstrap, Blueprint and the required generated inputs of the selected
+scope are validated after logger setup and before preflight or Core checks.
+This blocks malformed input before Homebrew installation or target-state
+mutation. The current preflight still authenticates through `sudo -v`; a future
+Preview execution uses a separate read-only startup path rather than this one.
+
 Discovery of VS Code Workspace metadata and generation of
 `vscode-workspaces.conf` are implemented. Bootstrap restoration of
 `.code-workspace` is not implemented and is disconnected from production
@@ -133,9 +139,9 @@ Bootstrap orchestration.
 configuration, and common environment services. Domain-specific Discovery and
 Bootstrap behavior remains outside Core.
 
-## Planned architecture extension
+## Architecture extension status
 
-The planned extension is:
+The architecture path is:
 
 ```text
 Discovery
@@ -151,13 +157,42 @@ Bootstrap
 Global Verification
 ```
 
-Dry-run / Preview and Global Verification remain planned and unimplemented.
+The `--dry-run` CLI, its read-only startup path, and domain Preview for
+Applications, Git configuration, VS Code settings, Workspace, and macOS are
+implemented. Global Verification remains planned and unimplemented.
 
 ### Dry-run / Preview
 
-Dry-run / Preview is a future non-mutating mode of the existing Bootstrap
-model. It will show planned changes from the selected supported state. It is
-not a configuration source or a separately required planning engine.
+Dry-run / Preview is a non-mutating mode of the existing Bootstrap model. Its
+current foundation validates Blueprint and selected required inputs, performs
+read-only prerequisite inspection without sudo or installation, and then
+reaches an explicit Preview dispatch. Domain-specific planned-change output is
+implemented for Homebrew formulae and casks, App Store applications, and VS
+Code extensions by reusing their Bootstrap validators, Blueprint filters, and
+presence readers. Git configuration Preview reuses native generated-config
+validation and global-value inspection; VS Code settings Preview reuses source
+validation and byte comparison. Workspace Preview reuses its validated selected
+records and folder/repository inspection helpers. An absent repository produces
+only a clone plan; Preview does not infer its future branch state. macOS Preview
+reuses typed defaults validation and observation and reports related process
+restarts once per changed category. Preview inspections use inspection-only
+lifecycle accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview
+is not a configuration source or a separately required planning engine.
+
+Screenshots Bootstrap currently creates the hard-coded `$HOME/Screenshots`
+directory whenever its defaults category requires Apply, independently of the
+generated desired location. Preview reports this actual behavior. Aligning the
+directory with generated state remains technical debt rather than inferred
+Preview behavior.
+
+Startup order is CLI → logger → Blueprint validation → selected-input
+validation → read-only preflight → read-only Core inspection → domain Preview
+→ Summary → exit code. Startup validation/preflight errors stop execution.
+Core and domain errors remain in shared accounting while later read-only
+inspections continue. Each domain may stop its own inspection on error.
+Errors take precedence (`2`), then warnings (`1`); plans alone return `0`.
+The production-entrypoint integration harness checks all domains together,
+external mutation spies, target snapshots, and terminal/logger Summary parity.
 
 ### Global Verification
 

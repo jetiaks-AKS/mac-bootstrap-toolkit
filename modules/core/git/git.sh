@@ -8,6 +8,7 @@ GIT_CONFIGURATION_FILE="config/generated/git.conf"
 GIT_CONFIGURATION_KEYS=(user.name user.email init.defaultBranch pull.rebase core.editor)
 GIT_CONFIGURATION_SET=(false false false false false)
 GIT_CONFIGURATION_VALUES=("" "" "" "" "")
+GIT_CONFIGURATION_MISMATCHES=()
 GIT_READ_IS_SET=false
 GIT_READ_VALUE=""
 
@@ -171,12 +172,13 @@ is_git_installed() {
 # Check Git Configuration
 # ==========================================
 
-check_git_configuration() {
+inspect_git_configuration() {
 
     local index
     local key
 
     load_git_configuration || return 2
+    GIT_CONFIGURATION_MISMATCHES=()
 
     for index in 0 1 2 3 4; do
 
@@ -188,17 +190,52 @@ check_git_configuration() {
         fi
 
         if [[ "${GIT_CONFIGURATION_SET[$index]}" != "$GIT_READ_IS_SET" ]]; then
-            return 1
+            GIT_CONFIGURATION_MISMATCHES+=("$key")
+            continue
         fi
 
         if [[ "$GIT_READ_IS_SET" == true &&
               "${GIT_CONFIGURATION_VALUES[$index]}" != "$GIT_READ_VALUE" ]]; then
-            return 1
+            GIT_CONFIGURATION_MISMATCHES+=("$key")
         fi
 
     done
 
-    return 0
+    [[ ${#GIT_CONFIGURATION_MISMATCHES[@]} -eq 0 ]] && return 0
+    return 1
+}
+
+check_git_configuration() {
+
+    inspect_git_configuration
+}
+
+# ==========================================
+# Preview Git Configuration
+# ==========================================
+
+preview_git_configuration() {
+
+    local inspection_result
+    local key
+
+    inspect_git_configuration
+    inspection_result=$?
+
+    case $inspection_result in
+        0)
+            return 0
+            ;;
+        1)
+            for key in "${GIT_CONFIGURATION_MISMATCHES[@]}"; do
+                action "Would configure Git setting: $key"
+            done
+            return 0
+            ;;
+        *)
+            return 2
+            ;;
+    esac
 }
 
 # ==========================================

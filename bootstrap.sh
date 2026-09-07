@@ -69,7 +69,8 @@ source config/toolkit.conf
 # Toolkit Mode
 # ==========================================
 
-MODE="--check"
+MODE=""
+EXECUTION_MODE_COUNT=0
 VERBOSE=false
 
 for arg in "$@"; do
@@ -79,21 +80,31 @@ for arg in "$@"; do
         --check)
 
             MODE="--check"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --bootstrap)
 
             MODE="--bootstrap"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --discover)
 
             MODE="--discover"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         --blueprint)
 
             MODE="--blueprint"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
+        --dry-run)
+
+            MODE="--dry-run"
+            ((EXECUTION_MODE_COUNT++))
             ;;
 
         -v|--verbose)
@@ -130,6 +141,9 @@ Usage:
   ./bootstrap.sh --blueprint
       Select what Bootstrap should restore
 
+  ./bootstrap.sh --dry-run
+      Preview selected Bootstrap changes without target mutation
+
 
 Options:
 
@@ -162,6 +176,14 @@ EOF
 
 done
 
+if [[ $EXECUTION_MODE_COUNT -ne 1 ]]; then
+    error "Select exactly one execution mode"
+    echo
+    echo "Use:"
+    echo "  ./bootstrap.sh --help"
+    exit 1
+fi
+
 MODE_NAME="Unknown"
 
 case "$MODE" in
@@ -182,7 +204,143 @@ case "$MODE" in
         MODE_NAME="Blueprint"
         ;;
 
+    --dry-run)
+        MODE_NAME="Preview"
+        ;;
+
 esac
+
+# ==========================================
+# Bootstrap Input Validation
+# ==========================================
+
+bootstrap_item_scope_selected() {
+
+    local section="$1"
+
+    if blueprint_exists && [[ -z "$(blueprint_selected_items "$section")" ]]; then
+        return 1
+    fi
+
+    return 0
+
+}
+
+bootstrap_validate_selected_inputs() {
+
+    local config_file
+    local source_result
+
+    workspace_validate_bootstrap_inputs || return 2
+
+    if blueprint_category_enabled git-configuration; then
+        load_git_configuration || return 2
+    fi
+
+    if bootstrap_item_scope_selected homebrew-packages; then
+        config_file="$(blueprint_generated_file homebrew-packages)"
+        read_brew_packages_configuration "$config_file" >/dev/null || return 2
+    fi
+
+    if bootstrap_item_scope_selected homebrew-casks; then
+        config_file="$(blueprint_generated_file homebrew-casks)"
+        read_brew_casks_configuration "$config_file" >/dev/null || return 2
+    fi
+
+    if bootstrap_item_scope_selected app-store; then
+        config_file="$(blueprint_generated_file app-store)"
+        read_appstore_configuration "$config_file" >/dev/null || return 2
+    fi
+
+    if bootstrap_item_scope_selected vscode-extensions; then
+        config_file="$(blueprint_generated_file vscode-extensions)"
+        read_vscode_extensions_configuration "$config_file" >/dev/null || return 2
+    fi
+
+    if blueprint_category_enabled vscode-settings; then
+        validate_vscode_settings_source "config/generated/vscode/settings.json"
+        source_result=$?
+        [[ $source_result -ne 2 ]] || return 2
+    fi
+
+    if blueprint_category_enabled macos-finder; then
+        validate_defaults_config "$FINDER_CONFIG" || return 2
+    fi
+
+    if blueprint_category_enabled macos-dock; then
+        validate_defaults_config "$DOCK_CONFIG" || return 2
+    fi
+
+    if blueprint_category_enabled macos-keyboard; then
+        validate_defaults_config "$KEYBOARD_CONFIG" || return 2
+    fi
+
+    if blueprint_category_enabled macos-trackpad; then
+        validate_defaults_config "$TRACKPAD_CONFIG" || return 2
+    fi
+
+    if blueprint_category_enabled macos-screenshots; then
+        validate_defaults_config "$SCREENSHOTS_CONFIG" || return 2
+    fi
+
+    return 0
+
+}
+
+bootstrap_run_startup_validation() {
+
+    local blueprint_result=0
+    local bootstrap_validation_result
+
+    if blueprint_exists; then
+        if [[ "$MODE" == "--dry-run" ]]; then
+            run_inspection "Blueprint Validation" blueprint_validate
+        else
+            run_module "Blueprint Validation" blueprint_validate
+        fi
+        blueprint_result=$?
+        [[ $blueprint_result -ne 2 ]] && BLUEPRINT_BOOTSTRAP_SUMMARY=true
+    fi
+
+    if [[ $blueprint_result -ne 2 ]]; then
+        bootstrap_validate_selected_inputs
+        bootstrap_validation_result=$?
+        [[ $bootstrap_validation_result -ne 2 ]] || ((ERROR_COUNT++))
+    else
+        bootstrap_validation_result=2
+    fi
+
+    if [[ $blueprint_result -ne 2 && $bootstrap_validation_result -ne 2 ]]; then
+        return 0
+    fi
+
+    return 2
+
+}
+
+run_preview() {
+
+    # Continue later read-only inspections; run_inspection retains every status.
+
+    run_inspection "Homebrew Packages Preview" preview_brew_packages
+    run_inspection "Homebrew Casks Preview" preview_brew_casks
+    run_inspection "App Store Preview" preview_appstore_apps
+    run_inspection "VS Code Extensions Preview" preview_vscode_extensions
+
+    if blueprint_category_enabled git-configuration; then
+        run_inspection "Git Configuration Preview" preview_git_configuration
+    fi
+
+    if blueprint_category_enabled vscode-settings; then
+        run_inspection "VS Code Settings Preview" preview_vscode_settings
+    fi
+
+    run_inspection "Workspace Folders Preview" preview_workspace_folders
+    run_inspection "Workspace Repositories Preview" preview_workspace_repositories
+    run_inspection "macOS Settings Preview" preview_macos_settings
+    return 0
+
+}
 
 # ==========================================
 # Initialize Logger
@@ -212,12 +370,24 @@ if [[ "$MODE" == "--blueprint" ]]; then
     exit "$blueprint_result"
 fi
 
+if [[ "$MODE" == "--bootstrap" || "$MODE" == "--dry-run" ]]; then
+    if ! bootstrap_run_startup_validation; then
+        show_summary
+        close_logger
+        exit 2
+    fi
+fi
+
 
 # ==========================================
 # Preflight Checks
 # ==========================================
 
-run_preflight_checks
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_read_only_preflight_checks
+else
+    run_preflight_checks
+fi
 
 if [[ $? -ne 0 ]]; then
 
@@ -233,10 +403,20 @@ fi
 # System Check
 # ==========================================
 
-run_module "Homebrew" check_homebrew
-run_module "Git" check_git
-run_module "SSH" check_ssh
-run_module "Terminal" check_terminal
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_inspection "Homebrew" check_homebrew_read_only
+else
+    run_module "Homebrew" check_homebrew
+fi
+if [[ "$MODE" == "--dry-run" ]]; then
+    run_inspection "Git" check_git
+    run_inspection "SSH" check_ssh
+    run_inspection "Terminal" check_terminal
+else
+    run_module "Git" check_git
+    run_module "SSH" check_ssh
+    run_module "Terminal" check_terminal
+fi
 
 
 # ==========================================
@@ -251,44 +431,32 @@ case "$MODE" in
 
     --bootstrap)
 
-        blueprint_result=0
+        run_module "Workspace" bootstrap_workspace
 
-        if blueprint_exists; then
-            run_module "Blueprint Validation" blueprint_validate
-            blueprint_result=$?
-            [[ $blueprint_result -ne 2 ]] && BLUEPRINT_BOOTSTRAP_SUMMARY=true
+        echo
+
+        if blueprint_category_enabled git-configuration; then
+            run_module "Git Configuration" configure_git
         fi
 
-        if [[ $blueprint_result -ne 2 ]]; then
+        run_module "Homebrew Packages" install_brew_packages
 
-            run_module "Workspace" bootstrap_workspace
+        run_module "Homebrew Casks" install_brew_casks
 
-            echo
+        run_module "App Store" install_appstore_apps
 
-            if blueprint_category_enabled git-configuration; then
-                run_module "Git Configuration" configure_git
-            fi
+        run_module "VS Code Extensions" install_vscode_extensions
 
-            run_module "Homebrew Packages" install_brew_packages
+        if blueprint_category_enabled vscode-settings; then
+            run_module "VS Code Settings" apply_vscode_settings
+        fi
 
-            run_module "Homebrew Casks" install_brew_casks
-
-            run_module "App Store" install_appstore_apps
-
-            run_module "VS Code Extensions" install_vscode_extensions
-
-            if blueprint_category_enabled vscode-settings; then
-                run_module "VS Code Settings" apply_vscode_settings
-            fi
-
-            if blueprint_category_enabled macos-finder ||
-               blueprint_category_enabled macos-dock ||
-               blueprint_category_enabled macos-keyboard ||
-               blueprint_category_enabled macos-trackpad ||
-               blueprint_category_enabled macos-screenshots; then
-                apply_macos_settings
-            fi
-
+        if blueprint_category_enabled macos-finder ||
+           blueprint_category_enabled macos-dock ||
+           blueprint_category_enabled macos-keyboard ||
+           blueprint_category_enabled macos-trackpad ||
+           blueprint_category_enabled macos-screenshots; then
+            apply_macos_settings
         fi
 
         ;;
@@ -296,6 +464,12 @@ case "$MODE" in
     --discover)
 
         run_discovery
+
+        ;;
+
+    --dry-run)
+
+        run_preview
 
         ;;
 

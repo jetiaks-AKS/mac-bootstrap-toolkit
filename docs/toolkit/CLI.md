@@ -147,8 +147,8 @@ Toolkit различает следующие состояния:
 - **Warning** — работа продолжена, но требуется внимание;
 - **Error** — операция не была успешно завершена.
 
-`Planned` может стать состоянием будущего Dry-run / Preview, но сейчас не
-является реализованным статусом.
+Preview выводит planned actions через `Would ...`; отдельный статус
+`Planned` не используется. Сами planned actions возвращают `0`.
 
 ---
 
@@ -159,7 +159,7 @@ lifecycle из history log.
 
 ## Lifecycle/count Summary
 
-Check, Discovery и Bootstrap без Blueprint используют существующий Summary
+Check и Bootstrap без Blueprint используют существующий Summary
 жизненного цикла. Он может включать:
 
 ```text
@@ -189,7 +189,24 @@ Errors          : 0
 Duration        : 15s
 ```
 
-Headline определяется lifecycle-счётчиками с приоритетом:
+Discovery использует отдельный набор полей:
+
+```text
+Modules Processed : 10
+Warnings          : 0
+Errors            : 0
+```
+
+`Modules Processed` — существующий счётчик вызовов `run_module()`, включая
+четыре общих Core-модуля и шесть Discovery-модулей при полном проходе.
+Это не число обнаруженных компонентов или опубликованных файлов. `Warnings`
+и `Errors` сохраняют существующий учёт результатов lifecycle, включая ошибку
+preflight; они не считают каждое отдельное сообщение. При остановке на
+preflight число обработанных модулей равно нулю. Поля `Installed` и `Skipped`
+в Discovery Summary не выводятся. `Duration` сохраняется при наличии времени
+начала запуска. Терминал и лог содержат одинаковые поля и значения.
+
+Во всех режимах headline определяется lifecycle-счётчиками с приоритетом:
 
 ```text
 ERROR_COUNT > 0
@@ -346,25 +363,67 @@ Status   : Interrupted
 
 ---
 
-# Future Dry-run / Preview
+# Dry-run / Preview
 
-Dry-run / Preview запланирован и пока не реализован.
+`--dry-run` является отдельным execution mode. Одновременно можно выбрать
+ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint` и
+`--dry-run`; отсутствие mode или конфликтующие mode-флаги возвращают `1`.
 
-Будущий режим должен показывать планируемые изменения без их применения и
-следовать тем же принципам разделения компактного пользовательского вывода и
-диагностической истории.
+Preview выполняет последовательность:
 
 ```text
-Desired State
-    ↓
-Plan
-    ↓
-Presentation
+CLI parse → Logger → Blueprint validation → selected input validation
+→ read-only preflight → read-only Core inspection
+→ domain Preview → Summary → exit code
 ```
 
-Конкретные CLI-статусы, schema и Summary будущего режима ещё не спроектированы.
-Plan computation и presentation следует разделять там, где это практично,
-сохраняя общую change-plan semantics для Preview и Apply.
+Он не вызывает `sudo -v`, не устанавливает Homebrew и не запускает Bootstrap
+mutations. Applications, Git configuration, VS Code settings, Workspace и macOS
+Preview используют
+существующие validators, Blueprint selection и inspection helpers и могут
+вывести:
+
+```text
+Would install Homebrew formula: <name>
+Would install Homebrew cask: <name>
+Would reinstall Homebrew cask: <name>
+Would install App Store app: <name> (<id>)
+Would install VS Code extension: <id>
+Would configure Git setting: <key>
+Would update VS Code settings
+Would create workspace folder: <path>
+Would clone repository: <id>
+Would switch repository branch: <id> -> <branch>
+Would change macOS setting: <domain/key> (<current> -> <desired>)
+Would change macOS setting: <domain/key> (absent -> <desired>)
+Would create screenshots directory: <path>
+Would restart process: <process>
+```
+
+Уже соответствующие состоянию и невыбранные элементы не выводятся как planned
+actions. Сами planned actions сохраняют status `0`; observation error возвращает
+`2`. Summary Preview показывает `Modules Inspected`, `Warnings` и `Errors`, без
+Bootstrap-полей `Installed` и `Skipped`. Stale Blueprint сохраняет warning
+status; malformed Blueprint или обязательный selected input возвращает `2`.
+Отсутствующий optional source VS Code settings сохраняет warning status.
+Workspace Preview сохраняет текущую warning-политику для dirty repositories,
+remote mismatch и существующих non-Git destinations. После clone-плана он не
+предполагает будущую branch state. macOS Preview использует typed defaults
+inspection; один restart-план выводится для изменяемой Finder, Dock или
+Screenshots category независимо от количества изменяемых settings.
+
+Порядок domain inspections: Homebrew formulae → casks → App Store → VS Code
+extensions → Git configuration → VS Code settings → Workspace folders →
+repositories → macOS. Disabled selections сохраняют существующую фильтрацию.
+
+Ошибки startup validation и preflight останавливают запуск. После ошибки Core
+или domain inspection последующие read-only inspections продолжаются;
+ошибка сохраняется в общем accounting и итоговый exit code равен `2`.
+Внутри domain helper ошибка может остановить оставшиеся items этого helper.
+Warnings без errors дают `1`; planned actions без warnings/errors дают `0`.
+`Modules Inspected` считает вызовы inspection wrapper, включая Core и Blueprint
+validation при его наличии; это не число items. Terminal и logger используют
+одинаковые Summary counters, без `MODULE_CHANGED`, Installed или Skipped.
 
 ---
 
@@ -391,6 +450,7 @@ Check
 Discovery
 Blueprint
 Bootstrap
+Preview (`--dry-run`)
 ```
 
-Dry-run / Preview остаётся запланированной возможностью.
+Global Verification остаётся запланированной возможностью.

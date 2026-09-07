@@ -4,6 +4,7 @@
 # Workspace Bootstrap
 # ==========================================
 
+source modules/bootstrap/workspace/validation.sh
 source modules/bootstrap/workspace/folders.sh
 source modules/bootstrap/workspace/repositories-helpers.sh
 source modules/bootstrap/workspace/repositories.sh
@@ -31,7 +32,7 @@ workspace_validate_bootstrap_inputs() {
             return 2
         fi
 
-        if ! workspace_validate_folders "$config_file"; then
+        if ! workspace_read_bootstrap_folders "$config_file" >/dev/null; then
             error "Workspace folders configuration is malformed"
             return 2
         fi
@@ -45,7 +46,7 @@ workspace_validate_bootstrap_inputs() {
             return 2
         fi
 
-        if ! workspace_validate_repositories "$config_file"; then
+        if ! workspace_read_bootstrap_repositories "$config_file" >/dev/null; then
             error "Workspace repositories configuration is malformed"
             return 2
         fi
@@ -69,7 +70,8 @@ bootstrap_workspace() {
     submodule_result=$?
 
     if [[ $submodule_result -eq 2 ]]; then
-        workspace_result=2
+        error "Workspace Bootstrap completed with errors"
+        return 2
     elif [[ $submodule_result -eq 1 && $workspace_result -eq 0 ]]; then
         workspace_result=1
     fi

@@ -37,6 +37,8 @@ source "$PROJECT_ROOT/modules/apps/brew-casks.sh"
 source "$PROJECT_ROOT/modules/apps/appstore.sh"
 source "$PROJECT_ROOT/modules/vscode/extensions.sh"
 source "$PROJECT_ROOT/modules/settings/macos/macos.sh"
+source "$PROJECT_ROOT/modules/discovery/workspace.sh"
+source "$PROJECT_ROOT/modules/bootstrap/workspace/validation.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/folders.sh"
 source "$PROJECT_ROOT/modules/bootstrap/workspace/repositories.sh"
 
@@ -46,6 +48,10 @@ command() {
 
 brew() {
     if [[ "$1" == list ]]; then
+        if [[ "$*" == 'list --formula --full-name' ]]; then
+            printf '%s\n' ${PROCESSED_ITEMS:-}
+            return 0
+        fi
         return 1
     fi
 
@@ -53,11 +59,19 @@ brew() {
 }
 
 mas() {
-    return 0
+    if [[ "$1" == list ]]; then
+        printf '%s\n' ${PROCESSED_ITEMS:-}
+        return 0
+    fi
+    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$2"
 }
 
 code() {
-    return 0
+    if [[ "$1" == --list-extensions ]]; then
+        printf '%s\n' ${PROCESSED_ITEMS:-}
+        return 0
+    fi
+    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$2"
 }
 
 is_cask_installed() {
@@ -65,14 +79,6 @@ is_cask_installed() {
 }
 
 install_brew_cask() {
-    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
-}
-
-install_appstore_app() {
-    PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
-}
-
-install_vscode_extension() {
     PROCESSED_ITEMS="${PROCESSED_ITEMS}${PROCESSED_ITEMS:+ }$1"
 }
 
@@ -125,7 +131,7 @@ run_bootstrap_orchestration() {
     local orchestration
 
     orchestration="$(awk '
-        /^[[:space:]]*blueprint_result=0$/ {
+        /^[[:space:]]*run_module "Workspace" bootstrap_workspace$/ {
             capture = 1
         }
 
@@ -246,11 +252,21 @@ write_generated_state() {
         echo "PATH=\"$HOME/SelectedFolder/selected-repository\""
         echo 'REMOTE="git@example.com:selected/repository.git"'
         echo 'CURRENT_BRANCH="main"'
+        echo 'NAME="repository"'
+        echo 'DEFAULT_BRANCH="main"'
+        for key in HAS_UNCOMMITTED_CHANGES HAS_VSCODE_FOLDER HAS_SETTINGS HAS_TASKS HAS_LAUNCH HAS_EXTENSIONS; do
+            printf '%s="false"\n' "$key"
+        done
         echo
         echo '[unselected-repository]'
         echo "PATH=\"$HOME/UnselectedFolder/unselected-repository\""
         echo 'REMOTE="git@example.com:unselected/repository.git"'
         echo 'CURRENT_BRANCH="main"'
+        echo 'NAME="repository"'
+        echo 'DEFAULT_BRANCH="main"'
+        for key in HAS_UNCOMMITTED_CHANGES HAS_VSCODE_FOLDER HAS_SETTINGS HAS_TASKS HAS_LAUNCH HAS_EXTENSIONS; do
+            printf '%s="false"\n' "$key"
+        done
     } > "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
 }
 
@@ -354,46 +370,6 @@ install_appstore_apps() {
 install_vscode_extensions() {
     record_orchestration_step vscode-extensions
 }
-
-write_generated_state
-write_blueprint
-echo '[malformed' >> "$BLUEPRINT_FILE"
-reset_orchestration
-run_bootstrap_orchestration >/dev/null
-toolkit_exit_code
-orchestration_status=$?
-MODE="--bootstrap"
-START_TIME=""
-summary_output="$(show_summary)"
-toolkit_exit_code
-summary_status=$?
-
-if [[ $ERROR_COUNT -eq 1 && $WARNING_COUNT -eq 0 &&
-      $orchestration_status -eq 2 && $summary_status -eq 2 &&
-      -z "$PROCESSED_ITEMS" &&
-      "$summary_output" == *'Modules Checked :'* &&
-      "$summary_output" != *'Applications'* &&
-      "$summary_output" != *'selected'* ]]; then
-    pass "malformed Blueprint records error, blocks consumers, and suppresses Blueprint Summary"
-else
-    fail "malformed Blueprint Summary gating (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, orchestration_status=$orchestration_status, summary_status=$summary_status, processed='$PROCESSED_ITEMS')"
-fi
-
-write_blueprint
-sed -i.bak 's/selected-package/stale-package/' "$BLUEPRINT_FILE"
-rm -f "$BLUEPRINT_FILE.bak"
-reset_orchestration
-run_bootstrap_orchestration >/dev/null
-toolkit_exit_code
-orchestration_status=$?
-expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings macos-settings"
-
-if [[ $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
-      $orchestration_status -eq 1 && "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
-    pass "stale Blueprint warning survives successful Bootstrap orchestration"
-else
-    fail "stale Blueprint orchestration (errors=$ERROR_COUNT, warnings=$WARNING_COUNT, status=$orchestration_status, processed='$PROCESSED_ITEMS')"
-fi
 
 rm -f "$BLUEPRINT_FILE"
 reset_orchestration

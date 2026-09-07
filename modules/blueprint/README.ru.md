@@ -2,10 +2,10 @@
 
 [English version](README.md)
 
-Blueprint — слой пользовательского выбора между Discovery и Bootstrap. Он
-предоставляет parser, validation, item-level и category/module-level фильтрацию
-Bootstrap, а также интерактивный selector `--blueprint`. Stages 1–5 завершены и
-прошли полную E2E-проверку в `develop`; в стабильный релиз 2.0.1 они ещё не входят.
+Blueprint — слой пользовательского выбора между Generated Configuration и
+Bootstrap. Он предоставляет parser, validation, item-level и category/module-level
+фильтрацию Bootstrap, а также интерактивный selector `--blueprint`. Stages 1–5 завершены и
+прошли полную E2E-проверку; Blueprint входит в стабильный релиз 3.0.0.
 
 Пользовательский файл — `config/blueprint.conf`. Он исключён из Git и никогда
 не создаётся автоматически. `config/blueprint.example.conf` содержит

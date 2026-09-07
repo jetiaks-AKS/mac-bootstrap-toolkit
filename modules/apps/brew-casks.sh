@@ -4,6 +4,25 @@
 # Install Homebrew Cask
 # ==========================================
 
+read_brew_casks_configuration() {
+
+    local config_file="$1"
+
+    [[ -f "$config_file" && -r "$config_file" ]] || return 2
+
+    LC_ALL=C awk '
+        /^$/ || /^#/ { next }
+        {
+            if ($0 !~ /^[A-Za-z0-9][A-Za-z0-9+_.@-]*$/ ||
+                tolower($0) ~ /\.(rb|json|sh|bash|zsh|dmg|pkg|zip)$/) exit 2
+            print
+        }
+    ' "$config_file" || return 2
+
+    return 0
+
+}
+
 # ==========================================
 # Check Homebrew Cask
 # ==========================================
@@ -32,18 +51,85 @@ is_cask_installed() {
         return 2
     fi
 
-    if ! app_paths="$(jq -r \
-        '.casks[0].artifacts[]? | select(.target != null) | .target' \
+    if ! app_paths="$(jq -er \
+        'if (.casks | type) != "array" or (.casks | length) != 1 then
+            error("Expected one cask")
+         else .casks[0].artifacts end |
+         if type != "array" then error("Expected artifacts array") else . end |
+         map(if type != "object" then error("Invalid artifact") else . end |
+             select(.target != null) | .target |
+             if type != "string" then error("Invalid artifact target")
+             elif (startswith("/") | not) or (explode | any(. < 32 or . == 127)) then
+                 error("Invalid artifact path")
+             else . end) | join("\n")' \
         <<< "$metadata")"; then
         return 2
     fi
 
-    IFS= read -r app_path <<< "$app_paths"
+    while IFS= read -r app_path; do
+        if [[ -n "$app_path" && ! -e "$app_path" ]]; then
+            CASK_REINSTALL_REQUIRED=true
+        fi
+    done <<< "$app_paths"
 
-    if [[ -n "$app_path" && ! -e "$app_path" ]]; then
-        CASK_REINSTALL_REQUIRED=true
-        return 1
+    [[ "$CASK_REINSTALL_REQUIRED" == false ]] || return 1
+
+    return 0
+
+}
+
+# ==========================================
+# Preview Homebrew Casks
+# ==========================================
+
+preview_brew_casks() {
+
+    if blueprint_exists &&
+       [[ -z "$(blueprint_selected_items homebrew-casks)" ]]; then
+        return 0
     fi
+
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-casks)"
+
+    local casks
+    if ! casks="$(read_brew_casks_configuration "$config_file")"; then
+        error "Cask configuration missing, unreadable, or malformed: $config_file"
+        return 2
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        error "Homebrew is not installed"
+        return 2
+    fi
+
+    local cask
+    local inspection_result
+
+    while IFS= read -r cask || [[ -n "$cask" ]]; do
+        [[ -z "$cask" ]] && continue
+        [[ "$cask" =~ ^# ]] && continue
+        blueprint_item_selected homebrew-casks "$cask" || continue
+
+        is_cask_installed "$cask"
+        inspection_result=$?
+
+        if [[ $inspection_result -eq 0 ]]; then
+            detail "$cask is already installed"
+            continue
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
+            error "Failed to inspect Homebrew cask: $cask"
+            return 2
+        fi
+
+        if [[ "${CASK_REINSTALL_REQUIRED:-false}" == true ]]; then
+            action "Would reinstall Homebrew cask: $cask"
+        else
+            action "Would install Homebrew cask: $cask"
+        fi
+    done <<< "$casks"
 
     return 0
 
@@ -54,13 +140,15 @@ install_brew_cask() {
     local cask="$1"
     local install_command="${2:-}"
 
-    action "Installing $cask..."
-
     if [[ -z "$install_command" ]]; then
         is_cask_installed "$cask"
         local inspection_result=$?
 
-        if [[ $inspection_result -eq 2 ]]; then
+        if [[ $inspection_result -eq 0 ]]; then
+            return 0
+        fi
+
+        if [[ $inspection_result -ne 1 ]]; then
             error "Failed to inspect Homebrew cask: $cask"
             return 2
         fi
@@ -70,6 +158,8 @@ install_brew_cask() {
             install_command="reinstall"
         fi
     fi
+
+    action "Installing $cask..."
 
     if [[ "$VERBOSE" == true ]]; then
 
@@ -88,23 +178,15 @@ install_brew_cask() {
         return 2
     fi
 
-is_cask_installed "$cask"
-local verification_result=$?
+    MODULE_CHANGED=true
 
-if [[ $verification_result -eq 0 ]]; then
+    if ! is_cask_installed "$cask"; then
+        error "Failed to verify Homebrew cask: $cask"
+        return 2
+    fi
 
     success "$cask installed successfully"
     return 0
-
-fi
-
-if [[ $verification_result -eq 2 ]]; then
-    error "Failed to verify Homebrew cask: $cask"
-    return 2
-fi
-
-error "Failed to install $cask"
-return 2
 
 }
 
@@ -120,21 +202,20 @@ install_brew_casks() {
         return 0
     fi
 
-    if ! command -v brew >/dev/null 2>&1; then
+    local config_file
+    config_file="$(blueprint_generated_file homebrew-casks)"
 
-        error "Homebrew is not installed"
+    local casks
+    if ! casks="$(read_brew_casks_configuration "$config_file")"; then
+
+        error "Cask configuration missing, unreadable, or malformed: $config_file"
         return 2
 
     fi
 
-    local config_file
-    config_file="$(blueprint_generated_file homebrew-casks)"
-
-    if [[ ! -f "$config_file" ]]; then
-
-        error "Configuration file $config_file not found"
+    if ! command -v brew >/dev/null 2>&1; then
+        error "Homebrew is not installed"
         return 2
-
     fi
 
     local missing_casks=0
@@ -178,9 +259,7 @@ install_brew_casks() {
             return 2
         fi
 
-        MODULE_CHANGED=true
-
-    done < "$config_file"
+    done <<< "$casks"
 
     if [[ $missing_casks -eq 0 ]]; then
 

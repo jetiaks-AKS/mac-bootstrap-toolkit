@@ -5,7 +5,7 @@
 Модульный Bash Toolkit для воспроизводимой подготовки и восстановления
 рабочего окружения macOS.
 
-**Текущая версия: 3.0.0 Stable**
+**Текущая версия: 3.1.0 Stable**
 
 ---
 
@@ -78,6 +78,14 @@ Blueprint — необязательный локальный слой выбо�
 Операции Toolkit проектируются идемпотентными и проверяют поддерживаемое
 состояние до и после изменений там, где это применимо.
 
+### Preview
+
+- неизменяющая проверка `--dry-run` для Applications, Git configuration,
+  VS Code settings, Workspace и macOS;
+- Blueprint-aware planned actions на основе той же validation и inspection
+  логики, которую использует Bootstrap;
+- Summary по проверенным модулям, warnings, errors и duration.
+
 ---
 
 ## Быстрый старт
@@ -106,6 +114,12 @@ Blueprint — необязательный локальный слой выбо�
 ./bootstrap.sh --bootstrap
 ```
 
+Предварительно просмотреть выбранные изменения без мутации target state:
+
+```bash
+./bootstrap.sh --dry-run
+```
+
 Для подробного вывода Check, Discovery и Bootstrap поддерживают `--verbose`.
 
 Полный сценарий описан в
@@ -126,7 +140,7 @@ Blueprint — необязательный локальный слой выбо�
 
 ## Статус проекта
 
-**3.0.0 Stable**
+**3.1.0 Stable**
 
 Текущая архитектура:
 
@@ -134,7 +148,8 @@ Blueprint — необязательный локальный слой выбо�
 Discovery → Generated Configuration → Blueprint → Bootstrap
 ```
 
-Dry-run / Preview и глобальный Verification остаются будущими возможностями.
+Dry-run / Preview входит в релиз 3.1.0. Глобальный Verification остаётся
+будущей возможностью.
 
 Дальнейшее развитие описано в [ROADMAP.md](ROADMAP.md).
 

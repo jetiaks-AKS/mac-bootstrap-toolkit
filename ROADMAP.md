@@ -6,8 +6,9 @@ Roadmap описывает последовательность развития
 Архитектура проекта определяется в `docs/toolkit/ARCHITECTURE.md`, ближайшие
 технические задачи — в `TODO.md`, а история изменений — в `CHANGELOG.md`.
 
-Roadmap показывает завершённые крупные этапы, текущий release gate и
-утверждённое направление дальнейшего развития без деталей реализации модулей.
+Roadmap показывает завершённые крупные этапы, выпущенный baseline 3.0.0,
+завершённый scope 3.1.0 и утверждённое направление дальнейшего развития без
+деталей реализации модулей.
 
 ---
 
@@ -167,38 +168,41 @@ ShellCheck, единый test runner и CI не являются условия�
 
 # Этап 7 — Release 3.0.0
 
-**Статус: In Progress**
+**Статус: Completed**
 
-Конечный release gate для ещё не выпущенной версии 3.0.0.
+Toolkit 3.0.0 выпущен как Stable. Release commit `c36902d` входит в `develop`
+и объединён в `main` merge-коммитом `8c8522c`; tag `v3.0.0` указывает на это
+релизное состояние `main`.
 
 - [x] Завершить финальное согласование документации
 - [x] Провести единый финальный release validation
 - [x] Разрешить вопрос release graph / release history
-- [ ] Установить Toolkit version 3.0.0
+- [x] Установить Toolkit version 3.0.0
 - [x] Финализировать CHANGELOG и release notes 3.0.0
 - [x] Обновить release-specific документацию для 3.0.0
-- [ ] Выполнить merge `develop` → `main`
-- [ ] Проверить состояние `main` после merge
-- [ ] Создать tag `v3.0.0`
-- [ ] Завершить release verification
+- [x] Выполнить merge `develop` → `main`
+- [x] Проверить состояние `main` после merge
+- [x] Создать tag `v3.0.0`
+- [x] Завершить release verification
 
-Ни один из этих незавершённых пунктов не означает, что 3.0.0 уже выпущена.
+Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview вошёл в
+scope 3.1.0; Global Verification остаётся planned.
 
 ---
 
 # Этап 8 — Dry-run / Preview
 
-**Статус: Planned**
+**Статус: Completed (Release 3.1.0)**
 
 Неизменяющий предварительный просмотр поведения существующего Bootstrap.
 
-- [ ] Добавить `--dry-run`
-- [ ] Выполнять checks без mutation
-- [ ] Формировать и показывать planned changes
-- [ ] Интегрировать Preview с текущими lifecycle, Logger и Summary
-- [ ] Поддержать Applications, VS Code, Workspace и macOS consumers
-- [ ] Сохранять соответствие Preview фактическому Bootstrap
-- [ ] Отделять вычисление плана от CLI-представления там, где это практично
+- [x] Добавить `--dry-run`
+- [x] Выполнять checks без mutation
+- [x] Формировать и показывать planned changes
+- [x] Интегрировать Preview с текущими lifecycle, Logger и Summary
+- [x] Поддержать Applications, VS Code, Workspace и macOS consumers
+- [x] Сохранять соответствие Preview фактическому Bootstrap
+- [x] Отделять вычисление плана от CLI-представления там, где это практично
 
 Dry-run остаётся capability существующей Bootstrap-модели, а не новым planner
 framework.
@@ -275,7 +279,7 @@ coverage; scalable catalog стоит рассматривать лишь тог
 
 # Продуктовая модель
 
-Текущая модель в `develop`:
+Модель релиза 3.0.0 Stable:
 
 ```text
 Discovery
@@ -287,7 +291,7 @@ Blueprint
 Bootstrap
 ```
 
-Будущая post-3.0 модель:
+Модель релиза 3.1.0 (Global Verification planned):
 
 ```text
 Discovery
@@ -299,13 +303,12 @@ Blueprint
 Dry-run / Preview
     ↓
 Bootstrap
-    ↓
-Global Verification
 ```
 
-Preview будет неизменяющей capability вокруг существующей Bootstrap planning
-и check-логики. Global Verification станет общей post-Bootstrap проверкой; ни
-одна из возможностей не требует заранее вводить heavyweight framework.
+Preview является неизменяющей capability вокруг существующей Bootstrap planning
+и check-логики. Global Verification станет общей post-Bootstrap проверкой и не
+входит в релиз 3.1.0; ни одна из возможностей не требует заранее вводить
+heavyweight framework.
 
 ---
 
@@ -327,6 +330,8 @@ Reliability & Release Hardening
 Release 3.0.0
   ↓
 Dry-run / Preview
+  ↓
+Release 3.1.0
   ↓
 Global Verification
   ↓

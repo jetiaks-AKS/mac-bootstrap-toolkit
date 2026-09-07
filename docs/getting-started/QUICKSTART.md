@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide covers the Mac Bootstrap Toolkit 3.0.0 workflow:
+This guide covers the Mac Bootstrap Toolkit 3.1.0 workflow:
 
 ```text
 Discovery
@@ -152,7 +152,27 @@ to the repository.
 
 ---
 
-## 6. Bootstrap the target Mac
+## 6. Preview the target changes
+
+Inspect the selected target state before Bootstrap:
+
+```bash
+./bootstrap.sh --dry-run
+```
+
+Preview uses the same Blueprint selection, generated-input validation, and
+production inspection logic as Bootstrap. It reports planned actions for
+Applications, Git configuration, VS Code settings, Workspace, and macOS without
+mutating target state. Toolkit logging and temporary validation files may still
+be written.
+
+Planned changes do not count as warnings. The Preview Summary reports Modules
+Inspected, Warnings, Errors, and Duration, and the process uses the common
+status contract `0 / 1 / 2`.
+
+---
+
+## 7. Bootstrap the target Mac
 
 From the repository root on the target Mac:
 
@@ -219,11 +239,10 @@ Use `--verbose` when additional diagnostics are needed.
 
 The current workflow does not yet include:
 
-- Dry-run / Preview
 - aggregate post-Bootstrap Verification
 
-These are planned extensions of the existing workflow rather than separate
-configuration systems.
+This remains a planned extension of the existing workflow rather than a
+separate configuration system.
 
 Other future capabilities are tracked in the project
 [Roadmap](../../ROADMAP.md).

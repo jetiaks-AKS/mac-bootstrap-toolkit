@@ -41,8 +41,8 @@ Blueprint selects the restoration scope without duplicating discovered values.
 Bootstrap combines that selection with Generated Configuration and safely
 applies supported state.
 
-Dry-run / Preview and aggregate Verification are planned extensions and are not
-currently implemented.
+Dry-run / Preview is part of the current implementation contract. Aggregate
+Global Verification remains a planned extension.
 
 For architectural details, see
 [`docs/toolkit/ARCHITECTURE.md`](docs/toolkit/ARCHITECTURE.md).
