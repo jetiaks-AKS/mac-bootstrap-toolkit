@@ -513,7 +513,17 @@ bs check      → bootstrap.sh --check
 расположения launcher переходит в корень Toolkit и использует `exec`, поэтому
 repository-relative paths и exit status `bootstrap.sh` сохраняются.
 
-Установка выполняется безопасной symlink-командой:
+При первом запуске пользователь по-прежнему вызывает канонический entrypoint.
+Когда `--workflow` доходит до Bootstrap или напрямую выполняется
+`./bootstrap.sh --bootstrap`, Bootstrap автоматически запускает launcher
+setup с lifecycle `Check → Apply → Verify`. Корректный `bs` остаётся unchanged;
+отсутствующий устанавливается существующим installer и проверяется повторно.
+Ошибка installer или Verify возвращает Bootstrap error без ложного success.
+
+Discovery, Blueprint и Preview не запускают installer. Workflow, завершившийся
+после zero-change Preview, также не устанавливает `bs`. Ручная установка и
+repair остаются доступны. Launcher self-setup не отображается как domain
+Preview plan: это отдельная Bootstrap self-setup операция.
 
 ```bash
 ./scripts/install-bs.sh
@@ -522,5 +532,7 @@ repository-relative paths и exit status `bootstrap.sh` сохраняются.
 Installer выбирает `$(brew --prefix)/bin`, если Homebrew доступен, иначе
 архитектурно подходящий стандартный каталог. Корректная существующая ссылка
 считается успешной установкой; посторонняя команда, ссылка или файл `bs` не
-перезаписывается. Перемещение репозитория нарушает PATH symlink, поэтому старую
-ссылку нужно удалить и запустить installer из нового расположения.
+перезаписывается. Конфликт, unwritable destination и failure проверки являются
+Bootstrap error `2`; sudo автоматически не вызывается. Перемещение репозитория
+нарушает PATH symlink, поэтому старую ссылку нужно удалить и запустить installer
+из нового расположения.

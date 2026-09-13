@@ -127,14 +127,16 @@ Blueprint — необязательный локальный слой выбо�
 ./bootstrap.sh --workflow
 ```
 
-Установить опциональный короткий launcher в PATH:
+Первый запуск по-прежнему использует каноническую точку входа:
 
 ```bash
-./scripts/install-bs.sh
+./bootstrap.sh --workflow
 ```
 
-Repository entrypoint остаётся каноническим. Launcher передаёт выполнение ему
-и работает из любого текущего каталога:
+Когда Workflow доходит до Bootstrap или напрямую выполняется
+`./bootstrap.sh --bootstrap`, Bootstrap автоматически устанавливает и проверяет
+короткий launcher. Repository entrypoint остаётся каноническим. После установки
+launcher работает из любого текущего каталога:
 
 ```bash
 bs workflow
@@ -145,10 +147,12 @@ bs bootstrap
 bs check
 ```
 
-Installer использует текущий Homebrew prefix, если он доступен, и не заменяет
-постороннюю команду или файл `bs`. После перемещения репозитория PATH symlink
-становится недействительным; удалите старую ссылку и повторно запустите installer
-из нового расположения.
+Discovery, Blueprint, Preview и Workflow, завершившийся после zero-change
+Preview, не устанавливают `bs`. Для ручной установки или восстановления
+используйте `./scripts/install-bs.sh`. Installer использует текущий Homebrew
+prefix, если он доступен, и не заменяет постороннюю команду или файл `bs`.
+После перемещения репозитория PATH symlink становится недействительным; удалите
+старую ссылку и повторно запустите installer из нового расположения.
 
 Используйте существующую Generated Configuration или обновите её, сохраните
 Blueprint и просмотрите обязательный Preview. Если Preview находит planned

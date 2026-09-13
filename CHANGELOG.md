@@ -14,6 +14,8 @@ The format is based on the principles of **Keep a Changelog**.
 * Added the repository-owned `bs` launcher with `workflow`, `discover`,
   `blueprint`, `preview`, `bootstrap`, and `check` commands, plus an idempotent
   PATH symlink installer that refuses conflicting existing `bs` entries.
+  Bootstrap now runs that installer through a `Check → Apply → Verify`
+  self-setup lifecycle; the installer remains available for manual repair.
 * Added `--workflow`: Generated Configuration readiness check, optional or
   required Discovery, required Blueprint Save, automatic Preview, and explicit
   Bootstrap confirmation when planned changes exist.

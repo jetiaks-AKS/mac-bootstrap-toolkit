@@ -106,6 +106,7 @@ reset_fixture() {
     rm -rf "$FIXTURE/config/generated" "$TEST_ROOT/home"
     rm -f "$FIXTURE/config/blueprint.conf"
     mkdir -p "$FIXTURE/config/generated/"{vscode,workspace,macos} \
+        "$TEST_ROOT/launcher-bin" \
         "$TEST_ROOT/home/.ssh" "$TEST_ROOT/home/Projects/existing/.git" \
         "$TEST_ROOT/home/Library/Application Support/Code/User" "$TEST_ROOT/tmp"
     touch "$TEST_ROOT/home/.ssh/id_test" "$TEST_ROOT/home/.ssh/config" "$TEST_ROOT/home/.zshrc"
@@ -167,6 +168,7 @@ run_case() {
         env HOME="$TEST_ROOT/home" SHELL=/bin/zsh TMPDIR="$TEST_ROOT/tmp" \
             GIT_CONFIG_GLOBAL="$TEST_ROOT/global.gitconfig" GIT_CONFIG_NOSYSTEM=1 \
             BASH_ENV="$TEST_ROOT/spies.sh" TEST_CASE="$scenario" \
+            BS_INSTALL_DIR="$TEST_ROOT/launcher-bin" \
             TEST_MODE="${TEST_MODE:---dry-run}" TEST_MUTATIONS="$TEST_ROOT/mutations" TEST_OBSERVATIONS="$TEST_ROOT/observations" \
             /bin/bash ./bootstrap.sh "${TEST_MODE:---dry-run}"
     ) > "$TEST_ROOT/output" 2>&1

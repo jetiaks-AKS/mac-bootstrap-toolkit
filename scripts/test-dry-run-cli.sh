@@ -70,6 +70,9 @@ write_fixture_file modules/core/ssh/ssh.sh \
 write_fixture_file modules/core/terminal/terminal.sh \
     'check_terminal() { return 0; }'
 
+write_fixture_file modules/core/launcher/launcher.sh \
+    'configure_bs_launcher() { printf "%s\n" launcher-setup >> "$TEST_SPY_FILE"; }'
+
 write_fixture_file modules/apps/brew-packages.sh \
     'read_brew_packages_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'preview_brew_packages() { if [[ "${TEST_HAS_PLANS:-true}" == true ]]; then preview_action "Would install fixture formula"; fi; printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
@@ -285,6 +288,7 @@ TEST_BLUEPRINT_PRESENT=false TEST_BLUEPRINT_STATUS=0 TEST_INPUT_STATUS=0 \
     run_entrypoint --bootstrap
 assert_status 0 "normal Bootstrap still completes through its existing path"
 if [[ "$ENTRYPOINT_SPY" == *sudo* &&
+      "$ENTRYPOINT_SPY" == *launcher-setup* &&
       "$ENTRYPOINT_SPY" == *workspace-mutation* &&
       "$ENTRYPOINT_SPY" == *brew-install* &&
       "$ENTRYPOINT_SPY" == *mas-install* &&
@@ -294,6 +298,12 @@ if [[ "$ENTRYPOINT_SPY" == *sudo* &&
 else
     fail "normal Bootstrap path changed: $ENTRYPOINT_SPY"
 fi
+
+for mode in --check --discover --blueprint --dry-run; do
+    run_entrypoint "$mode" </dev/null
+    [[ "$ENTRYPOINT_SPY" != *launcher-setup* ]] ||
+        fail "$mode invoked launcher installation"
+done
 
 # Workflow integration uses the same entrypoint, logger and wrappers as above.
 write_fixture_file modules/blueprint/selector.sh \
@@ -313,7 +323,7 @@ assert_status 0 "workflow reuses input and declines Apply"
 
 run_entrypoint --workflow --verbose <<< $'n\ny'
 assert_status 0 "workflow confirms Bootstrap after Preview"
-[[ "$ENTRYPOINT_SPY" == *macos-preview*sudo*workspace-mutation* ]] || fail "Apply preceded Preview"
+[[ "$ENTRYPOINT_SPY" == *macos-preview*sudo*launcher-setup*workspace-mutation* ]] || fail "Apply preceded Preview"
 [[ "$ENTRYPOINT_OUTPUT" == *'Modules Inspected :'* && "$ENTRYPOINT_OUTPUT" == *'Output: Verbose'* ]] || fail "workflow lost Preview Summary or verbose"
 
 TEST_INPUT_STATUS=2 run_entrypoint --workflow <<< n
@@ -345,6 +355,7 @@ for warning_status in 0 1; do
     [[ "$unread_confirmation" == y ]] || fail "zero plans read Bootstrap input"
     [[ "$ENTRYPOINT_OUTPUT" == *'No changes to apply'* &&
        "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* &&
+       "$ENTRYPOINT_SPY" != *launcher-setup* &&
        "$ENTRYPOINT_SPY" != *mutation* ]] || fail "zero plans offered or executed Bootstrap"
 done
 TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'

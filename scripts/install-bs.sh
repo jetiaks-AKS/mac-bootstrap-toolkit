@@ -38,33 +38,50 @@ fi
 
 INSTALL_PATH="$INSTALL_DIR/bs"
 existing_command="$(command -v bs 2>/dev/null || true)"
+CHECK_ONLY=false
+
+case "${1:-}" in
+    "") ;;
+    --check) CHECK_ONLY=true ;;
+    *)
+        printf 'Error: unsupported installer option: %s\n' "$1" >&2
+        exit 2
+        ;;
+esac
 
 if [[ "$existing_command" == "$LAUNCHER" ]]; then
-    printf 'bs is already available at %s\n' "$existing_command"
+    [[ "$CHECK_ONLY" == true ]] || printf 'bs is already available at %s\n' "$existing_command"
     exit 0
 fi
 
 if [[ -n "$existing_command" ]] && link_points_to_launcher "$existing_command"; then
-    printf 'bs is already available at %s\n' "$existing_command"
+    [[ "$CHECK_ONLY" == true ]] || printf 'bs is already available at %s\n' "$existing_command"
     exit 0
 fi
 
 if [[ -n "$existing_command" && "$existing_command" != "$INSTALL_PATH" ]]; then
     printf 'Error: another bs command already exists at %s\n' "$existing_command" >&2
-    exit 1
+    exit 2
 fi
 
 if [[ -L "$INSTALL_PATH" ]]; then
     if link_points_to_launcher "$INSTALL_PATH"; then
+        if [[ "$CHECK_ONLY" == true ]]; then
+            exit 1
+        fi
         printf 'bs is already installed at %s\n' "$INSTALL_PATH"
         exit 0
     fi
     printf 'Error: refusing to replace existing symlink: %s\n' "$INSTALL_PATH" >&2
-    exit 1
+    exit 2
 fi
 
 if [[ -e "$INSTALL_PATH" ]]; then
     printf 'Error: refusing to replace existing file: %s\n' "$INSTALL_PATH" >&2
+    exit 2
+fi
+
+if [[ "$CHECK_ONLY" == true ]]; then
     exit 1
 fi
 

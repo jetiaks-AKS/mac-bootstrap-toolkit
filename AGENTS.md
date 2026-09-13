@@ -59,8 +59,9 @@ Applications, Git configuration, VS Code settings, Workspace и macOS
 
 `bin/bs` — тонкий опциональный launcher для тех же execution modes;
 канонической production entrypoint остаётся `bootstrap.sh`. PATH symlink
-устанавливается через `scripts/install-bs.sh` и не должен заменять посторонний
-`bs`.
+автоматически проходит `Check → Apply → Verify` только в mutating Bootstrap и
+устанавливается через `scripts/install-bs.sh`; Discovery, Blueprint, Preview и
+zero-change Workflow не запускают installer. Посторонний `bs` не заменяется.
 
 ## Структура проекта
 
@@ -212,12 +213,13 @@ Verify здесь означает локальную post-apply проверк�
 1. валидация Blueprint и обязательного generated input выбранного scope;
 2. preflight;
 3. проверка Homebrew, Git, SSH и Terminal;
-4. восстановление Workspace;
-5. настройка Git;
-6. Homebrew packages и casks;
-7. приложения App Store;
-8. расширения и настройки VS Code;
-9. настройки macOS.
+4. установка и проверка `bs` launcher;
+5. восстановление Workspace;
+6. настройка Git;
+7. Homebrew packages и casks;
+8. приложения App Store;
+9. расширения и настройки VS Code;
+10. настройки macOS.
 
 Не переставляй эти шаги без необходимости: порядок отражает
 зависимости, в частности доступность Git/Homebrew и конфигурации,

@@ -10,6 +10,7 @@ source modules/core/homebrew/homebrew.sh
 source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
 source modules/core/terminal/terminal.sh
+source modules/core/launcher/launcher.sh
 source modules/core/preflight/preflight.sh
 source modules/core/config/config.sh
 
@@ -523,6 +524,8 @@ case "$MODE" in
         ;;
 
     --bootstrap)
+
+        run_module "bs Launcher" configure_bs_launcher
 
         run_module "Workspace" bootstrap_workspace
 

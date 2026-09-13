@@ -63,17 +63,20 @@ To review the available CLI:
 ./bootstrap.sh --version
 ```
 
-The repository entrypoint remains canonical. To install the optional short
-launcher in the current Homebrew prefix:
+The repository entrypoint remains canonical. The first setup run can use:
 
 ```bash
-./scripts/install-bs.sh
+./bootstrap.sh --workflow
 ```
 
-After installation, `bs workflow`, `bs discover`, `bs blueprint`, `bs preview`,
+When Workflow reaches Bootstrap, or when `./bootstrap.sh --bootstrap` is run
+directly, Bootstrap installs and verifies the optional short launcher. After
+installation, `bs workflow`, `bs discover`, `bs blueprint`, `bs preview`,
 `bs bootstrap`, and `bs check` dispatch to the matching `bootstrap.sh` modes
-from any working directory. The installer accepts an existing correct symlink
-and refuses to overwrite another `bs`. Moving the repository invalidates the
+from any working directory. Discovery, Blueprint, Preview, and zero-change
+Workflow do not install it. `./scripts/install-bs.sh` remains available for
+manual installation or repair. It accepts an existing correct symlink and
+refuses to overwrite another `bs`. Moving the repository invalidates the
 symlink; remove it and rerun the installer from the new location.
 
 ---
