@@ -72,7 +72,7 @@ write_fixture_file modules/core/terminal/terminal.sh \
 
 write_fixture_file modules/apps/brew-packages.sh \
     'read_brew_packages_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
-    'preview_brew_packages() { printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
+    'preview_brew_packages() { if [[ "${TEST_HAS_PLANS:-true}" == true ]]; then preview_action "Would install fixture formula"; fi; printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
     'install_brew_packages() { printf "%s\n" brew-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/apps/brew-casks.sh \
@@ -148,6 +148,7 @@ run_entrypoint() {
         TEST_BLUEPRINT_PRESENT="${TEST_BLUEPRINT_PRESENT:-false}" \
         TEST_BLUEPRINT_STATUS="${TEST_BLUEPRINT_STATUS:-0}" \
         TEST_INPUT_STATUS="${TEST_INPUT_STATUS:-0}" \
+        TEST_HAS_PLANS="${TEST_HAS_PLANS:-true}" \
         TEST_GIT_ENABLED="${TEST_GIT_ENABLED:-true}" \
         TEST_VSCODE_SETTINGS_ENABLED="${TEST_VSCODE_SETTINGS_ENABLED:-true}" \
             ./bootstrap.sh "$@"
@@ -333,6 +334,28 @@ assert_status 1 "Preview warnings survive successful Bootstrap"
 TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
 assert_status 2 "Preview error blocks Bootstrap"
 [[ "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* ]] || fail "failed Preview offered Apply"
+
+for warning_status in 0 1; do
+    {
+        TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS="$warning_status" \
+            run_entrypoint --workflow
+        IFS= read -r unread_confirmation
+    } <<< $'n\ny'
+    assert_status "$warning_status" "zero plans preserves Preview status $warning_status"
+    [[ "$unread_confirmation" == y ]] || fail "zero plans read Bootstrap input"
+    [[ "$ENTRYPOINT_OUTPUT" == *'No changes to apply'* &&
+       "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* &&
+       "$ENTRYPOINT_SPY" != *mutation* ]] || fail "zero plans offered or executed Bootstrap"
+done
+TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+assert_status 2 "zero plans never masks Preview errors"
+[[ "$ENTRYPOINT_OUTPUT" != *'No changes to apply'* && "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* ]] || fail "Preview error treated as no changes"
+run_entrypoint --workflow <<< $'n\n'
+assert_status 0 "planned changes Enter declines Bootstrap"
+[[ "$ENTRYPOINT_SPY" != *sudo* ]] || fail "Enter ran Bootstrap"
+TEST_HAS_PLANS=false run_entrypoint --dry-run
+assert_status 0 "standalone zero-plan Preview retains success"
+[[ "$ENTRYPOINT_OUTPUT" != *'Workflow finished'* && "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* ]] || fail "standalone Preview entered workflow"
 
 write_fixture_file modules/discovery/discovery.sh \
     'run_discovery() { ((ERROR_COUNT++)); }'

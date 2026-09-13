@@ -72,8 +72,8 @@ including Edit, to cancel immediately. Cancelling leaves an existing Blueprint
 unchanged and does not create a new one; in `--workflow` it also stops the
 workflow before Preview.
 
-The Blueprint remains local, private, and ignored by Git. Dry-run is not
-implemented yet.
+The Blueprint remains local, private, and ignored by Git. Dry-run / Preview is
+implemented.
 
 With Blueprint enabled, the final Bootstrap Summary reports selected/total
 item counts and Enabled/Skipped setting categories. Detailed item output

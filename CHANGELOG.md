@@ -11,9 +11,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
-* Added `--workflow`: optional Discovery refresh, required Blueprint Save,
-  automatic Preview and explicit Bootstrap confirmation. Cancellation stops
-  cleanly; Preview errors block Apply and warnings remain visible.
+* Added `--workflow`: Generated Configuration readiness check, optional or
+  required Discovery, required Blueprint Save, automatic Preview, and explicit
+  Bootstrap confirmation when planned changes exist.
+* Added immediate `q` / `Q` cancellation at every Blueprint prompt, including
+  nested Edit prompts. Cancellation preserves the saved Blueprint and stops a
+  Guided Workflow before Preview and Bootstrap.
+* Guided Workflow now finishes without a Bootstrap prompt when Preview reports
+  zero planned changes, while preserving Preview warning and error semantics.
 
 ## [3.1.0] - 07.09.2026
 

@@ -139,6 +139,18 @@ for INSPECTION_STATUS in 0 1 2; do
         fail "inspection status $INSPECTION_STATUS used Bootstrap change accounting"
 done
 
+# Explicit plan state is independent of output wording and Bootstrap counters.
+PREVIEW_HAS_CHANGES=false
+MODULE_CHANGED=false
+WARNING_COUNT=0
+ERROR_COUNT=0
+preview_action "First planned action" >/dev/null
+preview_action "Second planned action" >/dev/null
+toolkit_exit_code
+plan_status=$?
+[[ "$PREVIEW_HAS_CHANGES" == true && "$MODULE_CHANGED" == false && $plan_status -eq 0 ]] ||
+    fail "multiple Preview plans changed exit status or Bootstrap state"
+
 echo
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All Core lifecycle tests passed"

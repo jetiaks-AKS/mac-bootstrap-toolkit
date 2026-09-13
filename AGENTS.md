@@ -35,6 +35,7 @@ Applications, Git configuration, VS Code settings, Workspace и macOS
 ./bootstrap.sh --blueprint
 ./bootstrap.sh --bootstrap
 ./bootstrap.sh --dry-run
+./bootstrap.sh --workflow
 ```
 
 `bootstrap.sh` использует относительные `source`-пути и относительные
@@ -48,6 +49,7 @@ Applications, Git configuration, VS Code settings, Workspace и macOS
 - `--blueprint`
 - `--bootstrap`
 - `--dry-run`
+- `--workflow`
 - `--verbose`
 - `--help`
 - `--version`

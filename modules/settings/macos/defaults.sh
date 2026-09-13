@@ -188,20 +188,20 @@ preview_defaults_config() {
 
         DEFAULTS_PREVIEW_CHANGED=true
         desired_display="$(defaults_preview_display_value "$type" "$desired")" || {
-            action "Would change macOS setting: $domain/$key"
+            preview_action "Would change macOS setting: $domain/$key"
             continue
         }
 
         if [[ "$DEFAULTS_OBSERVED_PRESENT" == false ]]; then
-            action "Would change macOS setting: $domain/$key (absent -> $desired_display)"
+            preview_action "Would change macOS setting: $domain/$key (absent -> $desired_display)"
             continue
         fi
 
         current_display="$(defaults_preview_display_value "$type" "$DEFAULTS_OBSERVED_VALUE")" || {
-            action "Would change macOS setting: $domain/$key"
+            preview_action "Would change macOS setting: $domain/$key"
             continue
         }
-        action "Would change macOS setting: $domain/$key ($current_display -> $desired_display)"
+        preview_action "Would change macOS setting: $domain/$key ($current_display -> $desired_display)"
     done < "$config_file"
 
     return 0

@@ -64,7 +64,8 @@ the full supported scope.
 - interactive component selection;
 - item-level and category-level filtering;
 - editing of existing selections;
-- safe cancellation without changing the saved Blueprint.
+- immediate `q` / `Q` cancellation from every prompt, including Edit, without
+  changing the saved Blueprint.
 
 ### Bootstrap
 
@@ -126,10 +127,13 @@ Run the guided flow interactively:
 ./bootstrap.sh --workflow
 ```
 
-Reuse or refresh Generated Configuration, save Blueprint, review mandatory
-Preview, then explicitly confirm Bootstrap (default: No). Missing or invalid
-required input requires Discovery; declining it or cancelling Blueprint stops
-cleanly. Preview warnings allow confirmation; errors block Bootstrap.
+Reuse or refresh Generated Configuration, save Blueprint, and review mandatory
+Preview. When Preview finds planned changes, Workflow asks for explicit
+Bootstrap confirmation (default: No). Missing or invalid required input requires
+Discovery; declining it or cancelling Blueprint stops cleanly. Preview warnings
+allow confirmation when plans exist; errors block Bootstrap.
+If Preview finds no changes to apply, Workflow finishes without prompting for
+Bootstrap, preserving any warning status.
 `--verbose` is supported. Each executed stage keeps its existing log and Summary.
 Discovery retains its normal preflight and local configuration writes.
 

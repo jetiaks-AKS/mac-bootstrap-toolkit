@@ -329,6 +329,30 @@ reset_fixture
 rm "$FIXTURE/config/generated/brew-packages.conf"
 TEST_MODE=--workflow run_case workflow-missing-decline 0 <<< n
 assert_contains "$TEST_ROOT/output" 'Generated configuration is unavailable'
+# An empty selection has no plans; optional settings can still warn.
+for preview_status in 0 1; do
+    reset_fixture
+    {
+        echo '[categories]'
+        for category in git-configuration vscode-settings macos-finder macos-dock macos-keyboard macos-trackpad macos-screenshots; do
+            enabled=false
+            [[ "$preview_status" != 1 || "$category" != vscode-settings ]] || enabled=true
+            printf '%s="%s"\n' "$category" "$enabled"
+        done
+        for section in homebrew-packages homebrew-casks app-store vscode-extensions workspace-folders git-repositories; do
+            printf '[%s]\n' "$section"
+        done
+    } > "$FIXTURE/config/blueprint.conf"
+    rm "$FIXTURE/config/generated/vscode/settings.json"
+    workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\ny'
+    TEST_MODE=--workflow run_case "workflow-zero-plans-$preview_status" "$preview_status" <<< "$workflow_input"
+    assert_contains "$TEST_ROOT/output" 'No changes to apply'
+    assert_contains "$TEST_ROOT/output" 'Workflow finished.'
+    if grep -q 'Apply these changes\|Mode    : Bootstrap' "$TEST_ROOT/output"; then
+        echo 'FAIL: zero plans reached Bootstrap'; ((TEST_FAILURES++))
+    fi
+done
+
 # Real CLI + selector: q/Q must never reach Preview or Bootstrap.
 for mode in --blueprint --workflow; do
     for existing in yes no; do

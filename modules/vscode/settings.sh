@@ -196,7 +196,7 @@ preview_vscode_settings() {
             return 0
             ;;
         1)
-            action "Would update VS Code settings"
+            preview_action "Would update VS Code settings"
             return 0
             ;;
         *)

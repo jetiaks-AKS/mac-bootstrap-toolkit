@@ -220,3 +220,28 @@ Global Verification — будущая post-Bootstrap capability, которая
 в `CHANGELOG.md`.
 
 Вернуться к [основному README](../../README.md).
+
+### Guided Workflow
+
+`--workflow` оркестрирует существующий dispatch режимов в изолированных
+subshell:
+optional Discovery → Blueprint Save → mandatory Preview → conditional Bootstrap.
+Каждый этап сохраняет собственные Logger, Summary и счётчики;
+`logs/latest.log` относится к последнему выполненному этапу. Отдельного
+workflow log или planner нет.
+
+Начальная readiness-проверка использует prerequisites selector и существующую
+валидацию Bootstrap input для полного scope независимо от старого Blueprint.
+После Discovery readiness проверяется повторно. Selected input снова
+валидируется внутри Preview и Bootstrap. Немедленная отмена Blueprint через
+`q` / `Q`, включая nested Edit, сохраняет исходный файл и останавливает
+Workflow до Preview и Bootstrap.
+
+Preview `0` или `1` предлагает подтверждение Bootstrap с default No только при
+наличии planned changes; `2` останавливает Workflow. При отсутствии planned
+changes Workflow сообщает `No changes to apply` и завершается без prompt,
+сохраняя warning status. Существующие места формирования планов выставляют
+Preview-only `PREVIEW_HAS_CHANGES` через `preview_action`; вывод не разбирается,
+а Bootstrap change accounting не используется. Global Verification остаётся
+нереализованной. Перед Apply Bootstrap повторно валидирует input; состояние
+между Preview и подтверждением не замораживается.

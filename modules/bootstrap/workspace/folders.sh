@@ -73,7 +73,7 @@ preview_workspace_folders() {
                 detail "$folder already exists"
                 ;;
             1)
-                action "Would create workspace folder: $HOME/$folder"
+                preview_action "Would create workspace folder: $HOME/$folder"
                 ;;
             *)
                 error "Failed to inspect workspace folder: $folder"

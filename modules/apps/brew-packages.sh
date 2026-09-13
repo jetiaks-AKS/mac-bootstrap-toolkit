@@ -91,7 +91,7 @@ preview_brew_packages() {
 
         case $inspection_result in
             0) detail "$package is already installed" ;;
-            1) action "Would install Homebrew formula: $package" ;;
+            1) preview_action "Would install Homebrew formula: $package" ;;
             *)
                 error "Failed to inspect Homebrew formula: $package"
                 return 2

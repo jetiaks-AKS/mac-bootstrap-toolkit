@@ -125,9 +125,9 @@ preview_brew_casks() {
         fi
 
         if [[ "${CASK_REINSTALL_REQUIRED:-false}" == true ]]; then
-            action "Would reinstall Homebrew cask: $cask"
+            preview_action "Would reinstall Homebrew cask: $cask"
         else
-            action "Would install Homebrew cask: $cask"
+            preview_action "Would install Homebrew cask: $cask"
         fi
     done <<< "$casks"
 

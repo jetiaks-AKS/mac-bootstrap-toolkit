@@ -405,6 +405,12 @@ run_workflow() {
 
     run_mode --dry-run Preview
     result=$?
+    # Internal Preview signals: no plans, with success (3) or warnings (4).
+    if [[ $result -eq 3 || $result -eq 4 ]]; then
+        [[ $result -ne 4 ]] || workflow_result=1
+        info "Workflow finished."
+        return "$workflow_result"
+    fi
     [[ $result -le 1 ]] || return "$result"
     [[ $result -eq 0 ]] || workflow_result=1
 
@@ -423,6 +429,7 @@ run_workflow() {
 run_mode() (
 MODE="$1"
 MODE_NAME="$2"
+PREVIEW_HAS_CHANGES=false
 
 # ==========================================
 # Initialize Logger
@@ -563,10 +570,17 @@ esac
 
 show_summary
 
-close_logger
-
 toolkit_exit_code
-exit $?
+result=$?
+if [[ "$MODE" == --dry-run && "${WORKFLOW_ACTIVE:-false}" == true &&
+      $result -le 1 && "$PREVIEW_HAS_CHANGES" == false ]]; then
+    success "No changes to apply"
+    close_logger
+    exit $((result + 3)) # Internal no-plan signal; public Preview stays 0/1/2.
+fi
+
+close_logger
+exit "$result"
 
 )
 

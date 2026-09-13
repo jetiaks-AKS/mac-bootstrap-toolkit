@@ -27,6 +27,8 @@ export TMPDIR="$TEST_ROOT/tmp"
 /bin/mkdir -p "$HOME" "$TMPDIR"
 : > "$MUTATION_LOG"
 
+source "$PROJECT_ROOT/modules/core/common/common.sh"
+
 action() {
     ACTION_MESSAGES="${ACTION_MESSAGES}${ACTION_MESSAGES:+
 }$1"

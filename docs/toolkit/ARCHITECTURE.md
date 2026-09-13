@@ -219,7 +219,7 @@ Return to the [main README](../../README.md).
 ### Guided Workflow
 
 `--workflow` orchestrates the existing mode dispatcher in isolated subshells:
-optional Discovery → Blueprint Save → mandatory Preview → confirmed Bootstrap.
+optional Discovery → Blueprint Save → mandatory Preview → conditional Bootstrap.
 Each stage retains its logger, Summary and counters; `logs/latest.log` belongs
 to the last executed stage. There is no separate workflow log or planner.
 The initial readiness check uses selector prerequisites and existing Bootstrap
@@ -228,7 +228,12 @@ Optional inputs retain existing warning/skip rules. Discovery is followed by
 another readiness check. Selected-input validation still runs in both Preview
 and Bootstrap. Selector Save is reported separately from its unchanged standalone
 exit status, so cancellation cannot reuse an older Blueprint.
-Preview 0/1 permits confirmation (default No); 2 stops. Stage warnings remain
+Preview 0/1 permits confirmation (default No) only when plans exist; 2 stops.
+With no plans, Workflow finishes without confirmation, retaining warnings.
+Existing plan sites set the Preview-only `PREVIEW_HAS_CHANGES` flag through
+`preview_action`; no output parsing or Bootstrap change accounting is used.
+The isolated Preview stage signals no plans internally (3/4 for success/warnings);
+Workflow maps these back to public 0/1 semantics. Stage warnings remain
 exit 1, errors exit 2; cancellation adds no failure. EOF cancels prompts.
 Global Verification remains unimplemented. Inputs are revalidated before Apply;
 this MVP does not freeze files or system state between Preview and confirmation.

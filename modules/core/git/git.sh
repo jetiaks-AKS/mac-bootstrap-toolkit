@@ -228,7 +228,7 @@ preview_git_configuration() {
             ;;
         1)
             for key in "${GIT_CONFIGURATION_MISMATCHES[@]}"; do
-                action "Would configure Git setting: $key"
+                preview_action "Would configure Git setting: $key"
             done
             return 0
             ;;

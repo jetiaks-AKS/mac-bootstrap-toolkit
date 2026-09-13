@@ -335,6 +335,12 @@ Blueprint использует минимальный lifecycle:
 [BLUEPRINT] RESULT: CANCELLED
 ```
 
+`q` или `Q` отменяет Blueprint из любого интерактивного prompt, включая
+nested Edit. Отмена немедленно прекращает selector, не публикует частичный
+выбор и сохраняет существующий `config/blueprint.conf` без изменений. Если
+файла не было, он не создаётся. В Guided Workflow отмена также останавливает
+весь Workflow до Preview и Bootstrap.
+
 `Existing configuration: Valid` записывается только после успешной валидации.
 При stale или malformed Blueprint сохраняются существующие warning/error
 семантики без ложной записи `Valid`.
@@ -366,8 +372,9 @@ Status   : Interrupted
 # Dry-run / Preview
 
 `--dry-run` является отдельным execution mode. Одновременно можно выбрать
-ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint` и
-`--dry-run`; отсутствие mode или конфликтующие mode-флаги возвращают `1`.
+ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint`,
+`--dry-run` и `--workflow`; отсутствие mode или конфликтующие mode-флаги
+возвращают `1`.
 
 Preview выполняет последовательность:
 
@@ -454,3 +461,32 @@ Preview (`--dry-run`)
 ```
 
 Global Verification остаётся запланированной возможностью.
+
+---
+
+# Guided Workflow
+
+`--workflow` выполняет существующие режимы последовательно: проверка Generated
+Configuration → optional/required Discovery → interactive Blueprint → automatic
+Preview → optional Bootstrap. Каждый запущенный этап сохраняет собственный
+Logger и Summary.
+
+Отмена Blueprint через `q` / `Q` или отказ от финального Save останавливает
+Workflow до Preview и Bootstrap. Ошибка Preview (`2`) также останавливает
+Workflow. При status `0` или `1` и наличии planned changes Toolkit спрашивает:
+
+```text
+Apply these changes with Bootstrap? [y/N]
+```
+
+Только явный Yes запускает существующий Bootstrap path. Если planned changes
+нет, подтверждение не показывается, Bootstrap не запускается, а Workflow
+выводит:
+
+```text
+[ OK ] No changes to apply
+[INFO] Workflow finished.
+```
+
+Warning status Preview при этом сохраняется как итоговый status `1`. Global
+Verification не входит в Guided Workflow и остаётся запланированной.

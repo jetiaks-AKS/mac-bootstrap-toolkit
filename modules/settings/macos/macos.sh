@@ -22,7 +22,7 @@ preview_macos_category() {
     preview_defaults_config "$config_file" || return 2
 
     if [[ "$DEFAULTS_PREVIEW_CHANGED" == true && -n "$restart_process" ]]; then
-        action "Would restart process: $restart_process"
+        preview_action "Would restart process: $restart_process"
     fi
 
     return 0
@@ -34,14 +34,14 @@ preview_screenshots_settings() {
     [[ "$DEFAULTS_PREVIEW_CHANGED" == true ]] || return 0
 
     if [[ ! -e "$HOME/Screenshots" && ! -L "$HOME/Screenshots" ]]; then
-        action "Would create screenshots directory: $HOME/Screenshots"
+        preview_action "Would create screenshots directory: $HOME/Screenshots"
     elif [[ ! -d "$HOME/Screenshots" || ! -r "$HOME/Screenshots" ||
             ! -x "$HOME/Screenshots" ]]; then
         error "Failed to inspect Screenshots directory"
         return 2
     fi
 
-    action "Would restart process: SystemUIServer"
+    preview_action "Would restart process: SystemUIServer"
     return 0
 }
 

@@ -119,6 +119,7 @@ Run real:
 ./bootstrap.sh --discover
 ./bootstrap.sh --blueprint
 ./bootstrap.sh --bootstrap
+./bootstrap.sh --workflow
 ```
 
 only when the task explicitly requires the corresponding workflow and its side

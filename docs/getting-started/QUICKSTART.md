@@ -1,6 +1,7 @@
 # Quick Start
 
-This guide covers the Mac Bootstrap Toolkit 3.1.0 workflow:
+This guide covers the Mac Bootstrap Toolkit workflow. The standalone 3.1.0
+modes remain available, and the unreleased Guided Workflow orchestrates them:
 
 ```text
 Discovery
@@ -9,8 +10,25 @@ Generated Configuration
     ↓
 Blueprint
     ↓
+Preview
+    ↓
 Bootstrap
 ```
+
+For the guided path, run:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+Workflow checks Generated Configuration, offers or requires Discovery, opens
+the interactive Blueprint selector, and runs Preview automatically. Enter
+`q` or `Q` at any Blueprint prompt, including Edit, to cancel without changing
+the saved Blueprint; Guided Workflow then stops before Preview and Bootstrap.
+If Preview reports errors, Workflow stops. If planned changes exist, Workflow
+asks `Apply these changes with Bootstrap? [y/N]`. With zero planned changes it
+reports `No changes to apply` and finishes without asking for Bootstrap,
+preserving any Preview warning status.
 
 ## Requirements
 

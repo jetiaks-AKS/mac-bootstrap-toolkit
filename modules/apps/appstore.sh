@@ -76,7 +76,7 @@ preview_appstore_apps() {
 
         case $inspection_result in
             0) detail "$app_name is already installed" ;;
-            1) action "Would install App Store app: $app_name ($app_id)" ;;
+            1) preview_action "Would install App Store app: $app_name ($app_id)" ;;
             *)
                 error "Failed to inspect App Store application: $app_name"
                 return 2
