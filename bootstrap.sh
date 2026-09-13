@@ -101,6 +101,12 @@ for arg in "$@"; do
             ((EXECUTION_MODE_COUNT++))
             ;;
 
+        --workflow)
+
+            MODE="--workflow"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
         --dry-run)
 
             MODE="--dry-run"
@@ -144,6 +150,8 @@ Usage:
   ./bootstrap.sh --dry-run
       Preview selected Bootstrap changes without target mutation
 
+  ./bootstrap.sh --workflow
+      Guide Discovery, Blueprint, Preview, and confirmed Bootstrap
 
 Options:
 
@@ -342,6 +350,80 @@ run_preview() {
 
 }
 
+# Validate the full inventory independently of an older Blueprint selection.
+workflow_generated_ready() (
+    blueprint_exists() { return 1; }
+    blueprint_selector_generated_ready || return 2
+    bootstrap_validate_selected_inputs
+)
+
+workflow_confirm() {
+    local input
+    while true; do
+        printf '%s ' "$1"
+        IFS= read -r input || return 1
+        case "$input" in
+            "") [[ "$2" == yes ]]; return $? ;;
+            [yY]|[yY][eE][sS]) return 0 ;;
+            [nN]|[nN][oO]) return 1 ;;
+            *) info "Choose Y or N." ;;
+        esac
+    done
+}
+
+run_workflow() {
+    local refresh=false result workflow_result=0
+    local WORKFLOW_ACTIVE=true
+
+    if workflow_generated_ready; then
+        workflow_confirm "Refresh generated configuration from this Mac? [y/N]" no && refresh=true
+    else
+        info "No usable generated configuration found (missing, unreadable, or invalid input)."
+        info "Discovery is required before continuing."
+        workflow_confirm "Run Discovery now? [Y/n]" yes || {
+            info "Workflow cancelled."
+            return 0
+        }
+        refresh=true
+    fi
+
+    if [[ "$refresh" == true ]]; then
+        run_mode --discover Discovery
+        result=$?
+        [[ $result -le 1 ]] || return "$result"
+        workflow_result=$result
+        workflow_generated_ready || return 2
+    fi
+
+    run_mode --blueprint Blueprint
+    result=$?
+    if [[ $result -eq 3 ]]; then
+        info "Workflow cancelled."
+        return "$workflow_result"
+    fi
+    [[ $result -eq 0 ]] || return "$result"
+
+    run_mode --dry-run Preview
+    result=$?
+    [[ $result -le 1 ]] || return "$result"
+    [[ $result -eq 0 ]] || workflow_result=1
+
+    if workflow_confirm "Apply these changes with Bootstrap? [y/N]" no; then
+        run_mode --bootstrap Bootstrap
+        result=$?
+        [[ $result -le 1 ]] || return "$result"
+        [[ $result -eq 0 ]] || workflow_result=1
+    else
+        info "Workflow finished without applying changes."
+    fi
+    return "$workflow_result"
+}
+
+# Subshells keep each production stage's logger, traps and counters independent.
+run_mode() (
+MODE="$1"
+MODE_NAME="$2"
+
 # ==========================================
 # Initialize Logger
 # ==========================================
@@ -367,6 +449,10 @@ if [[ "$MODE" == "--blueprint" ]]; then
     blueprint_selector_run
     blueprint_result=$?
     close_logger
+    if [[ "${WORKFLOW_ACTIVE:-false}" == true && $blueprint_result -le 1 &&
+          "${BLUEPRINT_SELECTOR_SAVED:-false}" != true ]]; then
+        exit 3 # Internal cancellation signal; standalone selector is unchanged.
+    fi
     exit "$blueprint_result"
 fi
 
@@ -480,4 +566,13 @@ show_summary
 close_logger
 
 toolkit_exit_code
+exit $?
+
+)
+
+if [[ "$MODE" == "--workflow" ]]; then
+    run_workflow
+else
+    run_mode "$MODE" "$MODE_NAME"
+fi
 exit $?

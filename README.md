@@ -120,6 +120,20 @@ Preview the selected changes without modifying target state:
 ./bootstrap.sh --dry-run
 ```
 
+Run the guided flow interactively:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+Reuse or refresh Generated Configuration, save Blueprint, review mandatory
+Preview, then explicitly confirm Bootstrap (default: No). Missing or invalid
+required input requires Discovery; declining it or cancelling Blueprint stops
+cleanly. Preview warnings allow confirmation; errors block Bootstrap.
+`--verbose` is supported. Each executed stage keeps its existing log and Summary.
+Discovery retains its normal preflight and local configuration writes.
+
+
 Use `--verbose` with Check, Discovery, or Bootstrap for detailed output.
 
 See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.

@@ -31,12 +31,20 @@ cp() {
     }
     command cp "$@"
 }
-mv() { mutation "mv $*"; }
+mv() {
+    if [[ "${TEST_MODE:-}" == --workflow && "$1" == config/blueprint.conf.tmp.* &&
+          "$2" == config/blueprint.conf ]]; then
+        command mv "$@"
+    else
+        mutation "mv $*"
+    fi
+}
 # Git validation temporary files are allowed; targets are not.
 rm() {
     local arg
     for arg in "$@"; do
-        [[ "$arg" == -* || "$arg" == "$TMPDIR"/* ]] || { mutation "rm $*"; return 99; }
+        [[ "$arg" == -* || "$arg" == "$TMPDIR"/* ||
+           ( ( "${TEST_MODE:-}" == --workflow || "${TEST_MODE:-}" == --blueprint ) && "$arg" == config/blueprint.conf.tmp.* ) ]] || { mutation "rm $*"; return 99; }
     done
     command rm "$@"
 }
@@ -159,8 +167,8 @@ run_case() {
         env HOME="$TEST_ROOT/home" SHELL=/bin/zsh TMPDIR="$TEST_ROOT/tmp" \
             GIT_CONFIG_GLOBAL="$TEST_ROOT/global.gitconfig" GIT_CONFIG_NOSYSTEM=1 \
             BASH_ENV="$TEST_ROOT/spies.sh" TEST_CASE="$scenario" \
-            TEST_MUTATIONS="$TEST_ROOT/mutations" TEST_OBSERVATIONS="$TEST_ROOT/observations" \
-            /bin/bash ./bootstrap.sh --dry-run
+            TEST_MODE="${TEST_MODE:---dry-run}" TEST_MUTATIONS="$TEST_ROOT/mutations" TEST_OBSERVATIONS="$TEST_ROOT/observations" \
+            /bin/bash ./bootstrap.sh "${TEST_MODE:---dry-run}"
     ) > "$TEST_ROOT/output" 2>&1
     local result=$?
     # Detect target changes even if a future implementation bypasses a spy.
@@ -294,5 +302,67 @@ run_case malformed-input 2
 if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
     echo 'FAIL: invalid input reached preflight/domains'; ((TEST_FAILURES++))
 fi
+reset_fixture
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
+TEST_MODE=--workflow run_case workflow-save-preview 0 <<< "$workflow_input"
+assert_contains "$TEST_ROOT/output" 'Blueprint saved'
+assert_contains "$TEST_ROOT/output" 'Modules Inspected'
+assert_contains "$TEST_ROOT/output" 'Apply these changes'
+cp "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint"
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+TEST_MODE=--workflow run_case workflow-save-cancel 0 <<< "$workflow_input"
+cmp -s "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint" || {
+    echo 'FAIL: cancelled selector changed old Blueprint'; ((TEST_FAILURES++));
+}
+assert_contains "$TEST_ROOT/output" 'Workflow cancelled.'
+if grep -q 'Modules Inspected\|Apply these changes' "$TEST_ROOT/output"; then
+    echo 'FAIL: cancelled selector reached Preview'; ((TEST_FAILURES++))
+fi
+reset_fixture
+TEST_MODE=--workflow run_case workflow-selector-eof 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Workflow cancelled.'
+reset_fixture
+printf 'bad record\n' >> "$FIXTURE/config/generated/brew-packages.conf"
+TEST_MODE=--workflow run_case workflow-invalid-decline 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Discovery is required'
+reset_fixture
+rm "$FIXTURE/config/generated/brew-packages.conf"
+TEST_MODE=--workflow run_case workflow-missing-decline 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Generated configuration is unavailable'
+# Real CLI + selector: q/Q must never reach Preview or Bootstrap.
+for mode in --blueprint --workflow; do
+    for existing in yes no; do
+        for prompt_type in choice restore edit save; do
+            reset_fixture
+            if [[ "$existing" == yes ]]; then
+                write_blueprint
+                cp "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/before-quit"
+            fi
+            case "$prompt_type" in
+                choice) quit_input=q ;;
+                restore) quit_input=$'\n\n\n\n\n\nQ' ;;
+                edit) quit_input=$'e\n1\nq' ;;
+                save) quit_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\nQ' ;;
+            esac
+            [[ "$mode" != --workflow ]] || quit_input=$'n\n'"$quit_input"
+            TEST_MODE="$mode" run_case "$mode-$prompt_type-quit-$existing" 0 <<< "$quit_input"
+            assert_contains "$TEST_ROOT/output" 'Blueprint changes cancelled'
+            if [[ "$mode" == --workflow ]]; then
+                assert_contains "$TEST_ROOT/output" 'Workflow cancelled.'
+            fi
+            if grep -q 'Modules Inspected\|Apply these changes\|Mode    : Bootstrap' "$TEST_ROOT/output" ||
+               grep -Eq '^preflight$|^brew |^defaults ' "$TEST_ROOT/observations"; then
+                echo 'FAIL: quit reached later execution'; ((TEST_FAILURES++))
+            fi
+            if [[ "$existing" == yes ]]; then
+                cmp -s "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/before-quit" || {
+                    echo 'FAIL: quit changed Blueprint'; ((TEST_FAILURES++));
+                }
+            elif [[ -e "$FIXTURE/config/blueprint.conf" ]]; then
+                echo 'FAIL: quit created Blueprint'; ((TEST_FAILURES++))
+            fi
+        done
+    done
+done
 [[ $TEST_FAILURES -eq 0 ]] || exit 1
 echo 'All production Preview integration tests passed'

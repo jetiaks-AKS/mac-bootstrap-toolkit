@@ -167,10 +167,11 @@ blueprint_selector_select_items() {
         echo "Toggle items: 1,3,5   1 3 5   5-9   1,3,7-10"
         echo "[N] Next  [P] Previous  [A] All  [0] None  [D] Done"
         echo "Enter = Done"
-        printf '> '
+        printf '> (Q cancels): '
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "")
                 return 0
                 ;;
@@ -223,10 +224,11 @@ blueprint_selector_choose_items() {
         echo "[N] None"
         echo "[E] Edit"
         echo
-        printf 'Choice [A/N/E] (Enter keeps current): '
+        printf 'Choice [A/N/E] (Enter keeps current, Q cancels): '
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "")
                 return 0
                 ;;
@@ -280,10 +282,11 @@ blueprint_selector_prompt_category() {
         [[ "$current" == true ]] && prompt='[Y/n]' || prompt='[y/N]'
         echo
         echo "$title"
-        printf 'Restore? %s: ' "$prompt"
+        printf 'Restore? %s (Q cancels): ' "$prompt"
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "") ;;
             [yY]|[yY][eE][sS]) current=true ;;
             [nN]|[nN][oO]) current=false ;;
@@ -333,6 +336,24 @@ blueprint_selector_write() {
 }
 
 blueprint_selector_run() {
+    local result
+    blueprint_selector_edit
+    result=$?
+    if [[ $result -eq 3 ]]; then
+        if [[ -n "$BLUEPRINT_SELECTOR_TEMP_FILE" ]]; then
+            blueprint_selector_cleanup
+            BLUEPRINT_SELECTOR_TEMP_FILE=""
+            trap - INT TERM
+        fi
+        log "[BLUEPRINT] RESULT: CANCELLED"
+        success "Blueprint changes cancelled; no file changes were saved"
+        return 0
+    fi
+    return "$result"
+}
+
+blueprint_selector_edit() {
+    BLUEPRINT_SELECTOR_SAVED=false
     log "[BLUEPRINT] START"
 
     blueprint_selector_generated_ready || return 2
@@ -423,20 +444,17 @@ blueprint_selector_run() {
 
     local input
     while true; do
-        printf 'Save Blueprint? [Y/n]: '
+        printf 'Save Blueprint? [Y/n] (Q cancels): '
         IFS= read -r input || {
             blueprint_selector_cleanup
             trap - INT TERM
             return 1
         }
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             ""|[yY]|[yY][eE][sS]) break ;;
             [nN]|[nN][oO])
-                blueprint_selector_cleanup
-                trap - INT TERM
-                log "[BLUEPRINT] RESULT: CANCELLED"
-                success "Blueprint changes cancelled; no file changes were saved"
-                return 0
+                return 3
                 ;;
             *) error "Choose Y or N." ;;
         esac
@@ -454,6 +472,7 @@ blueprint_selector_run() {
     fi
     BLUEPRINT_SELECTOR_TEMP_FILE=""
     trap - INT TERM
+    BLUEPRINT_SELECTOR_SAVED=true
     log "[BLUEPRINT] RESULT: SAVED"
     success "Blueprint saved to $BLUEPRINT_FILE"
 }

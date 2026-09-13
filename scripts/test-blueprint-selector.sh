@@ -423,6 +423,48 @@ else
     fail "cancelled Blueprint left output behind"
 fi
 
+# Every interactive input path must cancel transactionally and stop reading.
+for existing in yes no; do
+    for quit_key in q Q; do
+        for prompt_type in choice restore edit save later-choice; do
+            case "$prompt_type" in
+                choice) prefix='' ;;
+                restore) prefix=$'\n\n\n\n\n\n' ;;
+                edit) prefix=$'e\n1\n' ;;
+                save) prefix=$'\n\n\n\n\n\n\n\n\n\n\n\n\n' ;;
+                later-choice) prefix=$'e\n1\nd\na\n' ;;
+            esac
+            if [[ "$existing" == yes ]]; then
+                write_existing_blueprint
+                cp "$BLUEPRINT_FILE" "$TEST_ROOT/before-blueprint"
+            else
+                rm -f "$BLUEPRINT_FILE"
+            fi
+            BLUEPRINT_SELECTOR_SAVED=true
+            reset_selector_log
+            {
+                blueprint_selector_run > "$TEST_ROOT/quit-output"
+                quit_result=$?
+                IFS= read -r remaining_input
+            } <<< "${prefix}${quit_key}"$'\nsentinel'
+            if [[ $quit_result -eq 0 && "$BLUEPRINT_SELECTOR_SAVED" == false &&
+                  "$remaining_input" == sentinel ]] &&
+               grep -q 'Q cancels' "$TEST_ROOT/quit-output" &&
+               grep -q 'RESULT: CANCELLED' "$LOG_FILE" &&
+               [[ -z "$(find "$(dirname "$BLUEPRINT_FILE")" -name 'blueprint.conf.tmp.*' -print)" ]]; then
+                pass "$quit_key at $prompt_type cancels immediately (existing=$existing)"
+            else
+                fail "$quit_key at $prompt_type cancellation lifecycle (existing=$existing)"
+            fi
+            if [[ "$existing" == yes ]]; then
+                cmp -s "$BLUEPRINT_FILE" "$TEST_ROOT/before-blueprint" || fail "quit changed existing Blueprint"
+            else
+                [[ ! -e "$BLUEPRINT_FILE" ]] || fail "quit created Blueprint"
+            fi
+        done
+    done
+done
+
 if grep -q -- '--blueprint)' "$PROJECT_ROOT/bootstrap.sh" &&
    "$PROJECT_ROOT/bootstrap.sh" --help | grep -q -- '--blueprint'; then
     pass "CLI recognizes and documents --blueprint"

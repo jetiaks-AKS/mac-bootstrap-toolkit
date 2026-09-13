@@ -294,6 +294,68 @@ else
     fail "normal Bootstrap path changed: $ENTRYPOINT_SPY"
 fi
 
+# Workflow integration uses the same entrypoint, logger and wrappers as above.
+write_fixture_file modules/blueprint/selector.sh \
+    'blueprint_selector_generated_ready() { return 0; }' \
+    'blueprint_selector_run() {' \
+    '    echo blueprint-selector >> "$TEST_SPY_FILE"' \
+    '    BLUEPRINT_SELECTOR_SAVED=true' \
+    '}'
+
+run_entrypoint --workflow --check
+assert_status 1 "workflow is an exclusive mode"
+run_entrypoint --workflow <<< $'n\nn'
+assert_status 0 "workflow reuses input and declines Apply"
+[[ "$ENTRYPOINT_SPY" == blueprint-selector$'\n'git-config-preview* ||
+   "$ENTRYPOINT_SPY" == blueprint-selector$'\n'formula-preview* ]] || fail "selector must precede Preview"
+[[ "$ENTRYPOINT_SPY" != *sudo* && "$ENTRYPOINT_SPY" != *mutation* ]] || fail "decline reached mutations"
+
+run_entrypoint --workflow --verbose <<< $'n\ny'
+assert_status 0 "workflow confirms Bootstrap after Preview"
+[[ "$ENTRYPOINT_SPY" == *macos-preview*sudo*workspace-mutation* ]] || fail "Apply preceded Preview"
+[[ "$ENTRYPOINT_OUTPUT" == *'Modules Inspected :'* && "$ENTRYPOINT_OUTPUT" == *'Output: Verbose'* ]] || fail "workflow lost Preview Summary or verbose"
+
+TEST_INPUT_STATUS=2 run_entrypoint --workflow <<< n
+assert_status 0 "unusable input decline is clean cancellation"
+[[ -z "$ENTRYPOINT_SPY" ]] || fail "unusable input decline ran stages"
+TEST_INPUT_STATUS=2 run_entrypoint --workflow <<< ''
+assert_status 2 "Discovery default yes revalidates generated input"
+[[ "$ENTRYPOINT_SPY" == *discovery* && "$ENTRYPOINT_SPY" != *blueprint-selector* ]] || fail "invalid post-Discovery state reached selector"
+
+run_entrypoint --workflow <<< $'y\nn'
+assert_status 0 "explicit refresh runs Discovery"
+[[ "$ENTRYPOINT_SPY" == *discovery*blueprint-selector*formula-preview* ]] || fail "refresh order differs"
+
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<< $'n\nn'
+assert_status 1 "Preview warnings survive Apply decline"
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<< $'n\ny'
+assert_status 1 "Preview warnings survive successful Bootstrap"
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+assert_status 2 "Preview error blocks Bootstrap"
+[[ "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* ]] || fail "failed Preview offered Apply"
+
+write_fixture_file modules/discovery/discovery.sh \
+    'run_discovery() { ((ERROR_COUNT++)); }'
+run_entrypoint --workflow <<< y
+assert_status 2 "Discovery errors stop workflow"
+[[ "$ENTRYPOINT_SPY" != *blueprint-selector* ]] || fail "Discovery error reached selector"
+write_fixture_file modules/discovery/discovery.sh \
+    'run_discovery() { ((WARNING_COUNT++)); }'
+run_entrypoint --workflow <<< $'y\nn'
+assert_status 1 "Discovery warning continues with usable input and is preserved"
+[[ "$ENTRYPOINT_SPY" == *blueprint-selector*formula-preview* ]] || fail "Discovery warning blocked valid inventory"
+
+for selector_status in 0 1 2; do
+    write_fixture_file modules/blueprint/selector.sh \
+        'blueprint_selector_generated_ready() { return 0; }' \
+        "blueprint_selector_run() { BLUEPRINT_SELECTOR_SAVED=false; return $selector_status; }"
+    run_entrypoint --workflow <<< $'n\ny'
+    expected=0
+    [[ $selector_status -ne 2 ]] || expected=2
+    assert_status "$expected" "selector unsaved status $selector_status stops workflow"
+    [[ -z "$ENTRYPOINT_SPY" ]] || fail "unsaved selector reached Preview/Apply"
+done
+
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All dry-run CLI and startup tests passed"
     exit 0

@@ -215,3 +215,20 @@ Implementation stages and release gates are maintained in
 completed release history in `CHANGELOG.md`.
 
 Return to the [main README](../../README.md).
+
+### Guided Workflow
+
+`--workflow` orchestrates the existing mode dispatcher in isolated subshells:
+optional Discovery → Blueprint Save → mandatory Preview → confirmed Bootstrap.
+Each stage retains its logger, Summary and counters; `logs/latest.log` belongs
+to the last executed stage. There is no separate workflow log or planner.
+The initial readiness check uses selector prerequisites and existing Bootstrap
+input validation with all scopes enabled, independently of an old Blueprint.
+Optional inputs retain existing warning/skip rules. Discovery is followed by
+another readiness check. Selected-input validation still runs in both Preview
+and Bootstrap. Selector Save is reported separately from its unchanged standalone
+exit status, so cancellation cannot reuse an older Blueprint.
+Preview 0/1 permits confirmation (default No); 2 stops. Stage warnings remain
+exit 1, errors exit 2; cancellation adds no failure. EOF cancels prompts.
+Global Verification remains unimplemented. Inputs are revalidated before Apply;
+this MVP does not freeze files or system state between Preview and confirmation.

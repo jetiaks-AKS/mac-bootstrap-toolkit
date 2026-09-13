@@ -7,6 +7,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+* Added `--workflow`: optional Discovery refresh, required Blueprint Save,
+  automatic Preview and explicit Bootstrap confirmation. Cancellation stops
+  cleanly; Preview errors block Apply and warnings remain visible.
+
 ## [3.1.0] - 07.09.2026
 
 Minor release adding a complete read-only Preview of the selected Bootstrap

@@ -67,8 +67,10 @@ those checkboxes; they may be separated by commas or spaces and may include
 ranges such as `5-9` or mixed input such as `1,3,7-10`. Running `--blueprint`
 again loads the current choices for editing.
 
-The selector writes only after confirmation. Cancelling leaves an existing
-Blueprint unchanged and does not create a new one.
+The selector writes only after confirmation. Enter `q` or `Q` at any prompt,
+including Edit, to cancel immediately. Cancelling leaves an existing Blueprint
+unchanged and does not create a new one; in `--workflow` it also stops the
+workflow before Preview.
 
 The Blueprint remains local, private, and ignored by Git. Dry-run is not
 implemented yet.
