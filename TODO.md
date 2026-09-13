@@ -10,6 +10,16 @@ TODO содержит ближайшие конкретные техническ
 
 ---
 
+# Stage 9 — Next
+
+- [ ] 9B: проверить конкретные Finder candidates перед добавлением; сохранить
+  Stage 9A allowlist, producer/consumer validation и текущие Blueprint categories
+
+Stage 9A реализован в Unreleased. Trackpad float/hardware work остаётся в 9E;
+новые категории, restart manager и Global Verification в 9A не добавлены.
+
+---
+
 # CLI & UX
 
 - [ ] Устранять конкретные дублирования и несогласованность сообщений,

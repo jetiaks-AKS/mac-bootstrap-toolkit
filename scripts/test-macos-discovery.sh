@@ -14,6 +14,7 @@ TEST_FAILURES=0
 VERBOSE=false
 MOCK_MODE=normal
 MOCK_TARGET=""
+MOCK_VALUE=""
 SUCCESS_MESSAGES=""
 WARNING_MESSAGES=""
 ERROR_MESSAGES=""
@@ -102,6 +103,12 @@ defaults() {
                 if [[ "$operation" == read ]]; then
                     echo "Preferences read failed" >&2
                     return 1
+                fi
+                ;;
+            raw_value)
+                if [[ "$operation" == read ]]; then
+                    printf '%b' "$MOCK_VALUE"
+                    return 0
                 fi
                 ;;
             empty_string)
@@ -222,14 +229,40 @@ fi
 
 reset_fixture
 MOCK_MODE=empty_string
-MOCK_TARGET='com.apple.screencapture|location'
-export_screenshots_settings >/dev/null
-empty_string_status=$?
-if [[ $empty_string_status -eq 0 &&
-      "$(cat config/generated/macos/screenshots.conf)" == 'com.apple.screencapture|location|string|' ]]; then
-    pass "configured empty string remains a present serialized preference"
+MOCK_TARGET='com.apple.finder|FXPreferredViewStyle'
+export_finder_settings >/dev/null
+if [[ $? -eq 0 ]] && grep -q 'FXPreferredViewStyle|string|$' config/generated/macos/finder.conf; then
+    pass "generic empty string remains distinct from absence"
 else
-    fail "configured empty string was conflated with absence"
+    fail "generic empty string was lost"
+fi
+
+for raw_value in '' '/tmp/a|b\n' '/tmp/a\tb\n' '/tmp/a\nb\n' '/tmp/a\n\n' '/tmp/a\000b\n' '/tmp/a\rb\n'; do
+    reset_fixture
+    printf 'com.apple.screencapture|location|string|/tmp/previous\n' > config/generated/macos/screenshots.conf
+    before_checksum="$(cksum config/generated/macos/screenshots.conf)"
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.screencapture|location'
+    MOCK_VALUE="$raw_value"
+    export_screenshots_settings >/dev/null
+    result=$?
+    if [[ $result -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/screenshots.conf)" &&
+          -z "$(temporary_files)" && "$SUCCESS_MESSAGES" != *exported* ]]; then
+        pass "unsafe raw scalar is rejected before publication: $raw_value"
+    else
+        fail "unsafe raw scalar reached generated state: $raw_value"
+    fi
+done
+
+reset_fixture
+printf 'previous bytes\n' > config/generated/macos/finder.conf
+before_checksum="$(cksum config/generated/macos/finder.conf)"
+serialize_finder_settings() { printf 'com.apple.dock|autohide|bool|1\n' > "$1"; }
+export_finder_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" && -z "$(temporary_files)" ]]; then
+    pass "candidate semantic validation preserves previous file"
+else
+    fail "invalid candidate was published"
 fi
 
 reset_fixture

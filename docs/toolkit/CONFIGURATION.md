@@ -105,6 +105,77 @@ Toolkit намеренно не требует одного универсаль
 Конфигурация должна разбираться как данные. Способ чтения обязан соответствовать
 формату и не превращать generated-содержимое в выполняемый shell-код.
 
+### macOS generated records (Stage 9A)
+
+Формат остаётся `domain|key|type|value`; supported types — `bool`, `int`, `string`.
+Общая validation в `modules/settings/macos/records.sh` используется Discovery
+перед atomic publication, startup validation и consumers. Категория передаётся
+явно; имя файла не определяет разрешённые domain/key.
+
+Текущий allowlist (новых settings в 9A нет):
+
+| Категория | Domain | Keys / type |
+|---|---|---|
+| Finder | `NSGlobalDomain` | `AppleShowAllExtensions` / bool |
+| Finder | `com.apple.finder` | `ShowPathbar`, `ShowStatusBar`, `_FXSortFoldersFirst`, `FXRemoveOldTrashItems` / bool; `FXPreferredViewStyle`, `FXDefaultSearchScope` / string |
+| Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
+| Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
+| Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
+| Trackpad | `NSGlobalDomain` | `com.apple.trackpad.scaling` / int |
+| Screenshots | `com.apple.screencapture` | `location` / string, path-контракт ниже |
+
+Unknown/cross-category domain/key, wrong type, duplicate domain/key, неверное
+число полей, ASCII control bytes (включая NUL), delimiter в value и multiline
+scalar отвергаются с `2`. Байты проверяются до shell parsing; строка не теряет
+значимый trailing newline незаметно. Bool допускает `0/1/true/false`; int —
+целое с необязательным минусом. Новые неподтверждённые диапазоны и enum limits
+не вводятся. Float остаётся задачей 9E: текущие integer Trackpad records совместимы.
+
+Пустые строки/строки из пробелов и пустые category-файлы допустимы. Последняя
+запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
+preference не создаёт record; отсутствие record не удаляет target preference.
+Пустая generic string отличается от отсутствия; пустой Screenshot destination
+запрещён. Ошибка candidate validation сохраняет предыдущий generated-файл.
+Generated data никогда не выполняются через `source`/`eval`.
+
+После успешного `defaults write` Changed устанавливается до Verify. Ошибка
+Verify/restart возвращает `2`, не сообщает success и не сбрасывает Changed.
+Rollback не выполняется. Проверка read-back подтверждает сохранённые preferences,
+а не визуальный эффект в приложениях.
+
+#### Screenshot destination
+
+Единственный источник назначения — `com.apple.screencapture/location` в
+`screenshots.conf`. Статическая `SCREENSHOTS_DIR` удалена; fallback-каталога нет.
+Отсутствующий record означает unmanaged destination: ничего не создавать.
+
+- Поддерживаются absolute paths и только начальный `~/`, разрешаемый в текущий
+  HOME. Preference записывается и сравнивается как разрешённый absolute path.
+- `$HOME/...`, `${HOME}/...`, другие `$VAR`, backticks, backslash, relative paths,
+  `~otheruser`, пустая строка, `.`/`..` components, повторные `/`, control bytes и
+  `|` отвергаются. General shell expansion отсутствует.
+- Внутри HOME missing directory/parents создаются только после проверки всей
+  формы пути и существующих components. Files, inaccessible components,
+  dangling/looping symlinks и symlink escape из HOME возвращают `2`.
+- Existing directory symlink внутри HOME допустим, только если physical target
+  остаётся внутри physical HOME. Внешний путь должен целиком существовать и
+  разрешаться в доступный writable directory; существующий внешний symlink
+  допускается на тех же условиях. Вне HOME никакое дерево не создаётся.
+- Missing `/Volumes/...` — ошибка, а не создание предполагаемой точки монтирования.
+  Ни chmod/chown, ни скрытой замены `/Users/old-user` не выполняется.
+- Destination должен быть directory с write/execute access. Ошибка наблюдения
+  не трактуется как отсутствие. Проверки путей не являются race-free sandbox.
+
+Check учитывает и preference, и directory. Preview сначала проверяет оба
+состояния, затем сообщает mkdir → preference → restart, если они нужны.
+При directory-only change выводится только mkdir, без SystemUIServer restart.
+Этот план устанавливает существующий Preview change signal для Workflow.
+Apply: directory preparation → directory Verify → checked preference write →
+preference Verify → required restart → final local Check. Ошибка подготовки
+каталога блокирует preference write. Успешная/наблюдаемая частичная filesystem
+mutation сохраняется в Changed при последующих ошибках. Реальный screenshot
+для Verify не создаётся.
+
 ### Homebrew formula generated state
 
 `config/generated/brew-packages.conf` сохраняет формат одного имени на строку.
@@ -323,12 +394,12 @@ Configuration, а не дублироваться как фиксированн�
 
 ## Preview и будущие потребители
 
-Dry-run / Preview реализован; Global Verification остаётся запланированным.
+Dry-run / Preview реализован; Global Verification относится к Future / Optional.
 
 - **Dry-run / Preview** является неизменяющим режимом Bootstrap и использует
   те же Generated Configuration и Blueprint Desired Selection.
   Он не является источником конфигурации и не владеет Desired Selection.
-- **Global Verification** станет aggregate post-Bootstrap проверкой выбранного
+- **Global Verification** может стать optional aggregate post-Bootstrap проверкой выбранного
   итогового состояния. Она отличается от текущего локального
   `Check → Apply → Verify`, уже используемого модулями там, где проверка
   результата поддерживается.

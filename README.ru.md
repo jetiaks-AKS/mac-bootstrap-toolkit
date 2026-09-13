@@ -194,8 +194,8 @@ Discovery сохраняет обычный preflight и запись локал
 Discovery → Generated Configuration → Blueprint → Bootstrap
 ```
 
-Dry-run / Preview входит в релиз 3.1.0. Глобальный Verification остаётся
-будущей возможностью.
+Dry-run / Preview входит в релиз 3.1.0. Глобальный Verification относится к
+Future / Optional.
 
 Дальнейшее развитие описано в [ROADMAP.md](ROADMAP.md).
 

@@ -8,34 +8,7 @@ DEFAULTS_OBSERVED_PRESENT=false
 DEFAULTS_OBSERVED_VALUE=""
 DEFAULTS_PREVIEW_CHANGED=false
 
-validate_defaults_config() {
-    local config_file="$1"
-
-    if [[ -z "$config_file" || ! -f "$config_file" || ! -r "$config_file" ]]; then
-        error "Configuration file not found or unreadable: $config_file"
-        return 2
-    fi
-
-    if ! awk -F '|' '
-        /^[[:space:]]*$/ { next }
-        NF != 4 || $1 == "" || $2 == "" { exit 2 }
-        $3 == "bool" {
-            if ($4 != "0" && $4 != "1" && $4 != "true" && $4 != "false") exit 2
-            next
-        }
-        $3 == "int" {
-            if ($4 !~ /^-?[0-9]+$/) exit 2
-            next
-        }
-        $3 == "string" { next }
-        { exit 2 }
-    ' "$config_file"; then
-        error "Invalid macOS configuration: $config_file"
-        return 2
-    fi
-
-    return 0
-}
+source modules/settings/macos/records.sh
 
 defaults_native_type() {
     case "$1" in
@@ -124,11 +97,12 @@ check_defaults_record() {
         return 2
     fi
 
-    actual="$(defaults read "$domain" "$key" 2>/dev/null)"
-    if [[ $? -ne 0 ]]; then
+    if ! macos_read_scalar "$domain" "$key"; then
         error "Failed to read macOS preference: $domain $key"
         return 2
     fi
+
+    actual="$MACOS_DEFAULTS_VALUE"
 
     DEFAULTS_OBSERVED_PRESENT=true
     DEFAULTS_OBSERVED_VALUE="$actual"
@@ -174,11 +148,11 @@ preview_defaults_config() {
     local record_result
     local current_display desired_display
 
-    validate_defaults_config "$config_file" || return 2
+    validate_defaults_config "$config_file" "${2:-}" || return 2
     DEFAULTS_PREVIEW_CHANGED=false
 
-    while IFS='|' read -r domain key type desired; do
-        [[ -z "$domain" ]] && continue
+    while IFS='|' read -r domain key type desired || [[ -n "$domain$key$type$desired" ]]; do
+        [[ -z "${domain// /}" ]] && continue
 
         check_defaults_record "$domain" "$key" "$type" "$desired"
         record_result=$?
@@ -213,10 +187,10 @@ check_defaults_config() {
     local record_result
     local domain key type expected
 
-    validate_defaults_config "$config_file" || return 2
+    validate_defaults_config "$config_file" "${2:-}" || return 2
 
-    while IFS='|' read -r domain key type expected; do
-        [[ -z "$domain" ]] && continue
+    while IFS='|' read -r domain key type expected || [[ -n "$domain$key$type$expected" ]]; do
+        [[ -z "${domain// /}" ]] && continue
 
         check_defaults_record "$domain" "$key" "$type" "$expected"
         record_result=$?
@@ -228,46 +202,42 @@ check_defaults_config() {
     [[ "$configured" == true ]]
 }
 
+# Single checked write shared by category files and resolved Screenshot paths.
+apply_defaults_record() {
+    local domain="$1" key="$2" type="$3" value="$4"
+    local record_result write_value="$4"
+    DEFAULTS_RECORD_CHANGED=false
+    check_defaults_record "$domain" "$key" "$type" "$value"
+    record_result=$?
+    [[ $record_result -ne 2 ]] || return 2
+    [[ $record_result -ne 0 ]] || return 0
+
+    if [[ "$type" == bool ]]; then
+        case "$value" in
+            1) write_value=true ;;
+            0) write_value=false ;;
+        esac
+    fi
+    if ! defaults write "$domain" "$key" "-$type" "$write_value"; then
+        error "Failed to configure macOS preference: $domain $key"
+        return 2
+    fi
+    MODULE_CHANGED=true
+    DEFAULTS_RECORD_CHANGED=true
+    if ! check_defaults_record "$domain" "$key" "$type" "$value"; then
+        error "Failed to verify macOS preference: $domain $key"
+        return 2
+    fi
+    return 0
+}
+
 apply_defaults_config() {
     local config_file="$1"
     local domain key type value
-    local record_result
-    local write_value
-
-    validate_defaults_config "$config_file" || return 2
-
-    while IFS='|' read -r domain key type value; do
-        [[ -z "$domain" ]] && continue
-
-        check_defaults_record "$domain" "$key" "$type" "$value"
-        record_result=$?
-
-        [[ $record_result -eq 2 ]] && return 2
-        [[ $record_result -eq 0 ]] && continue
-
-        write_value="$value"
-        if [[ "$type" == bool ]]; then
-            case "$value" in
-                1) write_value=true ;;
-                0) write_value=false ;;
-            esac
-        fi
-
-        if ! defaults write "$domain" "$key" "-$type" "$write_value"; then
-            error "Failed to configure macOS preference: $domain $key"
-            return 2
-        fi
-
-        check_defaults_record "$domain" "$key" "$type" "$value"
-        record_result=$?
-
-        if [[ $record_result -ne 0 ]]; then
-            error "Failed to verify macOS preference: $domain $key"
-            return 2
-        fi
-
-        MODULE_CHANGED=true
+    validate_defaults_config "$config_file" "${2:-}" || return 2
+    while IFS='|' read -r domain key type value || [[ -n "$domain$key$type$value" ]]; do
+        [[ -z "${domain// /}" ]] && continue
+        apply_defaults_record "$domain" "$key" "$type" "$value" || return 2
     done < "$config_file"
-
     return 0
 }

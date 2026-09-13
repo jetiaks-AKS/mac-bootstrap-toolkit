@@ -273,23 +273,23 @@ bootstrap_validate_selected_inputs() {
     fi
 
     if blueprint_category_enabled macos-finder; then
-        validate_defaults_config "$FINDER_CONFIG" || return 2
+        validate_defaults_config "$FINDER_CONFIG" finder || return 2
     fi
 
     if blueprint_category_enabled macos-dock; then
-        validate_defaults_config "$DOCK_CONFIG" || return 2
+        validate_defaults_config "$DOCK_CONFIG" dock || return 2
     fi
 
     if blueprint_category_enabled macos-keyboard; then
-        validate_defaults_config "$KEYBOARD_CONFIG" || return 2
+        validate_defaults_config "$KEYBOARD_CONFIG" keyboard || return 2
     fi
 
     if blueprint_category_enabled macos-trackpad; then
-        validate_defaults_config "$TRACKPAD_CONFIG" || return 2
+        validate_defaults_config "$TRACKPAD_CONFIG" trackpad || return 2
     fi
 
     if blueprint_category_enabled macos-screenshots; then
-        validate_defaults_config "$SCREENSHOTS_CONFIG" || return 2
+        validate_screenshots_config || return 2
     fi
 
     return 0

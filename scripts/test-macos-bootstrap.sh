@@ -20,6 +20,8 @@ WRITE_STATUS=0
 POST_WRITE_MODE="match"
 KILLALL_STATUS=0
 MKDIR_STATUS=0
+MKDIR_NO_CREATE=false
+STAT_FAILURE=false
 TEST_FAILURES=0
 
 mkdir -p "$HOME" "$TEST_ROOT/generated/macos"
@@ -35,6 +37,7 @@ DOCK_CONFIG="$TEST_ROOT/generated/macos/dock.conf"
 KEYBOARD_CONFIG="$TEST_ROOT/generated/macos/keyboard.conf"
 TRACKPAD_CONFIG="$TEST_ROOT/generated/macos/trackpad.conf"
 SCREENSHOTS_CONFIG="$TEST_ROOT/generated/macos/screenshots.conf"
+cd "$TEST_ROOT" || exit 1
 
 log() { :; }
 blueprint_category_enabled() {
@@ -46,9 +49,10 @@ killall() {
 }
 mkdir() {
     local target="${!#}"
-    if [[ "$target" == "$HOME/Screenshots" ]]; then
+    if [[ "$target" == "$HOME/Captures"* ]]; then
         printf 'mkdir:%s\n' "$target" >> "$MUTATION_LOG"
         [[ $MKDIR_STATUS -eq 0 ]] || return "$MKDIR_STATUS"
+        [[ "$MKDIR_NO_CREATE" != true ]] || return 0
     fi
     command mkdir "$@"
 }
@@ -140,7 +144,8 @@ reset_case() {
     : > "$KEYBOARD_CONFIG"
     : > "$TRACKPAD_CONFIG"
     : > "$SCREENSHOTS_CONFIG"
-    rm -rf "$HOME/Screenshots"
+    chmod u+rwx "$HOME/Captures" 2>/dev/null || :
+    rm -rf "$HOME/Captures" "$HOME/Link" "$HOME/Escape" "$HOME/Broken" "$HOME/Loop" "$HOME/Screenshots"
     MODULE_CHANGED=false
     ENABLED_CATEGORIES="all"
     READ_TYPE_FAILURE=""
@@ -149,357 +154,310 @@ reset_case() {
     POST_WRITE_MODE="match"
     KILLALL_STATUS=0
     MKDIR_STATUS=0
+    MKDIR_NO_CREATE=false
+    STAT_FAILURE=false
 }
 
-# Valid matching values retain type-safe, configured-empty semantics.
-reset_case
-cat > "$FINDER_CONFIG" <<EOF
-test.domain|boolKey|bool|true
-test.domain|intKey|int|-3
-test.domain|emptyKey|string|
-test.domain|spaceKey|string|value with spaces
-EOF
-state_set test.domain boolKey bool 1
-state_set test.domain intKey int -03
-state_set test.domain emptyKey string ""
-state_set test.domain spaceKey string "value with spaces"
-check_defaults_config "$FINDER_CONFIG"; status=$?
-expect_status 0 "$status" "matching bool, int, empty string, and spaced string are accepted"
-assert_no_mutation "matching valid configuration performs no mutation"
+stat() {
+    if [[ "$STAT_FAILURE" == true ]]; then echo 'stat: observation failure' >&2; return 2; fi
+    command stat "$@"
+}
+run() {
+    "$@" > "$TEST_ROOT/output" 2>&1
+    status=$?
+    output="$(cat "$TEST_ROOT/output")"
+}
+record() { printf '%s\n' "$2" > "$1"; }
+shots() { printf 'com.apple.screencapture|location|string|%s\n' "$1" > "$SCREENSHOTS_CONFIG"; }
+assert_changed() { [[ "$MODULE_CHANGED" == "$1" ]] && pass "$2" || fail "$2"; }
+assert_count() {
+    local actual
+    actual="$(grep -c "$1" "$MUTATION_LOG" || true)"
+    [[ "$actual" == "$2" ]] && pass "$3" || fail "$3 ($actual)"
+}
 
-# Complete-file validation blocks all writes, including a valid first record.
-validation_cases=(
-    'test.domain|key|bool|true|extra'
-    'test.domain|key|float|1.5'
-    'test.domain|key|bool|maybe'
-    'test.domain|key|int|1.5'
+# Production schema rejects unsafe records before writes, including late errors.
+invalid_records=(
+    'com.apple.finder|ShowPathbar|bool|true|extra'
+    'unknown.domain|ShowPathbar|bool|true'
+    'com.apple.finder|unknown|bool|true'
+    'com.apple.dock|autohide|bool|true'
+    'com.apple.finder|ShowPathbar|string|true'
+    'com.apple.finder|ShowPathbar|bool|maybe'
+    'com.apple.finder|FXPreferredViewStyle|string|a|b'
+    'malformed'
+    $'com.apple.finder|FXPreferredViewStyle|string|a\tb'
+    $'com.apple.finder|FXPreferredViewStyle|string|a\nb'
+    'com.apple.finder|ShowStatusBar|bool|true'
 )
-validation_labels=(
-    'wrong field count'
-    'unsupported type'
-    'invalid bool'
-    'invalid int'
-)
-for ((index=0; index<${#validation_cases[@]}; index++)); do
+for bad in "${invalid_records[@]}"; do
     reset_case
-    printf 'test.domain|first|string|desired\n%s\n' "${validation_cases[$index]}" > "$FINDER_CONFIG"
-    apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-    expect_status 2 "$status" "${validation_labels[$index]} returns 2"
-    assert_no_mutation "${validation_labels[$index]} blocks the valid earlier record"
+    printf 'com.apple.finder|ShowStatusBar|bool|true\n%s\n' "$bad" > "$FINDER_CONFIG"
+    run apply_defaults_config "$FINDER_CONFIG" finder
+    expect_status 2 "$status" "invalid or duplicate category record rejected"
+    assert_no_mutation "invalid late record blocks all writes"
+done
+reset_case
+printf 'com.apple.finder|FXPreferredViewStyle|string|a\000b\n' > "$FINDER_CONFIG"
+run apply_defaults_config "$FINDER_CONFIG" finder
+expect_status 2 "$status" 'NUL rejected before shell parsing'
+assert_no_mutation 'NUL record performs no write'
+
+# All existing category identities, empty files, and old integer speed remain valid.
+reset_case
+for pair in finder dock keyboard trackpad screenshots; do
+    run validate_defaults_config "$TEST_ROOT/generated/macos/$pair.conf" "$pair"
+    expect_status 0 "$status" "empty $pair remains valid"
+done
+record "$TRACKPAD_CONFIG" 'NSGlobalDomain|com.apple.trackpad.scaling|int|1'
+state_set NSGlobalDomain com.apple.trackpad.scaling int 1
+run check_trackpad
+expect_status 0 "$status" 'existing integer Trackpad scaling remains valid'
+record "$KEYBOARD_CONFIG" 'NSGlobalDomain|KeyRepeat|int|-03'
+state_set NSGlobalDomain KeyRepeat int -3
+run check_keyboard
+expect_status 0 "$status" 'integer normalization preserved without invented ranges'
+record "$FINDER_CONFIG" 'com.apple.finder|FXPreferredViewStyle|string|'
+state_set com.apple.finder FXPreferredViewStyle string ''
+run check_finder
+expect_status 0 "$status" 'empty generic string remains present'
+
+# Missing final newline must be read by Check, Preview and Apply.
+reset_case
+printf 'com.apple.finder|ShowPathbar|bool|true' > "$FINDER_CONFIG"
+state_set com.apple.finder ShowPathbar bool 0
+run check_finder
+expect_status 1 "$status" 'EOF Check observes the final record'
+run preview_macos_category "$FINDER_CONFIG" Finder finder
+expect_status 0 "$status" 'EOF Preview succeeds'
+[[ "$output" == *'false -> true'* ]] && pass 'EOF Preview includes record' || fail 'EOF Preview lost record'
+assert_no_mutation 'EOF Preview is read-only'
+run apply_defaults_config "$FINDER_CONFIG" finder
+expect_status 0 "$status" 'EOF Apply writes and verifies record'
+assert_changed true 'EOF Apply records mutation'
+: > "$MUTATION_LOG"
+MODULE_CHANGED=false
+run apply_defaults_config "$FINDER_CONFIG" finder
+expect_status 0 "$status" 'second Apply succeeds'
+assert_changed false 'second Apply unchanged'
+assert_no_mutation 'second Apply has zero writes'
+
+# Tri-state observations, mutation evidence, and failures run in THIS shell.
+for mode in match mismatch observation-error write-failure already-correct absent read-error type-error bad-value wrong-type; do
+    reset_case
+    record "$KEYBOARD_CONFIG" 'NSGlobalDomain|KeyRepeat|int|2'
+    state_set NSGlobalDomain KeyRepeat int 1
+    expected=2; changed=false
+    case "$mode" in
+        match) expected=0; changed=true ;;
+        mismatch|observation-error) POST_WRITE_MODE="$mode"; changed=true ;;
+        write-failure) WRITE_STATUS=2 ;;
+        already-correct) state_set NSGlobalDomain KeyRepeat int 2; expected=0 ;;
+        absent) : > "$STATE_FILE"; expected=0; changed=true ;;
+        read-error) READ_FAILURE='NSGlobalDomain|KeyRepeat' ;;
+        type-error) READ_TYPE_FAILURE='NSGlobalDomain|KeyRepeat' ;;
+        bad-value) state_set NSGlobalDomain KeyRepeat int malformed ;;
+        wrong-type) state_set NSGlobalDomain KeyRepeat string 1 ;;
+    esac
+    run apply_keyboard_settings
+    expect_status "$expected" "$status" "Keyboard $mode status"
+    assert_changed "$changed" "Keyboard $mode accounting"
+    [[ $expected -eq 0 ]] || assert_no_success "$output" "Keyboard $mode no false success"
+    case "$mode" in already-correct|read-error|type-error|bad-value|wrong-type) assert_no_mutation "$mode no mutation" ;; esac
 done
 
+# Finder/Dock Preview restart deduplication and Blueprint gates.
 reset_case
-printf 'malformed\n' > "$FINDER_CONFIG"
-apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "malformed record returns 2"
-assert_no_mutation "malformed record performs zero mutation"
-
-# Observation is tri-state: absence differs; unexpected failures are errors.
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-check_defaults_config "$FINDER_CONFIG"; status=$?
-expect_status 1 "$status" "legitimate preference absence is a difference"
-apply_defaults_config "$FINDER_CONFIG" >/dev/null; status=$?
-expect_status 0 "$status" "legitimate absence can be applied and verified"
-[[ "$MODULE_CHANGED" == true ]] && pass "verified absent preference application records change" || fail "absent preference application did not record change"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-READ_TYPE_FAILURE='test.domain|key'
-apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "unexpected read-type failure returns 2"
-assert_no_mutation "read-type failure performs zero mutation"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-state_set test.domain key string current
-READ_FAILURE='test.domain|key'
-apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "unexpected value-read failure returns 2"
-assert_no_mutation "value-read failure performs zero mutation"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-state_set test.domain key int 1
-apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "incompatible observed native type returns 2"
-assert_no_mutation "incompatible native type performs zero mutation"
-
-reset_case
-printf 'test.domain|key|int|2\n' > "$FINDER_CONFIG"
-state_set test.domain key int malformed
-apply_defaults_config "$FINDER_CONFIG" >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "malformed observed integer returns 2"
-assert_no_mutation "malformed observed integer performs zero mutation"
-
-# Apply and verify failures are truthful.
-reset_case
-printf 'test.domain|key|int|2\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key int 1
-apply_defaults_config "$KEYBOARD_CONFIG" >/dev/null; status=$?
-expect_status 0 "$status" "different valid preference is written and verified"
-[[ "$(state_get test.domain key 4)" == 2 ]] && pass "successful mutation reaches desired state" || fail "successful mutation stored wrong state"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string current
-WRITE_STATUS=2
-output="$(apply_keyboard_settings 2>&1)"; status=$?
-expect_status 2 "$status" "failed defaults write returns 2"
-assert_no_success "$output" "failed defaults write emits no category success"
-[[ "$MODULE_CHANGED" == false ]] && pass "failed defaults write reports no change" || fail "failed defaults write reported change"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string current
-ENABLED_CATEGORIES='macos-keyboard'
-WRITE_STATUS=2
-output="$(apply_macos_settings 2>&1)"; status=$?
-expect_status 2 "$status" "failed category mutation remains error through macOS lifecycle"
-assert_no_success "$output" "failed category mutation emits no macOS completion success"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string current
-POST_WRITE_MODE=mismatch
-output="$(apply_keyboard_settings 2>&1)"; status=$?
-expect_status 2 "$status" "post-apply mismatch returns 2"
-assert_no_success "$output" "post-apply mismatch emits no category success"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string current
-POST_WRITE_MODE=observation-error
-output="$(apply_keyboard_settings 2>&1)"; status=$?
-expect_status 2 "$status" "post-apply observation failure returns 2"
-assert_no_success "$output" "post-apply observation failure emits no category success"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-state_set test.domain key string current
-KILLALL_STATUS=2
-output="$(apply_finder_settings 2>&1)"; status=$?
-expect_status 2 "$status" "failed related restart mutation returns 2"
-assert_no_success "$output" "failed related restart emits no category success"
-
-# Screenshots validates the complete file before its directory mutation.
-reset_case
-printf 'test.domain|valid|string|desired\nmalformed\n' > "$SCREENSHOTS_CONFIG"
-output="$(apply_screenshots_settings 2>&1)"; status=$?
-expect_status 2 "$status" "malformed Screenshots configuration returns 2"
-assert_no_mutation "malformed Screenshots configuration performs no mkdir or defaults write"
-assert_no_success "$output" "malformed Screenshots configuration emits no success"
-
-reset_case
-printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
-state_set test.domain location string current
-apply_screenshots_settings >/dev/null 2>&1; status=$?
-expect_status 0 "$status" "valid differing Screenshots configuration applies normally"
-if [[ -d "$HOME/Screenshots" && "$MODULE_CHANGED" == true &&
-      "$(grep -c '^write:' "$MUTATION_LOG")" -eq 1 ]]; then
-    pass "valid Screenshots configuration creates directory and writes preference"
-else
-    fail "valid Screenshots configuration did not preserve directory/apply behavior"
-fi
-
-reset_case
-printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
-state_set test.domain location string current
-MKDIR_STATUS=2
-output="$(apply_screenshots_settings 2>&1)"; status=$?
-expect_status 2 "$status" "Screenshots mkdir failure returns 2"
-[[ "$(grep -c '^write:' "$MUTATION_LOG" || true)" -eq 0 ]] && pass "Screenshots mkdir failure blocks defaults write" || fail "Screenshots mkdir failure reached defaults write"
-assert_no_success "$output" "Screenshots mkdir failure emits no success"
-
-# Blueprint skips disabled category files and preserves enabled/no-Blueprint behavior.
-reset_case
-rm -f "$DOCK_CONFIG" "$KEYBOARD_CONFIG" "$TRACKPAD_CONFIG" "$SCREENSHOTS_CONFIG"
-ENABLED_CATEGORIES='macos-finder'
-check_macos_settings; status=$?
-expect_status 0 "$status" "disabled Blueprint categories skip validation"
-assert_no_mutation "disabled Blueprint categories perform no mutation"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string current
-ENABLED_CATEGORIES='macos-keyboard'
-apply_macos_settings >/dev/null 2>&1; status=$?
-expect_status 0 "$status" "enabled Blueprint category retains apply behavior"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$KEYBOARD_CONFIG"
-state_set test.domain key string desired
-apply_macos_settings >/dev/null 2>&1; status=$?
-expect_status 0 "$status" "no-Blueprint all-category behavior remains compatible"
-
-# Preview uses production validation, typed reads, and comparisons without mutation.
-run_macos_preview() {
-    preview_macos_settings > "$TEST_ROOT/preview-output" 2>&1
-    status=$?
-    output="$(cat "$TEST_ROOT/preview-output")"
-}
-reset_case
-printf 'test.domain|boolKey|bool|true\ntest.domain|intKey|int|-3\n' > "$FINDER_CONFIG"
-state_set test.domain boolKey bool 1
-state_set test.domain intKey int -03
-ENABLED_CATEGORIES='macos-finder'
+record "$FINDER_CONFIG" $'com.apple.finder|ShowPathbar|bool|1\ncom.apple.finder|ShowStatusBar|bool|1'
+ENABLED_CATEGORIES=macos-finder
 MODULE_CHANGED=preserved
-run_macos_preview
-expect_status 0 "$status" "Preview accepts already-correct typed settings"
-[[ "$output" != *'Would change macOS setting'* ]] && pass "matching macOS Preview emits no plan" || fail "matching macOS Preview emitted a plan"
-assert_no_mutation "matching macOS Preview performs no mutation"
-[[ "$MODULE_CHANGED" == preserved ]] && pass "matching macOS Preview preserves Changed state" || fail "matching macOS Preview touched Changed state"
-
-reset_case
-printf 'test.domain|boolKey|bool|true\ntest.domain|intKey|int|2\ntest.domain|missing|string|desired\n' > "$FINDER_CONFIG"
-state_set test.domain boolKey bool false
-state_set test.domain intKey int 1
-ENABLED_CATEGORIES='macos-finder'
-MODULE_CHANGED=preserved
-run_macos_preview
-expect_status 0 "$status" "Preview reports multiple Finder changes"
-if [[ "$output" == *'Would change macOS setting: test.domain/boolKey (false -> true)'* &&
-      "$output" == *'Would change macOS setting: test.domain/intKey (1 -> 2)'* &&
-      "$output" == *'Would change macOS setting: test.domain/missing (absent -> desired)'* ]]; then
-    pass "Preview reports typed current, desired, and absent values"
-else
-    fail "Preview setting context is incomplete"
-fi
-[[ "$(grep -c 'Would restart process: Finder' <<< "$output")" -eq 1 ]] && pass "Finder restart is planned once" || fail "Finder restart plan is missing or duplicated"
-assert_no_mutation "Finder Preview performs no defaults write or restart"
-[[ "$MODULE_CHANGED" == preserved ]] && pass "changed Finder Preview preserves Changed state" || fail "changed Finder Preview touched Changed state"
+run preview_macos_settings
+expect_status 0 "$status" 'multiple Finder absent values planned'
+[[ "$(grep -c 'Would restart process: Finder' <<< "$output")" == 1 ]] && pass 'Finder restart once' || fail 'Finder restart count'
+assert_changed preserved 'Preview preserves MODULE_CHANGED'
+assert_no_mutation 'Finder Preview no mutation'
 first_preview="$output"
-run_macos_preview
-[[ $status -eq 0 && "$output" == "$first_preview" ]] && pass "repeated macOS Preview is stable" || fail "repeated macOS Preview output changed"
-assert_no_mutation "repeated macOS Preview remains non-mutating"
+run preview_macos_settings
+[[ "$output" == "$first_preview" ]] && pass 'repeated Preview stable' || fail 'unstable Preview'
+record "$DOCK_CONFIG" $'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0'
+ENABLED_CATEGORIES=macos-dock
+run preview_macos_settings
+[[ $status -eq 0 && "$(grep -c 'Would restart process: Dock' <<< "$output")" == 1 ]] && pass 'Dock restart once' || fail 'Dock restart count'
+READ_TYPE_FAILURE='com.apple.dock|autohide'
+run preview_macos_settings
+expect_status 2 "$status" 'Preview observation error'
+[[ "$output" != *Would* ]] || fail 'error invented plan'
+ENABLED_CATEGORIES=macos-finder
+run preview_macos_settings
+expect_status 0 "$status" 'disabled Dock not inspected'
+KILLALL_STATUS=2
+MODULE_CHANGED=false
+run apply_finder_settings
+expect_status 2 "$status" 'Finder restart failure'
+assert_changed true 'Finder restart failure retains writes'
+assert_no_success "$output" 'Finder restart failure no success'
+
+# Screenshot path validation: fixtures only, never real user directories.
+for bad in '' relative '~otheruser/Shot' '$VAR/Shot' '$HOME/Shot' '${HOME}/Shot' '$(touch sentinel)' '`touch sentinel`' "$HOME/../escape" "$HOME/./bad" "$HOME//bad" $'/tmp/a\nb' $'/tmp/a\tb'; do
+    reset_case
+    shots "$bad"
+    run validate_screenshots_config
+    expect_status 2 "$status" "unsafe Screenshot path rejected: $bad"
+    assert_no_mutation 'unsafe path has no mutation'
+done
+[[ ! -e sentinel ]] || fail 'shell data was executed'
 
 reset_case
-printf 'test.domain|key|string|desired\n' > "$DOCK_CONFIG"
-state_set test.domain key string current
-READ_FAILURE='test.domain|key'
-ENABLED_CATEGORIES='macos-dock'
-run_macos_preview
-expect_status 2 "$status" "Preview observation failure returns 2"
-[[ "$output" != *'Would change macOS setting'* && "$output" != *'Would restart process'* ]] || fail "observation failure produced an invented plan"
-assert_no_mutation "macOS observation failure performs no mutation"
+shots "$HOME/Captures/Nested/Deep"
+run check_screenshots
+expect_status 1 "$status" 'nested missing destination is creatable'
+assert_no_mutation 'nested Check is read-only'
+reset_case
+shots '~/Captures'
+run apply_screenshots_settings
+expect_status 0 "$status" 'leading tilde destination restored'
+[[ "$(state_get com.apple.screencapture location 4)" == "$HOME/Captures" ]] && pass 'tilde resolved to absolute preference' || fail 'tilde resolution'
 
 reset_case
-printf 'test.domain|first|string|desired\ntest.domain|second|bool|true\n' > "$DOCK_CONFIG"
-state_set test.domain first string current
-state_set test.domain second bool false
-ENABLED_CATEGORIES='macos-dock'
-run_macos_preview
-expect_status 0 "$status" "Preview reports multiple Dock changes"
-[[ "$(grep -c 'Would restart process: Dock' <<< "$output")" -eq 1 ]] && pass "Dock restart is planned once" || fail "Dock restart plan is duplicated"
-assert_no_mutation "Dock Preview performs no defaults write or restart"
-
+command mkdir -p "$TEST_ROOT/outside" "$HOME/Captures"
+ln -s "$HOME/Captures" "$HOME/Link"
+shots "$HOME/Link"
+run validate_screenshots_config
+expect_status 0 "$status" 'safe internal directory symlink accepted'
+ln -s "$TEST_ROOT/outside" "$HOME/Escape"
+shots "$HOME/Escape"
+run validate_screenshots_config
+expect_status 2 "$status" 'HOME escaping symlink rejected'
+ln -s "$HOME/missing" "$HOME/Broken"
+shots "$HOME/Broken"
+run validate_screenshots_config
+expect_status 2 "$status" 'dangling symlink rejected'
+ln -s "$HOME/Loop" "$HOME/Loop"
+shots "$HOME/Loop"
+run validate_screenshots_config
+expect_status 2 "$status" 'symlink loop rejected'
+shots "$TEST_ROOT/outside"
+run validate_screenshots_config
+expect_status 0 "$status" 'existing writable outside directory accepted'
+shots "$TEST_ROOT/missing-outside"
+run validate_screenshots_config
+expect_status 2 "$status" 'missing outside tree rejected'
+shots "/Volumes/toolkit-missing-$RANDOM-$RANDOM/Captures"
+run validate_screenshots_config
+expect_status 2 "$status" 'missing mount destination rejected'
 reset_case
-printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
-state_set test.domain location string current
-ENABLED_CATEGORIES='macos-screenshots'
-command mkdir -p "$HOME/Screenshots"
+printf file > "$HOME/Captures"
+shots "$HOME/Captures"
+run validate_screenshots_config
+expect_status 2 "$status" 'wrong filesystem type rejected'
+reset_case
+command mkdir -p "$HOME/Captures"
+chmod 000 "$HOME/Captures"
+shots "$HOME/Captures"
+run validate_screenshots_config
+expect_status 2 "$status" 'inaccessible destination rejected'
+chmod 700 "$HOME/Captures"
+STAT_FAILURE=true
+run check_screenshots
+expect_status 2 "$status" 'filesystem observation failure is not absence'
+
+# Complete Screenshot Preview decision table, including explicit plan signal.
+for mode in noop preference directory both unsafe; do
+    reset_case
+    shots "$HOME/Captures"
+    state_set com.apple.screencapture location string "$HOME/Captures"
+    case "$mode" in
+        noop|preference) command mkdir -p "$HOME/Captures" ;;
+        unsafe) printf file > "$HOME/Captures" ;;
+    esac
+    case "$mode" in preference|both|unsafe) state_set com.apple.screencapture location string "$HOME/Old" ;; esac
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_screenshots_settings
+    if [[ "$mode" == unsafe ]]; then
+        expect_status 2 "$status" 'unsafe Preview error'
+        [[ "$output" != *Would* && "$PREVIEW_HAS_CHANGES" == false ]] || fail 'unsafe actionable plan'
+    else
+        expect_status 0 "$status" "Screenshot Preview $mode"
+        case "$mode" in
+            noop) [[ "$output" != *Would* && "$PREVIEW_HAS_CHANGES" == false ]] || fail 'no-op plan' ;;
+            directory)
+                [[ "$output" == *'Would create screenshots directory'* && "$output" != *'Would change'* && "$output" != *'Would restart'* && "$PREVIEW_HAS_CHANGES" == true ]] || fail 'mkdir-only Preview' ;;
+            preference)
+                [[ "$output" != *'Would create'* && "$output" == *'Would change'* && "$output" == *'Would restart'* ]] || fail 'preference-only Preview' ;;
+            both)
+                [[ "$output" == *'Would create'*'Would change'*'Would restart'* ]] || fail 'both plan order' ;;
+        esac
+    fi
+    assert_changed preserved "Preview $mode preserves accounting"
+    assert_no_mutation "Preview $mode no filesystem/preferences/restart"
+done
+
+for mode in directory preference both mkdir-failure mkdir-verify write-failure pref-verify pref-read-error restart-failure; do
+    reset_case
+    shots "$HOME/Captures/Nested"
+    state_set com.apple.screencapture location string "$HOME/Old"
+    expected=0; changed=true
+    case "$mode" in
+        directory) state_set com.apple.screencapture location string "$HOME/Captures/Nested" ;;
+        preference|write-failure|pref-verify|pref-read-error|restart-failure) command mkdir -p "$HOME/Captures/Nested" ;;
+    esac
+    case "$mode" in
+        mkdir-failure) MKDIR_STATUS=2; expected=2; changed=false ;;
+        mkdir-verify) MKDIR_NO_CREATE=true; expected=2 ;;
+        write-failure) WRITE_STATUS=2; expected=2; changed=false ;;
+        pref-verify) POST_WRITE_MODE=mismatch; expected=2 ;;
+        pref-read-error) POST_WRITE_MODE=observation-error; expected=2 ;;
+        restart-failure) KILLALL_STATUS=2; expected=2 ;;
+    esac
+    run apply_screenshots_settings
+    expect_status "$expected" "$status" "Screenshot Apply $mode"
+    assert_changed "$changed" "Screenshot Apply $mode accounting"
+    [[ $expected -eq 0 ]] || assert_no_success "$output" "$mode no false success"
+    case "$mode" in
+        directory|mkdir-failure|mkdir-verify)
+            assert_count '^killall:' 0 "$mode no restart"
+            assert_count '^write:' 0 "$mode no preference write" ;;
+        preference|both|restart-failure) assert_count '^killall:SystemUIServer' 1 "$mode restart once" ;;
+    esac
+    [[ ! -e "$HOME/Screenshots" ]] || fail 'unrelated hard-coded directory created'
+    if [[ $expected -eq 0 ]]; then
+        : > "$MUTATION_LOG"
+        MODULE_CHANGED=false
+        run apply_screenshots_settings
+        expect_status 0 "$status" "$mode second Apply succeeds"
+        assert_changed false "$mode second Apply unchanged"
+        assert_no_mutation "$mode second Apply no mutations"
+    fi
+done
+reset_case
+# Screenshot EOF and missing location retain the documented distinct semantics.
+printf 'com.apple.screencapture|location|string|%s' "$HOME/Captures" > "$SCREENSHOTS_CONFIG"
+run apply_screenshots_settings
+expect_status 0 "$status" 'Screenshot final line without newline restored'
+reset_case
+run apply_screenshots_settings
+expect_status 0 "$status" 'absent location is unmanaged'
+assert_no_mutation 'absent location creates no fallback'
+ENABLED_CATEGORIES=macos-keyboard
+record "$KEYBOARD_CONFIG" 'NSGlobalDomain|KeyRepeat|int|2'
+run apply_macos_settings
+expect_status 0 "$status" 'enabled category lifecycle remains compatible'
 : > "$MUTATION_LOG"
-run_macos_preview
-expect_status 0 "$status" "Screenshots Preview accepts existing directory"
-[[ "$output" != *'Would create screenshots directory'* &&
-   "$(grep -c 'Would restart process: SystemUIServer' <<< "$output")" -eq 1 ]] || fail "existing Screenshots directory plan is incorrect"
-assert_no_mutation "existing-directory Screenshots Preview performs no mutation"
+ENABLED_CATEGORIES=all
+run apply_macos_settings
+expect_status 0 "$status" 'no-Blueprint behavior remains compatible'
+assert_no_mutation 'no-Blueprint matching state unchanged'
 
-reset_case
-printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
-state_set test.domain location string current
-ENABLED_CATEGORIES='macos-screenshots'
-run_macos_preview
-expect_status 0 "$status" "Screenshots Preview plans required directory"
-if [[ "$output" == *"Would create screenshots directory: $HOME/Screenshots"* &&
-      "$(grep -c 'Would restart process: SystemUIServer' <<< "$output")" -eq 1 ]]; then
-    pass "Screenshots directory and restart plans match Bootstrap Apply"
-else
-    fail "Screenshots directory or restart plan is incorrect"
-fi
-[[ ! -e "$HOME/Screenshots" ]] || fail "Screenshots Preview created the directory"
-assert_no_mutation "absent-directory Screenshots Preview performs no mutation"
-
-reset_case
-printf 'test.domain|location|string|desired\n' > "$SCREENSHOTS_CONFIG"
-state_set test.domain location string desired
-ENABLED_CATEGORIES='macos-screenshots'
-run_macos_preview
-expect_status 0 "$status" "matching Screenshots defaults preserve current lifecycle"
-[[ "$output" != *'Would create screenshots directory'* && "$output" != *'Would restart process'* ]] || fail "Preview invented Screenshots Apply for matching defaults"
-assert_no_mutation "matching Screenshots Preview performs no mutation"
-
-reset_case
-printf 'test.domain|key|string|desired\n' > "$FINDER_CONFIG"
-printf 'test.domain|disabled|string|desired\n' > "$DOCK_CONFIG"
-state_set test.domain key string desired
-READ_TYPE_FAILURE='test.domain|disabled'
-ENABLED_CATEGORIES='macos-finder'
-run_macos_preview
-expect_status 0 "$status" "Blueprint-disabled macOS category is not inspected"
-[[ "$output" != *disabled* ]] || fail "disabled macOS category reached Preview"
-assert_no_mutation "Blueprint-selected macOS Preview performs no mutation"
-
-# Local errors retain lifecycle status 2.
-reset_case
-printf 'test.domain|key|int|invalid\n' > "$FINDER_CONFIG"
-ERROR_COUNT=0
-WARNING_COUNT=0
-MODULES_CHECKED=0
-run_module "macOS Consumer" check_finder >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "local macOS consumer error reaches run_module"
-[[ "$ERROR_COUNT" -eq 1 ]] && pass "run_module records macOS consumer error" || fail "run_module lost macOS consumer error"
-later_success() { return 0; }
-run_module "Later Success" later_success >/dev/null 2>&1
-toolkit_exit_code; status=$?
-expect_status 2 "$status" "later success cannot erase macOS consumer error"
-
-# Repeated category checks retain exact 0/1/2 orchestration semantics.
-CHECK_FINDER_STATUS=0
-CHECK_DOCK_STATUS=0
-check_finder() { return "$CHECK_FINDER_STATUS"; }
-check_dock() { return "$CHECK_DOCK_STATUS"; }
-apply_finder_settings() { printf 'apply:finder\n' >> "$MUTATION_LOG"; return 0; }
+# Later successful category must not erase a failure or apply an unobserved state.
+check_finder() { return 2; }
+check_dock() { return 1; }
+apply_finder_settings() { fail 'failed Check reached Finder Apply'; }
 apply_dock_settings() { printf 'apply:dock\n' >> "$MUTATION_LOG"; return 0; }
-
-reset_case
-ENABLED_CATEGORIES='macos-finder'
-CHECK_FINDER_STATUS=0
-apply_macos_components >/dev/null 2>&1; status=$?
-expect_status 0 "$status" "repeat category check 0 remains satisfied"
-assert_no_mutation "repeat category check 0 does not apply"
-
-reset_case
-ENABLED_CATEGORIES='macos-finder'
-CHECK_FINDER_STATUS=1
-apply_macos_components >/dev/null 2>&1; status=$?
-expect_status 0 "$status" "repeat category check 1 applies successfully"
-[[ "$(cat "$MUTATION_LOG")" == 'apply:finder' ]] && pass "repeat category check 1 calls apply" || fail "repeat category check 1 did not call apply"
-
-reset_case
 ENABLED_CATEGORIES=$'macos-finder\nmacos-dock'
-CHECK_FINDER_STATUS=2
-CHECK_DOCK_STATUS=1
-apply_macos_components >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "repeat category check 2 remains error"
-if [[ "$(cat "$MUTATION_LOG")" == 'apply:dock' ]]; then
-    pass "check error skips its apply and later category success cannot erase it"
-else
-    fail "check error reached apply or was erased by later category"
-fi
+run apply_macos_components
+expect_status 2 "$status" 'later category success preserves earlier error'
+[[ "$(cat "$MUTATION_LOG")" == apply:dock ]] || fail 'category Check dispatch changed'
 
-reset_case
-ENABLED_CATEGORIES='macos-finder'
-CHECK_FINDER_STATUS=7
-apply_macos_components >/dev/null 2>&1; status=$?
-expect_status 2 "$status" "unexpected repeat category status is treated as error 2"
-assert_no_mutation "unexpected repeat category status does not apply"
-
-echo
-if [[ $TEST_FAILURES -eq 0 ]]; then
-    echo "All macOS Bootstrap consumer safety tests passed"
-    exit 0
-fi
-
-echo "$TEST_FAILURES macOS Bootstrap test(s) failed" >&2
-exit 1
+[[ $TEST_FAILURES -eq 0 ]] || { echo "$TEST_FAILURES macOS Bootstrap test(s) failed"; exit 1; }
+echo 'All macOS Bootstrap consumer safety tests passed'

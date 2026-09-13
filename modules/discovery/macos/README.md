@@ -33,7 +33,16 @@ config/generated/macos/
 - screenshots.conf
 
 Каждая запись использует существующий формат `domain|key|type|value`.
-Поддерживаются текущие типы `bool`, `int` и `string`.
+Поддерживаются текущие типы `bool`, `int` и `string`. Float в 9A не добавлен.
+Полный текущий allowlist и Screenshot path-контракт описаны в
+[Configuration](../../../docs/toolkit/CONFIGURATION.md#macos-generated-records-stage-9a).
+
+Общий validator `modules/settings/macos/records.sh` проверяет candidate-файл
+до публикации: category/domain/key/type, дубликаты и безопасное scalar encoding.
+Delimiter `|`, ASCII controls (включая NUL) и multiline values запрещены.
+Screenshot `location` должен быть непустым absolute path или `~/...`; никакое
+shell-выражение не выполняется. Проверка доступности каталога на Target Mac
+относится к consumer, а не к source Discovery.
 
 ---
 

@@ -24,7 +24,7 @@ export_dock_settings() {
 
     action "Exporting Dock configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_dock_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate dock serialize_dock_settings; then
         error "Failed to export Dock configuration"
         return 2
     fi

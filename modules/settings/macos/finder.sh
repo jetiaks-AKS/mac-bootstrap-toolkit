@@ -12,7 +12,7 @@ FINDER_CONFIG="config/generated/macos/finder.conf"
 
 check_finder() {
 
-    check_defaults_config "$FINDER_CONFIG"
+    check_defaults_config "$FINDER_CONFIG" finder
 
 }
 
@@ -24,7 +24,7 @@ apply_finder_settings() {
 
     info "Configuring Finder..."
 
-    if ! apply_defaults_config "$FINDER_CONFIG"; then
+    if ! apply_defaults_config "$FINDER_CONFIG" finder; then
         error "Failed to configure Finder"
         return 2
     fi

@@ -417,7 +417,12 @@ Workspace Preview сохраняет текущую warning-политику д�
 remote mismatch и существующих non-Git destinations. После clone-плана он не
 предполагает будущую branch state. macOS Preview использует typed defaults
 inspection; один restart-план выводится для изменяемой Finder, Dock или
-Screenshots category независимо от количества изменяемых settings.
+Screenshots category независимо от количества изменяемых settings. Для Screenshots
+mkdir-only plan не требует restart: проверяются generated destination и
+filesystem, даже если preference уже совпадает. Порядок планов — directory →
+preference → restart; unsafe destination возвращает `2` до actionable output.
+План создания каталога использует существующий Preview change signal, поэтому
+Guided Workflow предлагает Bootstrap confirmation и для directory-only change.
 
 Порядок domain inspections: Homebrew formulae → casks → App Store → VS Code
 extensions → Git configuration → VS Code settings → Workspace folders →
@@ -460,7 +465,7 @@ Bootstrap
 Preview (`--dry-run`)
 ```
 
-Global Verification остаётся запланированной возможностью.
+Global Verification относится к Future / Optional.
 
 ---
 
@@ -489,7 +494,7 @@ Apply these changes with Bootstrap? [y/N]
 ```
 
 Warning status Preview при этом сохраняется как итоговый status `1`. Global
-Verification не входит в Guided Workflow и остаётся запланированной.
+Verification не входит в Guided Workflow и относится к Future / Optional.
 
 ---
 

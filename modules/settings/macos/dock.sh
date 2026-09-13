@@ -12,7 +12,7 @@ DOCK_CONFIG="config/generated/macos/dock.conf"
 
 check_dock() {
 
-    check_defaults_config "$DOCK_CONFIG"
+    check_defaults_config "$DOCK_CONFIG" dock
 
 }
 
@@ -24,7 +24,7 @@ apply_dock_settings() {
 
     info "Configuring Dock..."
 
-    if ! apply_defaults_config "$DOCK_CONFIG"; then
+    if ! apply_defaults_config "$DOCK_CONFIG" dock; then
         error "Failed to configure Dock"
         return 2
     fi

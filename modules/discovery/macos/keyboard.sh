@@ -23,7 +23,7 @@ export_keyboard_settings() {
 
     action "Exporting Keyboard configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_keyboard_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate keyboard serialize_keyboard_settings; then
         error "Failed to export Keyboard configuration"
         return 2
     fi

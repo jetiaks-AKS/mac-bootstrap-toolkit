@@ -26,7 +26,7 @@ export_finder_settings() {
 
     action "Exporting Finder configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_finder_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate finder serialize_finder_settings; then
         error "Failed to export Finder configuration"
         return 2
     fi

@@ -22,7 +22,7 @@ export_screenshots_settings() {
 
     action "Exporting Screenshots configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_screenshots_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate screenshots serialize_screenshots_settings; then
         error "Failed to export Screenshots configuration"
         return 2
     fi

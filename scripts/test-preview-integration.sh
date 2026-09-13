@@ -95,8 +95,21 @@ cmp() { [[ "$TEST_CASE" != vscode-error ]] || return 2; command cmp "$@"; }
 defaults() {
     observe "defaults $*"
     case "${1:-}" in
-        read-type) [[ "$TEST_CASE" != macos-error ]] || return 2; echo 'Type is string' ;;
-        read) echo current ;;
+        read-type)
+            [[ "$TEST_CASE" != macos-error ]] || return 2
+            case "$3" in
+                FXPreferredViewStyle|location) echo 'Type is string' ;;
+                KeyRepeat) echo 'Type is integer' ;;
+                *) echo 'Type is boolean' ;;
+            esac ;;
+        read)
+            case "$3" in
+                FXPreferredViewStyle) echo icnv ;;
+                location)
+                    if [[ "$TEST_CASE" == workflow-directory-only ]]; then echo "$HOME/Captures"; else echo "$HOME/OldCaptures"; fi ;;
+                KeyRepeat) echo 5 ;;
+                *) echo 0 ;;
+            esac ;;
         *) mutation "defaults $*" ;;
     esac
 }
@@ -137,10 +150,11 @@ HAS_LAUNCH="false"
 HAS_EXTENSIONS="false"
 REPO
     done > "$generated/workspace/repositories.conf"
-    local category
-    for category in finder dock keyboard trackpad screenshots; do
-        printf 'test.%s|key|string|desired\n' "$category" > "$generated/macos/$category.conf"
-    done
+    printf 'com.apple.finder|FXPreferredViewStyle|string|Nlsv\n' > "$generated/macos/finder.conf"
+    printf 'com.apple.dock|autohide|bool|1\n' > "$generated/macos/dock.conf"
+    printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
+    printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\n' > "$generated/macos/trackpad.conf"
+    printf 'com.apple.screencapture|location|string|%s\n' "$TEST_ROOT/home/Captures" > "$generated/macos/screenshots.conf"
 }
 
 write_blueprint() {
@@ -217,14 +231,14 @@ Would update VS Code settings
 Would create workspace folder: $TEST_ROOT/home/NewFolder
 Would switch repository branch: existing -> main
 Would clone repository: absent
-Would change macOS setting: test.finder/key (current -> desired)
+Would change macOS setting: com.apple.finder/FXPreferredViewStyle (icnv -> Nlsv)
 Would restart process: Finder
-Would change macOS setting: test.dock/key (current -> desired)
+Would change macOS setting: com.apple.dock/autohide (false -> true)
 Would restart process: Dock
-Would change macOS setting: test.keyboard/key (current -> desired)
-Would change macOS setting: test.trackpad/key (current -> desired)
-Would change macOS setting: test.screenshots/key (current -> desired)
-Would create screenshots directory: $TEST_ROOT/home/Screenshots
+Would change macOS setting: NSGlobalDomain/KeyRepeat (5 -> 2)
+Would change macOS setting: com.apple.AppleMultitouchTrackpad/Clicking (false -> true)
+Would create screenshots directory: $TEST_ROOT/home/Captures
+Would change macOS setting: com.apple.screencapture/location ($TEST_ROOT/home/OldCaptures -> $TEST_ROOT/home/Captures)
 Would restart process: SystemUIServer
 PLAN
 if ! cmp -s "$TEST_ROOT/first-plan" "$TEST_ROOT/expected-plan"; then
@@ -354,6 +368,21 @@ for preview_status in 0 1; do
         echo 'FAIL: zero plans reached Bootstrap'; ((TEST_FAILURES++))
     fi
 done
+
+# A directory-only production plan must reach Workflow confirmation.
+reset_fixture
+write_blueprint
+sed -i '' 's/="true"/="false"/g; s/macos-screenshots="false"/macos-screenshots="true"/' "$FIXTURE/config/blueprint.conf"
+# Preserve all required sections while removing item selections.
+awk '/^\[/ || /=/' "$FIXTURE/config/blueprint.conf" > "$TEST_ROOT/directory-blueprint"
+cp "$TEST_ROOT/directory-blueprint" "$FIXTURE/config/blueprint.conf"
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
+TEST_MODE=--workflow run_case workflow-directory-only 0 <<< "$workflow_input"
+assert_contains "$TEST_ROOT/output" "Would create screenshots directory: $TEST_ROOT/home/Captures"
+assert_contains "$TEST_ROOT/output" 'Apply these changes'
+if grep -q 'Would change macOS setting\|Would restart process\|Mode    : Bootstrap' "$TEST_ROOT/output"; then
+    echo 'FAIL: directory-only Workflow planned unrelated changes'; ((TEST_FAILURES++))
+fi
 
 # Real CLI + selector: q/Q must never reach Preview or Bootstrap.
 for mode in --blueprint --workflow; do

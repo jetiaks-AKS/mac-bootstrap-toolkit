@@ -104,6 +104,7 @@ write_fixture_file modules/settings/macos/macos.sh \
     'KEYBOARD_CONFIG=keyboard' \
     'TRACKPAD_CONFIG=trackpad' \
     'SCREENSHOTS_CONFIG=screenshots' \
+    'validate_screenshots_config() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'validate_defaults_config() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'check_macos_settings() { return 1; }' \
     'preview_macos_settings() { printf "%s\n" macos-preview >> "$TEST_SPY_FILE"; }' \

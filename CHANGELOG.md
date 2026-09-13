@@ -25,6 +25,26 @@ The format is based on the principles of **Keep a Changelog**.
 * Guided Workflow now finishes without a Bootstrap prompt when Preview reports
   zero planned changes, while preserving Preview warning and error semantics.
 
+### Fixed
+
+* Stage 9A: validate current macOS category/domain/key/type records and reject
+  duplicates, unsafe scalar bytes and malformed candidate files before Discovery
+  publication or Bootstrap mutation. Preserve final records without a newline.
+* Retain macOS Changed accounting after successful writes followed by failed
+  Verify or restart, without reporting false success.
+* Prepare and verify the generated Screenshot destination instead of creating
+  an unrelated hard-coded directory. Detect directory-only changes in Check,
+  Preview and Guided Workflow; restart SystemUIServer only for preference writes.
+* Validate Screenshot paths before Bootstrap startup mutations; preserve existing
+  directories, reject unsafe paths, and never create a missing outside-HOME tree.
+
+### Changed
+
+* Removed unused static `SCREENSHOTS_DIR`; generated location is the sole source.
+* Prioritized Stage 9 macOS Coverage Expansion. Global Verification is
+  Future / Optional. Trackpad
+  float support remains deferred; Stage 9A retains the existing integer contract.
+
 ## [3.1.0] - 07.09.2026
 
 Minor release adding a complete read-only Preview of the selected Bootstrap

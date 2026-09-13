@@ -269,14 +269,23 @@ Use `--verbose` when additional diagnostics are needed.
 
 ---
 
+## Screenshot destination portability
+
+Generated Screenshot `location` is the only destination source. Absolute paths
+are preserved; leading `~/` resolves to the target user HOME. Other shell
+expansions are rejected. An old `/Users/other-user/...` path is not rewritten.
+Missing directories may be created inside HOME only; an outside-HOME destination
+must already be writable and accessible. Preview also reports directory-only
+changes without a process restart. See [Configuration](../toolkit/CONFIGURATION.md)
+for the complete path policy.
+
 ## Not implemented yet
 
 The current workflow does not yet include:
 
 - aggregate post-Bootstrap Verification
 
-This remains a planned extension of the existing workflow rather than a
-separate configuration system.
+This is a Future / Optional extension of the existing workflow.
 
 Other future capabilities are tracked in the project
 [Roadmap](../../ROADMAP.md).

@@ -156,13 +156,11 @@ Blueprint
 Dry-run / Preview
     ↓
 Bootstrap
-    ↓
-Global Verification
 ```
 
 CLI `--dry-run`, его read-only startup path и domain Preview для Applications,
 Git configuration, VS Code settings, Workspace и macOS реализованы. Global
-Verification остаётся запланированной и пока не реализована.
+Verification относится к Future / Optional и пока не реализована.
 
 ### Dry-run / Preview
 
@@ -183,11 +181,19 @@ category. Preview inspections используют только inspection accou
 используют Bootstrap state `MODULE_CHANGED`. Preview не является источником
 конфигурации или обязательным отдельным planning engine.
 
-Screenshots Bootstrap сейчас создаёт жёстко заданный каталог
-`$HOME/Screenshots`, когда defaults category требует Apply, независимо от
-generated desired location. Preview сообщает это фактическое поведение.
-Согласование каталога с generated state остаётся техническим долгом, а не
-предполагаемым поведением Preview.
+Единственный источник Screenshot destination — generated `location`. Check
+проверяет preference и разрешённый каталог. Отсутствующий безопасный каталог
+внутри HOME требует Apply даже при совпадающем preference. Preview сообщает
+этот план через `preview_action`, в том числе для Guided Workflow. Apply создаёт
+и проверяет каталог до записи preference; SystemUIServer перезапускается только
+после реальной preference mutation. Финальный Verify подтверждает preference и
+доступность каталога, а не визуальное обновление Screenshot UI.
+Path-контракт описан в [Configuration](CONFIGURATION.md).
+
+Discovery и consumers используют общий фиксированный scalar-контракт текущих
+категорий из `modules/settings/macos/records.sh`. Candidate-файл валидируется
+до публикации. Startup проверяет selected categories и Screenshot path до
+preflight. Core lifecycle и категории Blueprint не изменены.
 
 Порядок startup: CLI → logger → Blueprint validation → selected-input
 validation → read-only preflight → read-only Core inspection → domain Preview
@@ -200,7 +206,7 @@ inspections продолжаются. Каждый domain может остан�
 
 ### Global Verification
 
-Global Verification — будущая post-Bootstrap capability, которая будет
+Global Verification — опциональная будущая post-Bootstrap capability, которая сможет
 оценивать итоговое выбранное состояние и формировать aggregate-подтверждение.
 Она отличается от текущего локального Verify внутри модулей и не требует
 заранее определять отдельный сложный engine.

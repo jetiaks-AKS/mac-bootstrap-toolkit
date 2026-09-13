@@ -153,13 +153,11 @@ Blueprint
 Dry-run / Preview
     ↓
 Bootstrap
-    ↓
-Global Verification
 ```
 
 The `--dry-run` CLI, its read-only startup path, and domain Preview for
 Applications, Git configuration, VS Code settings, Workspace, and macOS are
-implemented. Global Verification remains planned and unimplemented.
+implemented. Global Verification is Future / Optional and unimplemented.
 
 ### Dry-run / Preview
 
@@ -179,11 +177,19 @@ restarts once per changed category. Preview inspections use inspection-only
 lifecycle accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview
 is not a configuration source or a separately required planning engine.
 
-Screenshots Bootstrap currently creates the hard-coded `$HOME/Screenshots`
-directory whenever its defaults category requires Apply, independently of the
-generated desired location. Preview reports this actual behavior. Aligning the
-directory with generated state remains technical debt rather than inferred
-Preview behavior.
+Screenshots uses the generated `location` as its only destination source. Its
+local Check observes both the preference and the resolved directory. A missing
+safe directory inside HOME is a real change even when the preference matches;
+Preview signals that plan through `preview_action`, including in Guided Workflow.
+Apply prepares and verifies the directory before writing the preference. Only
+actual preference writes require SystemUIServer restart. Final Verify checks the
+managed preference and usable directory, not visual Screenshot UI behavior.
+See [Configuration](CONFIGURATION.md) for path and compatibility rules.
+
+macOS Discovery and consumers share the fixed current-category scalar contract
+in `modules/settings/macos/records.sh`. Candidate files are validated before
+publication. Bootstrap validates selected categories and Screenshot path
+availability before preflight; Core lifecycle and Blueprint categories are unchanged.
 
 Startup order is CLI → logger → Blueprint validation → selected-input
 validation → read-only preflight → read-only Core inspection → domain Preview
@@ -196,7 +202,7 @@ external mutation spies, target snapshots, and terminal/logger Summary parity.
 
 ### Global Verification
 
-Global Verification is a future post-Bootstrap capability that will evaluate
+Global Verification is an optional future post-Bootstrap capability that could evaluate
 the resulting selected state and produce an aggregate confirmation. It is
 distinct from the current local module-level Verify step and does not require
 a separate complex engine to be defined in advance.

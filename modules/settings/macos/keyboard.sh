@@ -12,7 +12,7 @@ KEYBOARD_CONFIG="config/generated/macos/keyboard.conf"
 
 check_keyboard() {
 
-    check_defaults_config "$KEYBOARD_CONFIG"
+    check_defaults_config "$KEYBOARD_CONFIG" keyboard
 
 }
 
@@ -24,7 +24,7 @@ apply_keyboard_settings() {
 
     info "Configuring Keyboard..."
 
-    if ! apply_defaults_config "$KEYBOARD_CONFIG"; then
+    if ! apply_defaults_config "$KEYBOARD_CONFIG" keyboard; then
         error "Failed to configure Keyboard"
         return 2
     fi

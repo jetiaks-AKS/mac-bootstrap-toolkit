@@ -4,6 +4,8 @@
 # macOS Discovery
 # ==========================================
 
+source modules/settings/macos/records.sh
+
 macos_defaults_type_name() {
 
     case "$1" in
@@ -44,11 +46,12 @@ macos_collect_preference() {
         return 2
     fi
 
-    value="$(defaults read "$domain" "$key" 2>/dev/null)"
-    if [[ $? -ne 0 ]]; then
+    if ! macos_read_scalar "$domain" "$key"; then
         error "Failed to read macOS preference: $domain $key"
         return 2
     fi
+
+    value="$MACOS_DEFAULTS_VALUE"
 
     case "$generated_type" in
         bool)
@@ -82,6 +85,13 @@ macos_collect_preference() {
 
     return 0
 
+}
+
+# Called inside the existing atomic publisher, before its final rename.
+macos_serialize_candidate() {
+    local output_file="$1" category="$2" serializer="$3"
+    "$serializer" "$output_file" || return 2
+    validate_defaults_config "$output_file" "$category"
 }
 
 source modules/discovery/macos/finder.sh

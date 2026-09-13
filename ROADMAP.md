@@ -186,7 +186,7 @@ Toolkit 3.0.0 выпущен как Stable. Release commit `c36902d` входи�
 - [x] Завершить release verification
 
 Состав завершённого релиза описан в `CHANGELOG.md`. Dry-run / Preview вошёл в
-scope 3.1.0; Global Verification остаётся planned.
+scope 3.1.0; Global Verification относится к Future / Optional.
 
 ---
 
@@ -209,54 +209,42 @@ framework.
 
 ---
 
-# Этап 9 — Global Verification
+# Этап 9 — macOS Coverage Expansion
 
-**Статус: Planned**
+**Статус: In progress (9A implemented, Unreleased)**
 
-Локальная post-apply verification уже используется текущими Bootstrap-модулями
-там, где она реализована. Этот будущий этап относится к общей post-Bootstrap
-проверке выбранного Desired State.
+Расширять полезное покрытие существующих категорий через Discovery → Generated
+Configuration → Blueprint → Preview → Bootstrap с локальным Check → Apply → Verify.
 
-- [ ] Selected-state verification
-- [ ] Missing component detection
-- [ ] Mismatch detection
-- [ ] Aggregate verification status и report
+- [x] 9A — Existing macOS Safety + Screenshots Destination: fixed current allowlist,
+  safe scalar publication, EOF readers, mutation accounting, configured-directory lifecycle
+- [ ] 9B — Finder Expansion
+- [ ] 9C — Dock Expansion
+- [ ] 9D — Keyboard Expansion
+- [ ] 9E — Trackpad Reliability: numeric/float compatibility и hardware awareness
+- [ ] 9F — Menu Bar / Control Center Compatibility: сначала доказать owner,
+  безопасное чтение/запись и reload; uncertain settings не объявлять supported
+- [ ] 9G — Secondary scalar settings, только при низком риске
+- [ ] 9H — Final integration, compatibility, docs/tests
 
-Отдельный сложный Verification Engine не является заранее установленным
-требованием.
+9A не добавляет новых preferences, типов или Blueprint categories. Следующие
+фазы требуют отдельной реализации. Private databases, UI automation и raw
+machine-specific metadata не входят в scope. Generic settings/planner engines
+не являются требованием.
 
 ---
 
-# Этап 10 — Coverage Expansion
+# Этап 10 — Remaining Coverage Expansion
 
 **Статус: Planned**
 
-Расширение покрытия после выпуска 3.0.0 при наличии ясной продуктовой пользы.
-
-## macOS и system environment
-
-- [ ] Дополнительные полезные Finder, Dock и system preferences
-- [ ] Menu Bar, Mission Control, Login Items и Power Management
-- [ ] Shell, Aliases, Terminal и SSH discovery/restoration, если они будут
-      признаны полезными
-
-## VS Code
-
 - [ ] Bootstrap-восстановление `.code-workspace`
-- [ ] Keybindings
+- [ ] VS Code Keybindings
 - [ ] Snippets при подтверждённой пользе
 - [ ] Projects после определения конкретной продуктовой модели
 
-## Discovery и quality tooling
-
-- [ ] Discovery Report, если он даст самостоятельную пользовательскую ценность
-- [ ] ShellCheck/static analysis, единый test runner и CI по мере необходимости
-
 Discovery expansion приоритетен, когда обнаруженное состояние имеет реальный
-restoration consumer или ясную продуктовую ценность. Не следует создавать
-preference registry/schema framework только ради потенциального роста macOS
-coverage; scalable catalog стоит рассматривать лишь тогда, когда реальный рост
-сделает текущий explicit-подход существенно сложным в сопровождении.
+restoration consumer или ясную продуктовую ценность. Эти задачи не входят в 9A.
 
 ---
 
@@ -264,8 +252,13 @@ coverage; scalable catalog стоит рассматривать лишь тог
 
 **Статус: Optional**
 
+- Global Verification: optional aggregate post-Bootstrap report; локальный Verify
+  остаётся обязательным для наблюдаемых результатов мутаций
+- Energy / pmset и Login Items — отдельная проверка privileges, hardware и API
+- Shell, Aliases, Terminal и SSH discovery/restoration после оценки пользы
+- Discovery Report; ShellCheck, единый test runner и CI по отдельной задаче
 - Restore Engine — только если появится ответственность, которую нельзя чисто
-  покрыть цепочкой Blueprint → Bootstrap → Global Verification
+  покрыть существующей цепочкой Blueprint → Bootstrap
 - AI Assistant
 - Profiles
 - Machine Diff
@@ -291,7 +284,7 @@ Blueprint
 Bootstrap
 ```
 
-Модель релиза 3.1.0 (Global Verification planned):
+Модель релиза 3.1.0:
 
 ```text
 Discovery
@@ -306,7 +299,7 @@ Bootstrap
 ```
 
 Preview является неизменяющей capability вокруг существующей Bootstrap planning
-и check-логики. Global Verification станет общей post-Bootstrap проверкой и не
+и check-логики. Global Verification остаётся optional post-Bootstrap направлением и не
 входит в релиз 3.1.0; ни одна из возможностей не требует заранее вводить
 heavyweight framework.
 
@@ -333,9 +326,9 @@ Dry-run / Preview
   ↓
 Release 3.1.0
   ↓
-Global Verification
+macOS Coverage Expansion
   ↓
-Coverage Expansion
+Remaining Coverage Expansion
   ↓
 Optional / Future Evolution
 ```

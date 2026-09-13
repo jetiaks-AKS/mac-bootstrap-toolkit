@@ -24,7 +24,7 @@ export_trackpad_settings() {
 
     action "Exporting Trackpad configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_trackpad_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate trackpad serialize_trackpad_settings; then
         error "Failed to export Trackpad configuration"
         return 2
     fi
