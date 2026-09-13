@@ -63,6 +63,19 @@ To review the available CLI:
 ./bootstrap.sh --version
 ```
 
+The repository entrypoint remains canonical. To install the optional short
+launcher in the current Homebrew prefix:
+
+```bash
+./scripts/install-bs.sh
+```
+
+After installation, `bs workflow`, `bs discover`, `bs blueprint`, `bs preview`,
+`bs bootstrap`, and `bs check` dispatch to the matching `bootstrap.sh` modes
+from any working directory. The installer accepts an existing correct symlink
+and refuses to overwrite another `bs`. Moving the repository invalidates the
+symlink; remove it and rerun the installer from the new location.
+
 ---
 
 ## 2. Check the Mac

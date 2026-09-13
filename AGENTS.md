@@ -57,6 +57,11 @@ Applications, Git configuration, VS Code settings, Workspace и macOS
 `--dry-run` использует read-only startup path и не должен выполнять целевые
 мутации.
 
+`bin/bs` — тонкий опциональный launcher для тех же execution modes;
+канонической production entrypoint остаётся `bootstrap.sh`. PATH symlink
+устанавливается через `scripts/install-bs.sh` и не должен заменять посторонний
+`bs`.
+
 ## Структура проекта
 
 ```text

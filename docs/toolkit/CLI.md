@@ -490,3 +490,37 @@ Apply these changes with Bootstrap? [y/N]
 
 Warning status Preview при этом сохраняется как итоговый status `1`. Global
 Verification не входит в Guided Workflow и остаётся запланированной.
+
+---
+
+# Короткий launcher `bs`
+
+Канонической точкой входа остаётся `./bootstrap.sh --<mode>`. Опциональный
+repository-owned launcher `bin/bs` только сопоставляет короткие команды с
+существующими production modes:
+
+```text
+bs workflow   → bootstrap.sh --workflow
+bs discover   → bootstrap.sh --discover
+bs blueprint  → bootstrap.sh --blueprint
+bs preview    → bootstrap.sh --dry-run
+bs bootstrap  → bootstrap.sh --bootstrap
+bs check      → bootstrap.sh --check
+```
+
+`bs`, `bs help`, `bs --help` и `bs -h` показывают краткую справку. Неизвестная
+команда возвращает non-zero status без dispatch. После определения реального
+расположения launcher переходит в корень Toolkit и использует `exec`, поэтому
+repository-relative paths и exit status `bootstrap.sh` сохраняются.
+
+Установка выполняется безопасной symlink-командой:
+
+```bash
+./scripts/install-bs.sh
+```
+
+Installer выбирает `$(brew --prefix)/bin`, если Homebrew доступен, иначе
+архитектурно подходящий стандартный каталог. Корректная существующая ссылка
+считается успешной установкой; посторонняя команда, ссылка или файл `bs` не
+перезаписывается. Перемещение репозитория нарушает PATH symlink, поэтому старую
+ссылку нужно удалить и запустить installer из нового расположения.

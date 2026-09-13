@@ -127,6 +127,29 @@ Run the guided flow interactively:
 ./bootstrap.sh --workflow
 ```
 
+Install the optional short launcher on PATH:
+
+```bash
+./scripts/install-bs.sh
+```
+
+The repository entrypoint remains canonical. The launcher dispatches to it and
+can be called from any working directory:
+
+```bash
+bs workflow
+bs discover
+bs blueprint
+bs preview
+bs bootstrap
+bs check
+```
+
+The installer uses the current Homebrew prefix when available and refuses to
+replace an unrelated `bs` command or file. Moving the repository later breaks
+the PATH symlink; rerun the installer from the new location after removing the
+old symlink.
+
 Reuse or refresh Generated Configuration, save Blueprint, and review mandatory
 Preview. When Preview finds planned changes, Workflow asks for explicit
 Bootstrap confirmation (default: No). Missing or invalid required input requires
