@@ -85,6 +85,9 @@ Finder поддерживает 13 настроек в существующей 
 Dock поддерживает 9 настроек в `macos-dock`;
 [настройки Dock и ограничения enum](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
 
+Keyboard поддерживает 9 настроек в `macos-keyboard` без перезапуска процессов;
+[настройки Keyboard и validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
+
 ### Preview
 
 - неизменяющая проверка `--dry-run` для Applications, Git configuration,

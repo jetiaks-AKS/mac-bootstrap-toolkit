@@ -85,6 +85,9 @@ Finder supports 13 settings in the existing `macos-finder` category; see the
 Dock supports 9 settings in `macos-dock`; see the
 [Dock inventory and enum limits](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
 
+Keyboard supports 9 settings in `macos-keyboard`, with no process restart; see
+[Keyboard inventory and validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
+
 ### Preview
 
 - non-mutating `--dry-run` inspection for Applications, Git configuration,

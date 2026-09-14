@@ -99,7 +99,7 @@ defaults() {
             [[ "$TEST_CASE" != macos-error ]] || return 2
             case "$3" in
                 FXPreferredViewStyle|NewWindowTarget|orientation|mineffect|location) echo 'Type is string' ;;
-                KeyRepeat) echo 'Type is integer' ;;
+                KeyRepeat|AppleKeyboardUIMode) echo 'Type is integer' ;;
                 *) echo 'Type is boolean' ;;
             esac ;;
         read)
@@ -170,6 +170,15 @@ com.apple.dock|minimize-to-application|bool|1
 com.apple.dock|show-process-indicators|bool|1
 DOCK
     printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
+    cat >> "$generated/macos/keyboard.conf" <<'KEYBOARD'
+NSGlobalDomain|ApplePressAndHoldEnabled|bool|1
+NSGlobalDomain|AppleKeyboardUIMode|int|3
+NSGlobalDomain|NSAutomaticCapitalizationEnabled|bool|1
+NSGlobalDomain|NSAutomaticSpellingCorrectionEnabled|bool|1
+NSGlobalDomain|NSAutomaticPeriodSubstitutionEnabled|bool|1
+NSGlobalDomain|NSAutomaticQuoteSubstitutionEnabled|bool|1
+NSGlobalDomain|NSAutomaticDashSubstitutionEnabled|bool|1
+KEYBOARD
     printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\n' > "$generated/macos/trackpad.conf"
     printf 'com.apple.screencapture|location|string|%s\n' "$TEST_ROOT/home/Captures" > "$generated/macos/screenshots.conf"
 }
@@ -263,6 +272,13 @@ Would change macOS setting: com.apple.dock/minimize-to-application (false -> tru
 Would change macOS setting: com.apple.dock/show-process-indicators (false -> true)
 Would restart process: Dock
 Would change macOS setting: NSGlobalDomain/KeyRepeat (5 -> 2)
+Would change macOS setting: NSGlobalDomain/ApplePressAndHoldEnabled (false -> true)
+Would change macOS setting: NSGlobalDomain/AppleKeyboardUIMode (0 -> 3)
+Would change macOS setting: NSGlobalDomain/NSAutomaticCapitalizationEnabled (false -> true)
+Would change macOS setting: NSGlobalDomain/NSAutomaticSpellingCorrectionEnabled (false -> true)
+Would change macOS setting: NSGlobalDomain/NSAutomaticPeriodSubstitutionEnabled (false -> true)
+Would change macOS setting: NSGlobalDomain/NSAutomaticQuoteSubstitutionEnabled (false -> true)
+Would change macOS setting: NSGlobalDomain/NSAutomaticDashSubstitutionEnabled (false -> true)
 Would change macOS setting: com.apple.AppleMultitouchTrackpad/Clicking (false -> true)
 Would create screenshots directory: $TEST_ROOT/home/Captures
 Would change macOS setting: com.apple.screencapture/location ($TEST_ROOT/home/OldCaptures -> $TEST_ROOT/home/Captures)
@@ -359,6 +375,20 @@ for key in orientation mineffect; do
     run_case "disabled-dock-$key" 0
     if grep -q '^defaults .*com.apple.dock' "$TEST_ROOT/observations"; then
         echo 'FAIL: disabled Dock was inspected'; ((TEST_FAILURES++))
+    fi
+done
+for entry in AppleKeyboardUIMode:int ApplePressAndHoldEnabled:bool; do
+    reset_fixture
+    printf 'NSGlobalDomain|%s|%s|invalid\n' "${entry%:*}" "${entry#*:}" > "$FIXTURE/config/generated/macos/keyboard.conf"
+    run_case "invalid-keyboard-$entry" 2
+    if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
+        echo 'FAIL: invalid Keyboard input reached preflight/domains'; ((TEST_FAILURES++))
+    fi
+    write_blueprint
+    sed -i '' 's/macos-keyboard="true"/macos-keyboard="false"/' "$FIXTURE/config/blueprint.conf"
+    run_case "disabled-keyboard-$entry" 0
+    if grep -q '^defaults .*NSGlobalDomain.*AppleKeyboardUIMode\|^defaults .*NSGlobalDomain.*ApplePressAndHoldEnabled' "$TEST_ROOT/observations"; then
+        echo 'FAIL: disabled Keyboard was inspected'; ((TEST_FAILURES++))
     fi
 done
 reset_fixture

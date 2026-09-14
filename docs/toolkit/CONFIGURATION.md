@@ -112,8 +112,8 @@ Toolkit намеренно не требует одного универсаль
 перед atomic publication, startup validation и consumers. Категория передаётся
 явно; имя файла не определяет разрешённые domain/key.
 
-Текущий allowlist: foundation 9A, Finder Expansion 9B и Dock Expansion 9C.
-Finder поддерживает 13 настроек, Dock — 9:
+Текущий allowlist: foundation 9A и расширения Finder 9B, Dock 9C, Keyboard 9D.
+Finder поддерживает 13 настроек, Dock — 9, Keyboard — 9:
 
 | Категория | Domain | Keys / type |
 |---|---|---|
@@ -123,6 +123,7 @@ Finder поддерживает 13 настроек, Dock — 9:
 | Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
 | Dock (9C) | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
 | Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
+| Keyboard (9D) | `NSGlobalDomain` | `AppleKeyboardUIMode` / int; `ApplePressAndHoldEnabled`, `NSAutomaticCapitalizationEnabled`, `NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`, `NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled` / bool |
 | Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
 | Trackpad | `NSGlobalDomain` | `com.apple.trackpad.scaling` / int |
 | Screenshots | `com.apple.screencapture` | `location` / string, path-контракт ниже |
@@ -191,6 +192,30 @@ Apply выполняет typed Check → Write → Verify, учитывает у
 не выполняют writes/restart. Проверяется managed state, а не визуальный эффект UI.
 Dock tiles (`persistent-apps`, `persistent-others`, `recent-apps`), дополнительные
 animation preferences, hot corners, Mission Control и Spaces остаются вне Stage 9C.
+
+#### Keyboard Expansion (Stage 9D)
+
+Keyboard поддерживает девять настроек в существующей категории `macos-keyboard`:
+`KeyRepeat`, `InitialKeyRepeat` и семь новых ключей из таблицы выше.
+`AppleKeyboardUIMode` использует общий int contract и существующую числовую
+нормализацию; отдельный диапазон не задаётся. Остальные шесть новых ключей — bool
+с представлениями `0/1/true/false`. Неверный type, нецелое значение, invalid bool,
+дубликаты и unsafe scalar отклоняются shared validation.
+
+Discovery сериализует present valid preferences и проверяет весь candidate перед
+публикацией. Absent preference остаётся unmanaged, без синтеза Apple defaults.
+Ошибка наблюдения, scalar или candidate validation возвращает `2` и сохраняет
+предыдущий Keyboard snapshot. Формат `domain|key|type|value`, старый двухстрочный
+и пустой `keyboard.conf`, Blueprint и no-Blueprint all-inclusive поведение совместимы.
+
+Preview показывает только необходимые setting changes в порядке records;
+Keyboard не планирует и не выполняет process restart. Apply использует typed
+Check → Write → Verify и final Check всех managed records. Успешная запись сразу
+учитывается в `MODULE_CHANGED`; поздняя ошибка возвращает `2` без false success.
+Повторный идентичный Bootstrap выполняет успешный no-op без writes/restart.
+Проверяется сохранённое managed state, а не эффект в уже открытых приложениях.
+Shortcuts, input sources/layouts, dictation, text replacements, per-app и
+hardware-specific Keyboard configuration остаются вне Stage 9D.
 
 #### Screenshot destination
 

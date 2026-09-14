@@ -12,10 +12,11 @@ TODO содержит ближайшие конкретные техническ
 
 # Stage 9 — Next
 
-- [ ] 9D: проверить конкретные Keyboard candidates перед добавлением; сохранить
-  Stage 9A validation и текущие Blueprint categories
+- [ ] 9E: проверить Trackpad numeric/float compatibility и hardware awareness;
+  сохранить Stage 9A validation и текущие Blueprint categories
 
-Stages 9A–9C реализованы в Unreleased. Finder поддерживает 13 настроек, Dock — 9.
+Stages 9A–9D реализованы в Unreleased. Finder поддерживает 13 настроек,
+Dock и Keyboard — по 9.
 Trackpad float/hardware work остаётся в 9E;
 новые категории, restart manager и Global Verification в 9A не добавлены.
 

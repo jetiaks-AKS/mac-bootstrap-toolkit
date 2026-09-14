@@ -11,6 +11,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9D: expanded `macos-keyboard` from two to nine supported settings with
+  press-and-hold, keyboard UI mode, automatic capitalization/spelling/period
+  substitution, and smart quote/dash substitution. `AppleKeyboardUIMode` uses
+  the existing integer contract without a new range; six new keys use bool.
+* Keyboard Apply performs a final Check of all managed preferences after typed
+  writes/read-back. Preview and Bootstrap require no process restart; repeated
+  identical runs perform no writes.
+
 * Stage 9C: expanded `macos-dock` from five to nine supported settings with
   `orientation` (`left/bottom/right`), `mineffect` (`genie/scale`),
   `minimize-to-application`, and `show-process-indicators`. Discovery omits

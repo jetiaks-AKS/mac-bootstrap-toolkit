@@ -40,10 +40,10 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|Clicking|TrackpadRightClick)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
-        tilesize|largesize|KeyRepeat|InitialKeyRepeat|com.apple.trackpad.scaling)
+        tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode|com.apple.trackpad.scaling)
             echo "Type is integer"
             ;;
         FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|location)
@@ -57,16 +57,17 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|Clicking)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|Clicking)
             echo 1
             ;;
-        ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|TrackpadRightClick)
+        NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|TrackpadRightClick)
             echo 0
             ;;
         tilesize) echo 48 ;;
         largesize) echo 64 ;;
         KeyRepeat) echo 2 ;;
         InitialKeyRepeat) echo 15 ;;
+        AppleKeyboardUIMode) echo 3 ;;
         com.apple.trackpad.scaling) echo 2 ;;
         FXPreferredViewStyle) echo Nlsv ;;
         FXDefaultSearchScope) echo SCcf ;;
@@ -131,6 +132,7 @@ defaults() {
 
 source "$PROJECT_ROOT/modules/discovery/macos/macos.sh"
 
+ORIGINAL_SERIALIZE_KEYBOARD="$(declare -f serialize_keyboard_settings)"
 ORIGINAL_SERIALIZE_DOCK="$(declare -f serialize_dock_settings)"
 ORIGINAL_SERIALIZE_FINDER="$(declare -f serialize_finder_settings)"
 ORIGINAL_EXPORT_FINDER="$(declare -f export_finder_settings)"
@@ -146,6 +148,7 @@ fail() {
 }
 
 reset_functions() {
+    eval "$ORIGINAL_SERIALIZE_KEYBOARD"
     eval "$ORIGINAL_SERIALIZE_DOCK"
     eval "$ORIGINAL_SERIALIZE_FINDER"
     eval "$ORIGINAL_EXPORT_FINDER"
@@ -206,8 +209,10 @@ fi
 
 reset_fixture
 export_keyboard_settings >/dev/null
-if [[ $? -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == $'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15' ]]; then
-    pass "Keyboard present integer preferences preserve the existing format"
+keyboard_status=$?
+expected_keyboard=$'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15\nNSGlobalDomain|ApplePressAndHoldEnabled|bool|1\nNSGlobalDomain|AppleKeyboardUIMode|int|3\nNSGlobalDomain|NSAutomaticCapitalizationEnabled|bool|1\nNSGlobalDomain|NSAutomaticSpellingCorrectionEnabled|bool|0\nNSGlobalDomain|NSAutomaticPeriodSubstitutionEnabled|bool|0\nNSGlobalDomain|NSAutomaticQuoteSubstitutionEnabled|bool|1\nNSGlobalDomain|NSAutomaticDashSubstitutionEnabled|bool|0'
+if [[ $keyboard_status -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == "$expected_keyboard" ]]; then
+    pass "Keyboard exact nine-record inventory preserves the existing format"
 else
     fail "Keyboard populated format changed"
 fi
@@ -429,6 +434,87 @@ for key in orientation mineffect; do
         fail "Dock $key warning lost"
     fi
 done
+
+# Stage 9D: each new key is independently observed; absence remains unmanaged.
+new_keyboard_keys=(ApplePressAndHoldEnabled NSAutomaticCapitalizationEnabled NSAutomaticSpellingCorrectionEnabled NSAutomaticPeriodSubstitutionEnabled NSAutomaticQuoteSubstitutionEnabled NSAutomaticDashSubstitutionEnabled AppleKeyboardUIMode)
+for key in "${new_keyboard_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="NSGlobalDomain|$key"
+    export_keyboard_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_keyboard" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other eight records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+        before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="NSGlobalDomain|$key"
+        export_keyboard_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Keyboard snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+
+for key in "${new_keyboard_keys[@]}"; do
+    for raw in 'invalid\n' '1.5\n' '1|extra\n' '1\t\n' '1\nextra\n' '1\000\n'; do
+        reset_fixture
+        printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+        before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+        MOCK_MODE=raw_value
+        MOCK_TARGET="NSGlobalDomain|$key"
+        MOCK_VALUE="$raw"
+        export_keyboard_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" &&
+              -z "$(temporary_files)" && "$SUCCESS_MESSAGES" != *exported* ]]; then
+            pass "invalid Keyboard $key scalar preserves previous snapshot"
+        else
+            fail "invalid Keyboard $key scalar publication safety"
+        fi
+    done
+done
+for value in 0 -7 08 12345; do
+    reset_fixture
+    MOCK_MODE=raw_value
+    MOCK_TARGET='NSGlobalDomain|AppleKeyboardUIMode'
+    MOCK_VALUE="$value"
+    export_keyboard_settings >/dev/null
+    if [[ $? -eq 0 ]] && grep -Fxq "NSGlobalDomain|AppleKeyboardUIMode|int|$value" config/generated/macos/keyboard.conf; then
+        pass "Keyboard UI integer $value serialized without invented range/normalization"
+    else
+        fail "Keyboard UI integer $value export"
+    fi
+done
+reset_fixture
+printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+serialize_keyboard_settings() { printf 'NSGlobalDomain|AppleKeyboardUIMode|int|invalid\n' > "$1"; }
+export_keyboard_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'invalid Keyboard candidate cannot bypass shared validation'
+else
+    fail 'invalid Keyboard candidate published'
+fi
+reset_fixture
+reset_counters
+MOCK_MODE=value_failure
+MOCK_TARGET='NSGlobalDomain|AppleKeyboardUIMode'
+run_module 'macOS Discovery' discover_macos >/dev/null
+if [[ $? -eq 2 && $ERROR_COUNT -eq 1 ]]; then
+    pass 'new Keyboard observation error propagates through controller and lifecycle'
+else
+    fail 'new Keyboard observation error masked'
+fi
 
 # ==========================================
 # Present empty string and legitimate absence

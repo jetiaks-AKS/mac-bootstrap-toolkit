@@ -130,6 +130,12 @@ defaults() {
                 READ_TYPE_FAILURE="$domain|$key"
             fi
             state_set "$domain" "$key" "$native_type" "$written_value"
+            if [[ "$domain|$key" == 'NSGlobalDomain|AppleKeyboardUIMode' ]]; then
+                case "$POST_WRITE_MODE" in
+                    keyboard-final-mismatch) state_set NSGlobalDomain KeyRepeat int 99 ;;
+                    keyboard-final-error) READ_FAILURE='NSGlobalDomain|KeyRepeat' ;;
+                esac
+            fi
             ;;
         *) return 2 ;;
     esac
@@ -637,6 +643,172 @@ run apply_macos_settings
 expect_status 0 "$status" 'no Blueprint includes expanded Dock'
 assert_count '^write:' 1 'all-inclusive applies new Dock preference'
 assert_count '^killall:Dock' 1 'all-inclusive Dock restart once'
+
+# Stage 9D: exact old/new Keyboard inventory uses the shared production consumer.
+KEYBOARD_OLD_RECORDS=$'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15'
+KEYBOARD_NEW_RECORDS=$'NSGlobalDomain|ApplePressAndHoldEnabled|bool|1\nNSGlobalDomain|AppleKeyboardUIMode|int|3\nNSGlobalDomain|NSAutomaticCapitalizationEnabled|bool|1\nNSGlobalDomain|NSAutomaticSpellingCorrectionEnabled|bool|1\nNSGlobalDomain|NSAutomaticPeriodSubstitutionEnabled|bool|1\nNSGlobalDomain|NSAutomaticQuoteSubstitutionEnabled|bool|1\nNSGlobalDomain|NSAutomaticDashSubstitutionEnabled|bool|1'
+keyboard_fixture() {
+    record "$KEYBOARD_CONFIG" "$KEYBOARD_OLD_RECORDS"$'\n'"$KEYBOARD_NEW_RECORDS"
+    local domain key type value
+    while IFS='|' read -r domain key type value; do
+        state_set "$domain" "$key" "$type" "$value"
+    done < "$KEYBOARD_CONFIG"
+}
+
+reset_case
+record "$KEYBOARD_CONFIG" "$KEYBOARD_OLD_RECORDS"
+run validate_defaults_config "$KEYBOARD_CONFIG" keyboard
+expect_status 0 "$status" 'old two-setting Keyboard file remains accepted'
+while IFS='|' read -r domain key type value; do
+    reset_case
+    record "$KEYBOARD_CONFIG" "$domain|$key|$type|$value"
+    run validate_defaults_config "$KEYBOARD_CONFIG" keyboard
+    expect_status 0 "$status" "$key schema accepted"
+    run validate_defaults_config "$KEYBOARD_CONFIG" finder
+    expect_status 2 "$status" "$key category crossover rejected"
+    wrong_type=string
+    [[ "$type" != string ]] || wrong_type=bool
+    for invalid in "com.apple.finder|$key|$type|$value" "$domain|$key|$wrong_type|$value" "$domain|$key|$type|$value"$'\n'"$domain|$key|$type|$value"; do
+        record "$KEYBOARD_CONFIG" "$invalid"
+        run apply_keyboard_settings
+        expect_status 2 "$status" "$key invalid domain/type/duplicate blocked"
+        assert_no_mutation "$key invalid input blocks writes/restart"
+    done
+    # Every new preference participates in typed Apply and repeat idempotency.
+    record "$KEYBOARD_CONFIG" "$domain|$key|$type|$value"
+    run apply_keyboard_settings
+    expect_status 0 "$status" "$key absent target restored"
+    assert_changed true "$key successful write accounted"
+    assert_count '^write:' 1 "$key exactly one write"
+    assert_count '^killall:' 0 "$key no restart"
+    : > "$MUTATION_LOG"
+    MODULE_CHANGED=false
+    run apply_keyboard_settings
+    expect_status 0 "$status" "$key repeated Apply succeeds"
+    assert_changed false "$key repeated Apply unchanged"
+    assert_no_mutation "$key repeated Apply no writes/restart"
+done <<< "$KEYBOARD_NEW_RECORDS"
+
+while IFS='|' read -r domain key type value; do
+    [[ "$type" == bool ]] || continue
+    for value in 0 1 true false invalid; do
+        reset_case
+        record "$KEYBOARD_CONFIG" "$domain|$key|bool|$value"
+        case "$value" in 1|true) actual=1 ;; *) actual=0 ;; esac
+        state_set "$domain" "$key" bool "$actual"
+        run check_keyboard
+        expected=0; [[ "$value" != invalid ]] || expected=2
+        expect_status "$expected" "$status" "$key bool representation $value"
+        assert_no_mutation "$key Check no mutation"
+    done
+done <<< "$KEYBOARD_NEW_RECORDS"
+for value in 0 1 2 3 -7 08 12345 invalid 1.5 ''; do
+    reset_case
+    record "$KEYBOARD_CONFIG" "NSGlobalDomain|AppleKeyboardUIMode|int|$value"
+    actual="$value"; [[ "$value" != 08 ]] || actual=8
+    state_set NSGlobalDomain AppleKeyboardUIMode int "$actual"
+    run check_keyboard
+    case "$value" in invalid|1.5|'') expected=2 ;; *) expected=0 ;; esac
+    expect_status "$expected" "$status" "AppleKeyboardUIMode integer '$value' without new range"
+done
+
+for mode in matching bool multiple target absent observation-error invalid-record; do
+    reset_case
+    keyboard_fixture
+    ENABLED_CATEGORIES=macos-keyboard
+    case "$mode" in
+        bool|multiple) state_set NSGlobalDomain ApplePressAndHoldEnabled bool false ;;
+        target) state_set NSGlobalDomain AppleKeyboardUIMode int 0 ;;
+        absent) awk -F '|' '$2 != "NSAutomaticDashSubstitutionEnabled"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        observation-error) READ_FAILURE='NSGlobalDomain|KeyRepeat' ;;
+        invalid-record) printf 'NSGlobalDomain|AppleKeyboardUIMode|int|invalid\n' > "$KEYBOARD_CONFIG" ;;
+    esac
+    [[ "$mode" != multiple ]] || state_set NSGlobalDomain AppleKeyboardUIMode int 2
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_macos_settings
+    case "$mode" in
+        observation-error|invalid-record) expected=2; plans=0 ;;
+        matching) expected=0; plans=0 ;;
+        multiple) expected=0; plans=2 ;;
+        *) expected=0; plans=1 ;;
+    esac
+    expect_status "$expected" "$status" "Keyboard Preview $mode"
+    [[ "$(grep -c 'Would change macOS setting:' <<< "$output" || true)" == "$plans" ]] || fail "$mode setting plan count"
+    [[ "$output" != *'Would restart process:'* ]] || fail "$mode unexpected restart plan"
+    if [[ $plans -gt 0 ]]; then
+        [[ "$PREVIEW_HAS_CHANGES" == true ]] || fail "$mode lost explicit Preview signal"
+    else
+        [[ "$PREVIEW_HAS_CHANGES" == false ]] || fail "$mode invented Preview signal"
+    fi
+    case "$mode" in
+        multiple) [[ "$output" == *'ApplePressAndHoldEnabled (false -> true)'*'AppleKeyboardUIMode (2 -> 3)'* ]] || fail 'Keyboard plan order/values' ;;
+        target) [[ "$output" == *'AppleKeyboardUIMode (0 -> 3)'* ]] || fail 'Keyboard target plan value' ;;
+        absent) [[ "$output" == *'NSAutomaticDashSubstitutionEnabled (absent -> true)'* ]] || fail 'Keyboard absent plan' ;;
+        invalid-record) [[ ! -s "$OBSERVATION_LOG" ]] || fail 'invalid enum reached inspection' ;;
+    esac
+    assert_changed preserved "$mode Preview preserves MODULE_CHANGED"
+    assert_no_mutation "$mode Preview has no writes/restart"
+done
+
+for mode in matching bool multiple target absent observation-error write-failure verify-mismatch verify-error later-write-failure final-mismatch final-error; do
+    reset_case
+    keyboard_fixture
+    ENABLED_CATEGORIES=macos-keyboard
+    expected=0; changed=true; writes=1; restarts=0
+    case "$mode" in
+        matching) changed=false; writes=0; restarts=0 ;;
+        bool) state_set NSGlobalDomain ApplePressAndHoldEnabled bool false ;;
+        multiple|later-write-failure)
+            state_set NSGlobalDomain ApplePressAndHoldEnabled bool false
+            state_set NSGlobalDomain AppleKeyboardUIMode int 0
+            writes=2 ;;
+        absent) awk -F '|' '$2 != "AppleKeyboardUIMode"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        *) state_set NSGlobalDomain AppleKeyboardUIMode int 0 ;;
+    esac
+    case "$mode" in
+        observation-error) READ_FAILURE='NSGlobalDomain|KeyRepeat'; expected=2; changed=false; writes=0; restarts=0 ;;
+        write-failure) WRITE_STATUS=2; expected=2; changed=false; restarts=0 ;;
+        verify-mismatch) POST_WRITE_MODE=mismatch; expected=2; restarts=0 ;;
+        verify-error) POST_WRITE_MODE=observation-error; expected=2; restarts=0 ;;
+        later-write-failure) WRITE_FAILURE_KEY=AppleKeyboardUIMode; expected=2; restarts=0 ;;
+        final-mismatch) POST_WRITE_MODE=keyboard-final-mismatch; expected=2 ;;
+        final-error) POST_WRITE_MODE=keyboard-final-error; expected=2 ;;
+    esac
+    run apply_macos_settings
+    expect_status "$expected" "$status" "Keyboard Bootstrap $mode"
+    assert_changed "$changed" "$mode mutation accounting"
+    assert_count '^write:' "$writes" "$mode write count"
+    assert_count '^killall:' "$restarts" "$mode restart count"
+    if [[ $expected -ne 0 ]]; then
+        assert_no_success "$output" "$mode has no false success"
+    else
+        : > "$MUTATION_LOG"
+        run apply_macos_settings
+        expect_status 0 "$status" "$mode second Bootstrap succeeds"
+        assert_changed false "$mode second Bootstrap unchanged"
+        assert_no_mutation "$mode second Bootstrap no writes/restart"
+    fi
+done
+
+reset_case
+keyboard_fixture
+MODULE_CHANGED=true
+run apply_keyboard_settings
+expect_status 0 "$status" 'matching Keyboard with earlier module mutation succeeds'
+assert_changed true 'earlier module mutation preserved'
+assert_no_mutation 'earlier module mutation does not trigger Keyboard restart'
+ENABLED_CATEGORIES=macos-finder
+: > "$OBSERVATION_LOG"
+run preview_macos_settings
+expect_status 0 "$status" 'disabled Keyboard skipped by existing category gate'
+[[ ! -s "$OBSERVATION_LOG" ]] || fail 'disabled Keyboard inspected'
+ENABLED_CATEGORIES=all
+state_set NSGlobalDomain ApplePressAndHoldEnabled bool false
+run apply_macos_settings
+expect_status 0 "$status" 'no Blueprint includes expanded Keyboard'
+assert_count '^write:' 1 'all-inclusive applies new Keyboard preference'
+assert_count '^killall:' 0 'all-inclusive Keyboard no restart'
 
 # Screenshot path validation: fixtures only, never real user directories.
 for bad in '' relative '~otheruser/Shot' '$VAR/Shot' '$HOME/Shot' '${HOME}/Shot' '$(touch sentinel)' '`touch sentinel`' "$HOME/../escape" "$HOME/./bad" "$HOME//bad" $'/tmp/a\nb' $'/tmp/a\tb'; do

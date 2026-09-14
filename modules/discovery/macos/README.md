@@ -14,7 +14,7 @@ Discovery считывает текущие значения параметро�
 
 - Finder — 13 supported settings
 - Dock — 9 supported settings
-- Keyboard
+- Keyboard — 9 supported settings
 - Trackpad
 - Screenshots
 
@@ -58,6 +58,15 @@ Dock сохраняет пять прежних настроек и четыре
 пропускается с warning и статусом `1` после публикации остальных валидных records.
 Absent preferences не получают синтезированных defaults; observation/type/scalar
 ошибки сохраняют прежний Dock snapshot с `2`.
+
+Keyboard сохраняет `KeyRepeat`, `InitialKeyRepeat` и семь новых настроек:
+`ApplePressAndHoldEnabled`, `AppleKeyboardUIMode`, `NSAutomaticCapitalizationEnabled`,
+`NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`,
+`NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled`.
+`AppleKeyboardUIMode` — int без нового диапазона; остальные новые ключи — bool.
+Absent values остаются unmanaged. Ошибка сбора/валидации сохраняет предыдущий
+Keyboard snapshot. Bootstrap выбирает все managed records через `macos-keyboard`
+и не перезапускает процессы.
 
 ---
 

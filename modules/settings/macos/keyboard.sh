@@ -29,6 +29,11 @@ apply_keyboard_settings() {
         return 2
     fi
 
+    if ! check_keyboard; then
+        error "Failed to verify Keyboard"
+        return 2
+    fi
+
     success "Keyboard configured successfully"
     return 0
 
