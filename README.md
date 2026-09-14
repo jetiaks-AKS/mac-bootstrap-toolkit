@@ -79,6 +79,9 @@ the full supported scope.
 Toolkit operations are designed to be idempotent and verify supported state
 before and after changes where applicable.
 
+Finder supports 13 settings in the existing `macos-finder` category; see the
+[exact inventory and target limits](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
+
 ### Preview
 
 - non-mutating `--dry-run` inspection for Applications, Git configuration,

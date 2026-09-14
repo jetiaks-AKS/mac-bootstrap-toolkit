@@ -77,6 +77,14 @@ macos_collect_preference() {
             ;;
     esac
 
+    # Custom/unknown Finder targets are unmanaged; never invent a replacement.
+    if [[ "$domain" == com.apple.finder && "$key" == NewWindowTarget &&
+          ! "$value" =~ $MACOS_FINDER_WINDOW_TARGET_PATTERN ]]; then
+        warning "Skipping unsupported Finder NewWindowTarget: $value"
+        FINDER_DISCOVERY_WARNING=true
+        return 0
+    fi
+
     if ! printf '%s|%s|%s|%s\n' \
         "$domain" "$key" "$generated_type" "$value" >> "$output_file"; then
         error "Failed to serialize macOS preference: $domain $key"

@@ -234,10 +234,15 @@ apply_defaults_record() {
 apply_defaults_config() {
     local config_file="$1"
     local domain key type value
+    local record_result
+    DEFAULTS_CONFIG_CHANGED=false
     validate_defaults_config "$config_file" "${2:-}" || return 2
     while IFS='|' read -r domain key type value || [[ -n "$domain$key$type$value" ]]; do
         [[ -z "${domain// /}" ]] && continue
-        apply_defaults_record "$domain" "$key" "$type" "$value" || return 2
+        apply_defaults_record "$domain" "$key" "$type" "$value"
+        record_result=$?
+        [[ "$DEFAULTS_RECORD_CHANGED" != true ]] || DEFAULTS_CONFIG_CHANGED=true
+        [[ $record_result -eq 0 ]] || return 2
     done < "$config_file"
     return 0
 }

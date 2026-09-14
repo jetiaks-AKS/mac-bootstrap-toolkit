@@ -40,13 +40,13 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|autohide|show-recents|magnification|Clicking|TrackpadRightClick)
+        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
         tilesize|largesize|KeyRepeat|InitialKeyRepeat|com.apple.trackpad.scaling)
             echo "Type is integer"
             ;;
-        FXPreferredViewStyle|FXDefaultSearchScope|location)
+        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|location)
             echo "Type is string"
             ;;
         *)
@@ -57,10 +57,10 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|autohide|magnification|Clicking)
+        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|Clicking)
             echo 1
             ;;
-        ShowPathbar|FXRemoveOldTrashItems|show-recents|TrackpadRightClick)
+        ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|TrackpadRightClick)
             echo 0
             ;;
         tilesize) echo 48 ;;
@@ -70,6 +70,7 @@ mock_value() {
         com.apple.trackpad.scaling) echo 2 ;;
         FXPreferredViewStyle) echo Nlsv ;;
         FXDefaultSearchScope) echo SCcf ;;
+        NewWindowTarget) echo PfHm ;;
         location) echo "/Users/test/Screen Shots" ;;
         *) return 2 ;;
     esac
@@ -182,9 +183,9 @@ cd "$TEST_ROOT" || exit 1
 reset_fixture
 export_finder_settings >/dev/null
 finder_status=$?
-expected_finder=$'NSGlobalDomain|AppleShowAllExtensions|bool|1\ncom.apple.finder|ShowPathbar|bool|0\ncom.apple.finder|ShowStatusBar|bool|1\ncom.apple.finder|FXPreferredViewStyle|string|Nlsv\ncom.apple.finder|FXDefaultSearchScope|string|SCcf\ncom.apple.finder|_FXSortFoldersFirst|bool|1\ncom.apple.finder|FXRemoveOldTrashItems|bool|0'
+expected_finder=$'NSGlobalDomain|AppleShowAllExtensions|bool|1\ncom.apple.finder|ShowPathbar|bool|0\ncom.apple.finder|ShowStatusBar|bool|1\ncom.apple.finder|FXPreferredViewStyle|string|Nlsv\ncom.apple.finder|FXDefaultSearchScope|string|SCcf\ncom.apple.finder|_FXSortFoldersFirst|bool|1\ncom.apple.finder|FXRemoveOldTrashItems|bool|0\ncom.apple.finder|AppleShowAllFiles|bool|1\ncom.apple.finder|NewWindowTarget|string|PfHm\ncom.apple.finder|ShowHardDrivesOnDesktop|bool|0\ncom.apple.finder|ShowExternalHardDrivesOnDesktop|bool|1\ncom.apple.finder|ShowMountedServersOnDesktop|bool|0\ncom.apple.finder|FXEnableExtensionChangeWarning|bool|1'
 if [[ $finder_status -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_finder" ]]; then
-    pass "Finder present bool and string preferences preserve the existing format"
+    pass "Finder exact 13-record inventory preserves the existing format"
 else
     fail "Finder populated format changed"
 fi
@@ -221,6 +222,106 @@ if [[ $? -eq 0 && "$(cat config/generated/macos/screenshots.conf)" == 'com.apple
     pass "Screenshots present string with spaces preserves the existing format"
 else
     fail "Screenshots populated format changed"
+fi
+
+
+# Stage 9B: each new key is independently observed; absence remains unmanaged.
+new_finder_keys=(AppleShowAllFiles NewWindowTarget ShowHardDrivesOnDesktop ShowExternalHardDrivesOnDesktop ShowMountedServersOnDesktop FXEnableExtensionChangeWarning)
+for key in "${new_finder_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.finder|$key"
+    export_finder_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_finder" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other 12 records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+        before_checksum="$(cksum config/generated/macos/finder.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.finder|$key"
+        export_finder_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Finder snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+for target in PfCm PfVo PfHm PfDe PfDo PfAF PfLo unknown ''; do
+    reset_fixture
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.finder|NewWindowTarget'
+    MOCK_VALUE="$target"
+    export_finder_settings >/dev/null
+    result=$?
+    case "$target" in
+        PfLo|unknown|'')
+            expected_remaining="$(printf '%s\n' "$expected_finder" | awk -F '|' '$2 != "NewWindowTarget"')"
+            if [[ $result -eq 1 && "$(cat config/generated/macos/finder.conf)" == "$expected_remaining" &&
+                  "$WARNING_MESSAGES" == *'Skipping unsupported Finder NewWindowTarget'* && -z "$(temporary_files)" ]]; then
+                pass "unsupported target '$target' omitted with warning and valid publication"
+            else
+                fail "unsupported target '$target' handling"
+            fi ;;
+        *)
+            expected_target="$(printf '%s\n' "$expected_finder" | sed "s/NewWindowTarget|string|PfHm/NewWindowTarget|string|$target/")"
+            if [[ $result -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_target" ]]; then
+                pass "supported target $target exported exactly"
+            else
+                fail "supported target $target export"
+            fi ;;
+    esac
+    MOCK_MODE=normal
+    export_finder_settings >/dev/null
+    [[ $? -eq 0 ]] || fail 'Finder warning leaked into next export'
+done
+
+for raw in 'PfHm|extra\n' 'PfHm\t\n' 'PfHm\nextra\n' 'PfHm\000\n'; do
+    reset_fixture
+    printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+    before_checksum="$(cksum config/generated/macos/finder.conf)"
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.finder|NewWindowTarget'
+    MOCK_VALUE="$raw"
+    export_finder_settings >/dev/null
+    if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" &&
+          -z "$WARNING_MESSAGES" && -z "$(temporary_files)" ]]; then
+        pass 'unsafe target scalar fails instead of being downgraded to unsupported'
+    else
+        fail 'unsafe target scalar weakened publication safety'
+    fi
+done
+
+reset_fixture
+printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+before_checksum="$(cksum config/generated/macos/finder.conf)"
+serialize_finder_settings() { printf 'com.apple.finder|NewWindowTarget|string|PfLo\n' > "$1"; }
+export_finder_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'unsupported enum candidate cannot bypass shared validation'
+else
+    fail 'unsupported enum candidate published'
+fi
+
+reset_fixture
+reset_counters
+MOCK_MODE=raw_value
+MOCK_TARGET='com.apple.finder|NewWindowTarget'
+MOCK_VALUE=PfLo
+run_module 'macOS Discovery' discover_macos >/dev/null
+if [[ $? -eq 1 && $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
+      "$WARNING_MESSAGES" == *'macOS Discovery completed with warnings'* ]]; then
+    pass 'real unsupported Finder target propagates warning through controller and lifecycle'
+else
+    fail 'unsupported Finder warning lost by orchestration'
 fi
 
 # ==========================================

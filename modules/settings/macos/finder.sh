@@ -29,8 +29,13 @@ apply_finder_settings() {
         return 2
     fi
 
-    if ! killall Finder >/dev/null 2>&1; then
+    if [[ "$DEFAULTS_CONFIG_CHANGED" == true ]] && ! killall Finder >/dev/null 2>&1; then
         error "Failed to restart Finder"
+        return 2
+    fi
+
+    if ! check_finder; then
+        error "Failed to verify Finder"
         return 2
     fi
 

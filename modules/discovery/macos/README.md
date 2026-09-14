@@ -12,7 +12,7 @@ Discovery считывает текущие значения параметро�
 
 ## Что анализируется
 
-- Finder
+- Finder — 13 supported settings
 - Dock
 - Keyboard
 - Trackpad
@@ -43,6 +43,14 @@ Delimiter `|`, ASCII controls (включая NUL) и multiline values запр�
 Screenshot `location` должен быть непустым absolute path или `~/...`; никакое
 shell-выражение не выполняется. Проверка доступности каталога на Target Mac
 относится к consumer, а не к source Discovery.
+
+Finder сохраняет семь прежних настроек и шесть новых: `AppleShowAllFiles`,
+`NewWindowTarget`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`,
+`ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning`.
+`NewWindowTarget` ограничен `PfCm/PfVo/PfHm/PfDe/PfDo/PfAF`. Неподдерживаемое
+scalar-значение (включая `PfLo`) пропускается с warning и статусом `1` после
+успешной публикации остальных валидных записей. `NewWindowTargetPath` не экспортируется.
+Ошибки чтения/type и небезопасные scalar-значения сохраняют прежний snapshot с `2`.
 
 ---
 

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+MACOS_FINDER_WINDOW_TARGET_PATTERN='^(PfCm|PfVo|PfHm|PfDe|PfDo|PfAF)$'
+
 # Shared scalar contract for macOS Discovery and consumers. No generated code.
 macos_record_bytes_valid() {
     local bytes
@@ -19,7 +21,8 @@ validate_defaults_config() {
         return 2
     fi
 
-    if ! macos_record_bytes_valid "$config_file" || ! LC_ALL=C awk -F '|' -v category="$category" '
+    if ! macos_record_bytes_valid "$config_file" || ! LC_ALL=C awk -F '|' -v category="$category" \
+        -v finder_target_pattern="$MACOS_FINDER_WINDOW_TARGET_PATTERN" '
         BEGIN {
             allowed["finder", "NSGlobalDomain", "AppleShowAllExtensions"] = "bool"
             allowed["finder", "com.apple.finder", "ShowPathbar"] = "bool"
@@ -28,6 +31,12 @@ validate_defaults_config() {
             allowed["finder", "com.apple.finder", "FXDefaultSearchScope"] = "string"
             allowed["finder", "com.apple.finder", "_FXSortFoldersFirst"] = "bool"
             allowed["finder", "com.apple.finder", "FXRemoveOldTrashItems"] = "bool"
+            allowed["finder", "com.apple.finder", "AppleShowAllFiles"] = "bool"
+            allowed["finder", "com.apple.finder", "NewWindowTarget"] = "string"
+            allowed["finder", "com.apple.finder", "ShowHardDrivesOnDesktop"] = "bool"
+            allowed["finder", "com.apple.finder", "ShowExternalHardDrivesOnDesktop"] = "bool"
+            allowed["finder", "com.apple.finder", "ShowMountedServersOnDesktop"] = "bool"
+            allowed["finder", "com.apple.finder", "FXEnableExtensionChangeWarning"] = "bool"
             allowed["dock", "com.apple.dock", "autohide"] = "bool"
             allowed["dock", "com.apple.dock", "show-recents"] = "bool"
             allowed["dock", "com.apple.dock", "tilesize"] = "int"
@@ -45,6 +54,7 @@ validate_defaults_config() {
         NF != 4 || $1 == "" || $2 == "" { exit 2 }
         { if (seen[$1, $2]++) exit 2 }
         allowed[category, $1, $2] != $3 { exit 2 }
+        category == "finder" && $2 == "NewWindowTarget" && $4 !~ finder_target_pattern { exit 2 }
         category == "screenshots" {
             # Only absolute paths or leading ~/; no shell syntax or traversal.
             if ($4 !~ /^(\/|~\/)/ || $4 ~ /[$`\\]/ || $4 ~ /\/\// ||

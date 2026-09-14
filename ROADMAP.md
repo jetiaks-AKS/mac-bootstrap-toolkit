@@ -211,14 +211,15 @@ framework.
 
 # Этап 9 — macOS Coverage Expansion
 
-**Статус: In progress (9A implemented, Unreleased)**
+**Статус: In progress (9A–9B implemented, Unreleased)**
 
 Расширять полезное покрытие существующих категорий через Discovery → Generated
 Configuration → Blueprint → Preview → Bootstrap с локальным Check → Apply → Verify.
 
 - [x] 9A — Existing macOS Safety + Screenshots Destination: fixed current allowlist,
   safe scalar publication, EOF readers, mutation accounting, configured-directory lifecycle
-- [ ] 9B — Finder Expansion
+- [x] 9B — Finder Expansion: 13 settings, fixed NewWindowTarget enum, safe
+  unsupported-target omission, one restart after actual writes and final Check
 - [ ] 9C — Dock Expansion
 - [ ] 9D — Keyboard Expansion
 - [ ] 9E — Trackpad Reliability: numeric/float compatibility и hardware awareness
@@ -227,8 +228,9 @@ Configuration → Blueprint → Preview → Bootstrap с локальным Chec
 - [ ] 9G — Secondary scalar settings, только при низком риске
 - [ ] 9H — Final integration, compatibility, docs/tests
 
-9A не добавляет новых preferences, типов или Blueprint categories. Следующие
-фазы требуют отдельной реализации. Private databases, UI automation и raw
+9A не добавляет новых preferences, типов или Blueprint categories. 9B добавляет
+ровно шесть Finder preferences в существующую категорию. Следующая фаза — 9C Dock;
+остальные фазы требуют отдельной реализации. Private databases, UI automation и raw
 machine-specific metadata не входят в scope. Generic settings/planner engines
 не являются требованием.
 

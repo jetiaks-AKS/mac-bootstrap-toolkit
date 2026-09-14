@@ -98,13 +98,14 @@ defaults() {
         read-type)
             [[ "$TEST_CASE" != macos-error ]] || return 2
             case "$3" in
-                FXPreferredViewStyle|location) echo 'Type is string' ;;
+                FXPreferredViewStyle|NewWindowTarget|location) echo 'Type is string' ;;
                 KeyRepeat) echo 'Type is integer' ;;
                 *) echo 'Type is boolean' ;;
             esac ;;
         read)
             case "$3" in
                 FXPreferredViewStyle) echo icnv ;;
+                NewWindowTarget) echo PfDe ;;
                 location)
                     if [[ "$TEST_CASE" == workflow-directory-only ]]; then echo "$HOME/Captures"; else echo "$HOME/OldCaptures"; fi ;;
                 KeyRepeat) echo 5 ;;
@@ -151,6 +152,14 @@ HAS_EXTENSIONS="false"
 REPO
     done > "$generated/workspace/repositories.conf"
     printf 'com.apple.finder|FXPreferredViewStyle|string|Nlsv\n' > "$generated/macos/finder.conf"
+    cat >> "$generated/macos/finder.conf" <<'FINDER'
+com.apple.finder|AppleShowAllFiles|bool|1
+com.apple.finder|NewWindowTarget|string|PfHm
+com.apple.finder|ShowHardDrivesOnDesktop|bool|1
+com.apple.finder|ShowExternalHardDrivesOnDesktop|bool|1
+com.apple.finder|ShowMountedServersOnDesktop|bool|1
+com.apple.finder|FXEnableExtensionChangeWarning|bool|1
+FINDER
     printf 'com.apple.dock|autohide|bool|1\n' > "$generated/macos/dock.conf"
     printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
     printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\n' > "$generated/macos/trackpad.conf"
@@ -232,6 +241,12 @@ Would create workspace folder: $TEST_ROOT/home/NewFolder
 Would switch repository branch: existing -> main
 Would clone repository: absent
 Would change macOS setting: com.apple.finder/FXPreferredViewStyle (icnv -> Nlsv)
+Would change macOS setting: com.apple.finder/AppleShowAllFiles (false -> true)
+Would change macOS setting: com.apple.finder/NewWindowTarget (PfDe -> PfHm)
+Would change macOS setting: com.apple.finder/ShowHardDrivesOnDesktop (false -> true)
+Would change macOS setting: com.apple.finder/ShowExternalHardDrivesOnDesktop (false -> true)
+Would change macOS setting: com.apple.finder/ShowMountedServersOnDesktop (false -> true)
+Would change macOS setting: com.apple.finder/FXEnableExtensionChangeWarning (false -> true)
 Would restart process: Finder
 Would change macOS setting: com.apple.dock/autohide (false -> true)
 Would restart process: Dock
@@ -308,6 +323,18 @@ write_blueprint
 run_case valid-blueprint 0
 printf '\nmissing-repository\n' >> "$FIXTURE/config/blueprint.conf"
 run_case stale-blueprint 1
+reset_fixture
+printf 'com.apple.finder|NewWindowTarget|string|PfLo\n' > "$FIXTURE/config/generated/macos/finder.conf"
+run_case invalid-finder-enum 2
+if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
+    echo 'FAIL: invalid Finder enum reached preflight/domains'; ((TEST_FAILURES++))
+fi
+write_blueprint
+sed -i '' 's/macos-finder="true"/macos-finder="false"/' "$FIXTURE/config/blueprint.conf"
+run_case disabled-finder-enum 0
+if grep -q '^defaults .*com.apple.finder' "$TEST_ROOT/observations"; then
+    echo 'FAIL: disabled Finder was inspected'; ((TEST_FAILURES++))
+fi
 reset_fixture
 printf '[broken]\n' > "$FIXTURE/config/blueprint.conf"
 run_case malformed-blueprint 2

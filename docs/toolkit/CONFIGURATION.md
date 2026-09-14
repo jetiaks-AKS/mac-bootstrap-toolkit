@@ -112,12 +112,13 @@ Toolkit намеренно не требует одного универсаль
 перед atomic publication, startup validation и consumers. Категория передаётся
 явно; имя файла не определяет разрешённые domain/key.
 
-Текущий allowlist (новых settings в 9A нет):
+Текущий allowlist: foundation 9A и Finder Expansion 9B. Finder поддерживает 13 настроек:
 
 | Категория | Domain | Keys / type |
 |---|---|---|
 | Finder | `NSGlobalDomain` | `AppleShowAllExtensions` / bool |
 | Finder | `com.apple.finder` | `ShowPathbar`, `ShowStatusBar`, `_FXSortFoldersFirst`, `FXRemoveOldTrashItems` / bool; `FXPreferredViewStyle`, `FXDefaultSearchScope` / string |
+| Finder (9B) | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
 | Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
 | Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
 | Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
@@ -134,14 +135,37 @@ scalar отвергаются с `2`. Байты проверяются до she
 Пустые строки/строки из пробелов и пустые category-файлы допустимы. Последняя
 запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
 preference не создаёт record; отсутствие record не удаляет target preference.
-Пустая generic string отличается от отсутствия; пустой Screenshot destination
-запрещён. Ошибка candidate validation сохраняет предыдущий generated-файл.
+Пустая generic string отличается от отсутствия; пустые Screenshot destination
+и Finder `NewWindowTarget` запрещены. Ошибка candidate validation сохраняет
+предыдущий generated-файл.
 Generated data никогда не выполняются через `source`/`eval`.
 
 После успешного `defaults write` Changed устанавливается до Verify. Ошибка
 Verify/restart возвращает `2`, не сообщает success и не сбрасывает Changed.
 Rollback не выполняется. Проверка read-back подтверждает сохранённые preferences,
 а не визуальный эффект в приложениях.
+
+#### Finder Expansion (Stage 9B)
+
+Все 13 настроек выбираются существующей Blueprint-категорией `macos-finder`.
+Старый семистрочный `finder.conf`, пустой файл и no-Blueprint all-inclusive
+поведение совместимы; формат записей не меняется.
+
+`NewWindowTarget` поддерживает только `PfCm`, `PfVo`, `PfHm`, `PfDe`, `PfDo`, `PfAF`.
+Consumer отвергает другие значения, включая `PfLo` и пустую строку, до inspection
+и мутаций. Custom target `PfLo` и парный `NewWindowTargetPath` не восстанавливаются.
+Discovery пропускает отсутствующий preference без синтеза defaults. Неподдерживаемый
+scalar target пропускается с warning: остальные валидные Finder records публикуются,
+статус — `1`. Ошибка чтения, неверный native type или небезопасный scalar возвращает
+`2` и сохраняет предыдущий Finder snapshot. Весь candidate проходит shared validation.
+Отсутствующая record оставляет соответствующий target preference unmanaged.
+
+Preview планирует изменения в порядке records и один Finder restart при наличии
+записей к изменению. Apply использует typed Check → Write → Verify; успешная запись
+сразу сохраняется в `MODULE_CHANGED`. Finder перезапускается максимум один раз после
+успешной записи всех изменяемых records, затем выполняется final Check. Ошибки Write,
+Verify/restart возвращают `2` без success; ранее выполненные записи остаются учтены.
+No-op и повторный идентичный Bootstrap не пишут preferences и не перезапускают Finder.
 
 #### Screenshot destination
 

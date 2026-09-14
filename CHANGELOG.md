@@ -11,6 +11,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9B: added six Finder preferences, bringing support to 13 settings in the
+  existing `macos-finder` category: hidden files, new-window target, Desktop hard
+  disks/external disks/servers, and filename-extension change warnings.
+  `NewWindowTarget` accepts only `PfCm/PfVo/PfHm/PfDe/PfDo/PfAF`; Discovery omits
+  unsupported scalar targets with a warning, while consumers reject them.
+* Finder Apply restarts Finder only after actual writes and performs a final
+  managed-state Check after restart; no-op Apply does not restart Finder.
+
 * Added the repository-owned `bs` launcher with `workflow`, `discover`,
   `blueprint`, `preview`, `bootstrap`, and `check` commands, plus an idempotent
   PATH symlink installer that refuses conflicting existing `bs` entries.

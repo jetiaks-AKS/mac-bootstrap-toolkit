@@ -79,6 +79,9 @@ Blueprint — необязательный локальный слой выбо�
 Операции Toolkit проектируются идемпотентными и проверяют поддерживаемое
 состояние до и после изменений там, где это применимо.
 
+Finder поддерживает 13 настроек в существующей категории `macos-finder`;
+[точный inventory и ограничения](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
+
 ### Preview
 
 - неизменяющая проверка `--dry-run` для Applications, Git configuration,
