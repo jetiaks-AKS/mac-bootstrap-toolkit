@@ -40,13 +40,13 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|Clicking|TrackpadRightClick)
+        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
         tilesize|largesize|KeyRepeat|InitialKeyRepeat|com.apple.trackpad.scaling)
             echo "Type is integer"
             ;;
-        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|location)
+        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|location)
             echo "Type is string"
             ;;
         *)
@@ -57,10 +57,10 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|Clicking)
+        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|Clicking)
             echo 1
             ;;
-        ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|TrackpadRightClick)
+        ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|TrackpadRightClick)
             echo 0
             ;;
         tilesize) echo 48 ;;
@@ -71,6 +71,8 @@ mock_value() {
         FXPreferredViewStyle) echo Nlsv ;;
         FXDefaultSearchScope) echo SCcf ;;
         NewWindowTarget) echo PfHm ;;
+        orientation) echo bottom ;;
+        mineffect) echo genie ;;
         location) echo "/Users/test/Screen Shots" ;;
         *) return 2 ;;
     esac
@@ -129,6 +131,7 @@ defaults() {
 
 source "$PROJECT_ROOT/modules/discovery/macos/macos.sh"
 
+ORIGINAL_SERIALIZE_DOCK="$(declare -f serialize_dock_settings)"
 ORIGINAL_SERIALIZE_FINDER="$(declare -f serialize_finder_settings)"
 ORIGINAL_EXPORT_FINDER="$(declare -f export_finder_settings)"
 ORIGINAL_EXPORT_DOCK="$(declare -f export_dock_settings)"
@@ -143,6 +146,7 @@ fail() {
 }
 
 reset_functions() {
+    eval "$ORIGINAL_SERIALIZE_DOCK"
     eval "$ORIGINAL_SERIALIZE_FINDER"
     eval "$ORIGINAL_EXPORT_FINDER"
     eval "$ORIGINAL_EXPORT_DOCK"
@@ -193,9 +197,9 @@ fi
 reset_fixture
 export_dock_settings >/dev/null
 dock_status=$?
-expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64'
+expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64\ncom.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|0'
 if [[ $dock_status -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_dock" ]]; then
-    pass "Dock present bool and int preferences preserve the existing format"
+    pass "Dock exact nine-record inventory preserves the existing format"
 else
     fail "Dock populated format changed"
 fi
@@ -323,6 +327,108 @@ if [[ $? -eq 1 && $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
 else
     fail 'unsupported Finder warning lost by orchestration'
 fi
+
+# Stage 9C: each new key is independently observed; absence remains unmanaged.
+new_dock_keys=(orientation mineffect minimize-to-application show-process-indicators)
+for key in "${new_dock_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.dock|$key"
+    export_dock_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_dock" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other eight records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+        before_checksum="$(cksum config/generated/macos/dock.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.dock|$key"
+        export_dock_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Dock snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+
+for entry in orientation:left orientation:bottom orientation:right orientation:unknown orientation: mineffect:genie mineffect:scale mineffect:unknown mineffect:; do
+    reset_fixture
+    key="${entry%%:*}"
+    value="${entry#*:}"
+    MOCK_MODE=raw_value
+    MOCK_TARGET="com.apple.dock|$key"
+    MOCK_VALUE="$value"
+    export_dock_settings >/dev/null
+    result=$?
+    case "$value" in
+        unknown|'')
+            expected_remaining="$(printf '%s\n' "$expected_dock" | awk -F '|' -v key="$key" '$2 != key')"
+            if [[ $result -eq 1 && "$(cat config/generated/macos/dock.conf)" == "$expected_remaining" &&
+                  "$WARNING_MESSAGES" == *"Skipping unsupported Dock $key:"* && -z "$(temporary_files)" ]]; then
+                pass "unsupported $key '$value' omitted with warning; other records intact"
+            else
+                fail "unsupported Dock $key handling"
+            fi ;;
+        *)
+            expected_enum="$(printf '%s\n' "$expected_dock" | awk -F '|' -v OFS='|' -v key="$key" -v value="$value" '$2 == key {$4=value} {print}')"
+            if [[ $result -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_enum" ]]; then
+                pass "supported Dock $key $value exported exactly"
+            else
+                fail "supported Dock $key export"
+            fi ;;
+    esac
+    MOCK_MODE=normal
+    export_dock_settings >/dev/null
+    [[ $? -eq 0 ]] || fail 'Dock warning leaked into next export'
+done
+
+for key in orientation mineffect; do
+    for raw in 'bad|extra\n' 'bad\t\n' 'bad\nextra\n' 'bad\000\n'; do
+        reset_fixture
+        printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+        before_checksum="$(cksum config/generated/macos/dock.conf)"
+        MOCK_MODE=raw_value
+        MOCK_TARGET="com.apple.dock|$key"
+        MOCK_VALUE="$raw"
+        export_dock_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" &&
+              -z "$WARNING_MESSAGES" && -z "$(temporary_files)" ]]; then
+            pass "unsafe Dock $key scalar fails without warning downgrade"
+        else
+            fail "unsafe Dock $key scalar publication safety"
+        fi
+    done
+    reset_fixture
+    printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+    before_checksum="$(cksum config/generated/macos/dock.conf)"
+    serialize_dock_settings() { printf 'com.apple.dock|%s|string|unsupported\n' "$key" > "$1"; }
+    export_dock_settings >/dev/null
+    if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" && -z "$(temporary_files)" ]]; then
+        pass "invalid Dock $key candidate cannot bypass shared validation"
+    else
+        fail "invalid Dock $key candidate published"
+    fi
+    reset_fixture
+    reset_counters
+    MOCK_MODE=raw_value
+    MOCK_TARGET="com.apple.dock|$key"
+    MOCK_VALUE=unsupported
+    run_module 'macOS Discovery' discover_macos >/dev/null
+    if [[ $? -eq 1 && $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
+          "$WARNING_MESSAGES" == *'macOS Discovery completed with warnings'* ]]; then
+        pass "Dock $key warning propagates through controller and lifecycle"
+    else
+        fail "Dock $key warning lost"
+    fi
+done
 
 # ==========================================
 # Present empty string and legitimate absence

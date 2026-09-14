@@ -11,6 +11,13 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9C: expanded `macos-dock` from five to nine supported settings with
+  `orientation` (`left/bottom/right`), `mineffect` (`genie/scale`),
+  `minimize-to-application`, and `show-process-indicators`. Discovery omits
+  unsupported scalar enums with a warning; consumers reject invalid generated values.
+* Dock Apply restarts Dock only after actual preference writes, then performs a
+  final managed-state Check. No-op and repeated identical runs do not restart Dock.
+
 * Stage 9B: added six Finder preferences, bringing support to 13 settings in the
   existing `macos-finder` category: hidden files, new-window target, Desktop hard
   disks/external disks/servers, and filename-extension change warnings.

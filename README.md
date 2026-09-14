@@ -82,6 +82,9 @@ before and after changes where applicable.
 Finder supports 13 settings in the existing `macos-finder` category; see the
 [exact inventory and target limits](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
 
+Dock supports 9 settings in `macos-dock`; see the
+[Dock inventory and enum limits](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
+
 ### Preview
 
 - non-mutating `--dry-run` inspection for Applications, Git configuration,

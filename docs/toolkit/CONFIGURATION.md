@@ -112,7 +112,8 @@ Toolkit намеренно не требует одного универсаль
 перед atomic publication, startup validation и consumers. Категория передаётся
 явно; имя файла не определяет разрешённые domain/key.
 
-Текущий allowlist: foundation 9A и Finder Expansion 9B. Finder поддерживает 13 настроек:
+Текущий allowlist: foundation 9A, Finder Expansion 9B и Dock Expansion 9C.
+Finder поддерживает 13 настроек, Dock — 9:
 
 | Категория | Domain | Keys / type |
 |---|---|---|
@@ -120,6 +121,7 @@ Toolkit намеренно не требует одного универсаль
 | Finder | `com.apple.finder` | `ShowPathbar`, `ShowStatusBar`, `_FXSortFoldersFirst`, `FXRemoveOldTrashItems` / bool; `FXPreferredViewStyle`, `FXDefaultSearchScope` / string |
 | Finder (9B) | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
 | Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
+| Dock (9C) | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
 | Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
 | Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
 | Trackpad | `NSGlobalDomain` | `com.apple.trackpad.scaling` / int |
@@ -136,7 +138,7 @@ scalar отвергаются с `2`. Байты проверяются до she
 запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
 preference не создаёт record; отсутствие record не удаляет target preference.
 Пустая generic string отличается от отсутствия; пустые Screenshot destination
-и Finder `NewWindowTarget` запрещены. Ошибка candidate validation сохраняет
+и enum-значения Finder/Dock запрещены. Ошибка candidate validation сохраняет
 предыдущий generated-файл.
 Generated data никогда не выполняются через `source`/`eval`.
 
@@ -166,6 +168,29 @@ Preview планирует изменения в порядке records и од�
 успешной записи всех изменяемых records, затем выполняется final Check. Ошибки Write,
 Verify/restart возвращают `2` без success; ранее выполненные записи остаются учтены.
 No-op и повторный идентичный Bootstrap не пишут preferences и не перезапускают Finder.
+
+#### Dock Expansion (Stage 9C)
+
+Dock поддерживает девять настроек в существующей категории `macos-dock`:
+пять прежних и четыре новых — `orientation`, `mineffect`, `minimize-to-application`,
+`show-process-indicators`. Старый пятистрочный и пустой `dock.conf` остаются валидными;
+Blueprint и no-Blueprint all-inclusive поведение, формат records не меняются.
+
+`orientation` допускает только `left/bottom/right`, `mineffect` — только `genie/scale`.
+Другие значения, включая пустые, отвергаются consumer до inspection и мутаций.
+Discovery сериализует supported present values; absent preferences остаются unmanaged.
+Неподдерживаемый scalar enum пропускается с warning: остальные валидные Dock records
+публикуются со статусом `1`, без угадывания или замены значения. Ошибка наблюдения,
+неверный native type, unsafe scalar или candidate validation возвращает `2` и сохраняет
+предыдущий generated Dock snapshot.
+
+Preview использует порядок records и планирует один Dock restart при наличии изменений.
+Apply выполняет typed Check → Write → Verify, учитывает успешную запись сразу, затем
+перезапускает Dock максимум один раз и выполняет final Check. Ошибки Verify/restart
+сохраняют Changed и возвращают `2` без success. No-op и повторный идентичный Bootstrap
+не выполняют writes/restart. Проверяется managed state, а не визуальный эффект UI.
+Dock tiles (`persistent-apps`, `persistent-others`, `recent-apps`), дополнительные
+animation preferences, hot corners, Mission Control и Spaces остаются вне Stage 9C.
 
 #### Screenshot destination
 

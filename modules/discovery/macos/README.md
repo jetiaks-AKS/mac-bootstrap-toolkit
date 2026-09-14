@@ -13,7 +13,7 @@ Discovery считывает текущие значения параметро�
 ## Что анализируется
 
 - Finder — 13 supported settings
-- Dock
+- Dock — 9 supported settings
 - Keyboard
 - Trackpad
 - Screenshots
@@ -51,6 +51,13 @@ Finder сохраняет семь прежних настроек и шесть
 scalar-значение (включая `PfLo`) пропускается с warning и статусом `1` после
 успешной публикации остальных валидных записей. `NewWindowTargetPath` не экспортируется.
 Ошибки чтения/type и небезопасные scalar-значения сохраняют прежний snapshot с `2`.
+
+Dock сохраняет пять прежних настроек и четыре новых: `orientation`, `mineffect`,
+`minimize-to-application`, `show-process-indicators`. Для `orientation` допустимы
+`left/bottom/right`, для `mineffect` — `genie/scale`. Неподдерживаемый scalar enum
+пропускается с warning и статусом `1` после публикации остальных валидных records.
+Absent preferences не получают синтезированных defaults; observation/type/scalar
+ошибки сохраняют прежний Dock snapshot с `2`.
 
 ---
 

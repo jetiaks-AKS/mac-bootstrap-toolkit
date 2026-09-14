@@ -21,6 +21,7 @@ WRITE_FAILURE_KEY=""
 POST_WRITE_MODE="match"
 KILLALL_STATUS=0
 FINDER_RESTART_MODE=match
+DOCK_RESTART_MODE=match
 MKDIR_STATUS=0
 MKDIR_NO_CREATE=false
 STAT_FAILURE=false
@@ -51,6 +52,12 @@ killall() {
         case "$FINDER_RESTART_MODE" in
             mismatch) state_set com.apple.finder NewWindowTarget string PfDe ;;
             observation-error) READ_FAILURE='com.apple.finder|NewWindowTarget' ;;
+        esac
+    fi
+    if [[ "$1" == Dock ]]; then
+        case "$DOCK_RESTART_MODE" in
+            mismatch) state_set com.apple.dock orientation string left ;;
+            observation-error) READ_FAILURE='com.apple.dock|orientation' ;;
         esac
     fi
     return "$KILLALL_STATUS"
@@ -164,6 +171,7 @@ reset_case() {
     POST_WRITE_MODE="match"
     KILLALL_STATUS=0
     FINDER_RESTART_MODE=match
+    DOCK_RESTART_MODE=match
     MKDIR_STATUS=0
     MKDIR_NO_CREATE=false
     STAT_FAILURE=false
@@ -465,6 +473,170 @@ run apply_macos_settings
 expect_status 0 "$status" 'no Blueprint includes expanded Finder'
 assert_count '^write:' 1 'all-inclusive applies new Finder preference'
 assert_count '^killall:Finder' 1 'all-inclusive Finder restart once'
+
+# Stage 9C: exact old/new Dock inventory uses the shared production consumer.
+DOCK_OLD_RECORDS=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64'
+DOCK_NEW_RECORDS=$'com.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|1'
+dock_fixture() {
+    record "$DOCK_CONFIG" "$DOCK_OLD_RECORDS"$'\n'"$DOCK_NEW_RECORDS"
+    local domain key type value
+    while IFS='|' read -r domain key type value; do
+        state_set "$domain" "$key" "$type" "$value"
+    done < "$DOCK_CONFIG"
+}
+
+reset_case
+record "$DOCK_CONFIG" "$DOCK_OLD_RECORDS"
+run validate_defaults_config "$DOCK_CONFIG" dock
+expect_status 0 "$status" 'old five-setting Dock file remains accepted'
+while IFS='|' read -r domain key type value; do
+    reset_case
+    record "$DOCK_CONFIG" "$domain|$key|$type|$value"
+    run validate_defaults_config "$DOCK_CONFIG" dock
+    expect_status 0 "$status" "$key schema accepted"
+    run validate_defaults_config "$DOCK_CONFIG" finder
+    expect_status 2 "$status" "$key category crossover rejected"
+    wrong_type=string
+    [[ "$type" != string ]] || wrong_type=bool
+    for invalid in "com.apple.finder|$key|$type|$value" "$domain|$key|$wrong_type|$value" "$domain|$key|$type|$value"$'\n'"$domain|$key|$type|$value"; do
+        record "$DOCK_CONFIG" "$invalid"
+        run apply_dock_settings
+        expect_status 2 "$status" "$key invalid domain/type/duplicate blocked"
+        assert_no_mutation "$key invalid input blocks writes/restart"
+    done
+    # Every new preference participates in typed Apply and repeat idempotency.
+    record "$DOCK_CONFIG" "$domain|$key|$type|$value"
+    run apply_dock_settings
+    expect_status 0 "$status" "$key absent target restored"
+    assert_changed true "$key successful write accounted"
+    assert_count '^write:' 1 "$key exactly one write"
+    assert_count '^killall:Dock' 1 "$key exactly one restart"
+    : > "$MUTATION_LOG"
+    MODULE_CHANGED=false
+    run apply_dock_settings
+    expect_status 0 "$status" "$key repeated Apply succeeds"
+    assert_changed false "$key repeated Apply unchanged"
+    assert_no_mutation "$key repeated Apply no writes/restart"
+done <<< "$DOCK_NEW_RECORDS"
+
+for key in orientation mineffect; do
+    for value in left bottom right genie scale arbitrary ''; do
+        reset_case
+        record "$DOCK_CONFIG" "com.apple.dock|$key|string|$value"
+        run validate_defaults_config "$DOCK_CONFIG" dock
+        expected=2
+        case "$key:$value" in orientation:left|orientation:bottom|orientation:right|mineffect:genie|mineffect:scale) expected=0 ;; esac
+        expect_status "$expected" "$status" "Dock $key enum '$value'"
+    done
+    for value in $'bottom|extra' $'bottom\t' $'bottom\nextra'; do
+        record "$DOCK_CONFIG" "com.apple.dock|$key|string|$value"
+        run validate_defaults_config "$DOCK_CONFIG" dock
+        expect_status 2 "$status" "unsafe Dock $key scalar rejected"
+    done
+done
+
+for mode in matching bool multiple target mineffect absent observation-error invalid-enum; do
+    reset_case
+    dock_fixture
+    ENABLED_CATEGORIES=macos-dock
+    case "$mode" in
+        bool|multiple) state_set com.apple.dock minimize-to-application bool false ;;
+        target) state_set com.apple.dock orientation string left ;;
+        mineffect) state_set com.apple.dock mineffect string scale ;;
+        absent) awk -F '|' '$2 != "show-process-indicators"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        observation-error) READ_FAILURE='com.apple.dock|autohide' ;;
+        invalid-enum) printf 'com.apple.dock|orientation|string|PfLo\n' > "$DOCK_CONFIG" ;;
+    esac
+    [[ "$mode" != multiple ]] || state_set com.apple.dock orientation string right
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_macos_settings
+    case "$mode" in
+        observation-error|invalid-enum) expected=2; plans=0 ;;
+        matching) expected=0; plans=0 ;;
+        multiple) expected=0; plans=2 ;;
+        *) expected=0; plans=1 ;;
+    esac
+    expect_status "$expected" "$status" "Dock Preview $mode"
+    [[ "$(grep -c 'Would change macOS setting:' <<< "$output" || true)" == "$plans" ]] || fail "$mode setting plan count"
+    restarts=0; [[ $plans -eq 0 ]] || restarts=1
+    [[ "$(grep -c 'Would restart process: Dock' <<< "$output" || true)" == "$restarts" ]] || fail "$mode restart plan count"
+    if [[ $plans -gt 0 ]]; then
+        [[ "$PREVIEW_HAS_CHANGES" == true ]] || fail "$mode lost explicit Preview signal"
+    else
+        [[ "$PREVIEW_HAS_CHANGES" == false ]] || fail "$mode invented Preview signal"
+    fi
+    case "$mode" in
+        multiple) [[ "$output" == *'orientation (right -> bottom)'*'minimize-to-application (false -> true)'*'Would restart process: Dock'* ]] || fail 'Dock plan order/values' ;;
+        target) [[ "$output" == *'orientation (left -> bottom)'* ]] || fail 'Dock target plan value' ;;
+        mineffect) [[ "$output" == *'mineffect (scale -> genie)'* ]] || fail 'Dock effect plan value' ;;
+        absent) [[ "$output" == *'show-process-indicators (absent -> true)'* ]] || fail 'Dock absent plan' ;;
+        invalid-enum) [[ ! -s "$OBSERVATION_LOG" ]] || fail 'invalid enum reached inspection' ;;
+    esac
+    assert_changed preserved "$mode Preview preserves MODULE_CHANGED"
+    assert_no_mutation "$mode Preview has no writes/restart"
+done
+
+for mode in matching bool multiple target mineffect absent observation-error write-failure verify-mismatch verify-error restart-failure later-write-failure final-mismatch final-error; do
+    reset_case
+    dock_fixture
+    ENABLED_CATEGORIES=macos-dock
+    expected=0; changed=true; writes=1; restarts=1
+    case "$mode" in
+        matching) changed=false; writes=0; restarts=0 ;;
+        bool) state_set com.apple.dock minimize-to-application bool false ;;
+        mineffect) state_set com.apple.dock mineffect string scale ;;
+        multiple|later-write-failure)
+            state_set com.apple.dock minimize-to-application bool false
+            state_set com.apple.dock orientation string left
+            writes=2 ;;
+        absent) awk -F '|' '$2 != "orientation"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        *) state_set com.apple.dock orientation string left ;;
+    esac
+    case "$mode" in
+        observation-error) READ_FAILURE='com.apple.dock|autohide'; expected=2; changed=false; writes=0; restarts=0 ;;
+        write-failure) WRITE_STATUS=2; expected=2; changed=false; restarts=0 ;;
+        verify-mismatch) POST_WRITE_MODE=mismatch; expected=2; restarts=0 ;;
+        verify-error) POST_WRITE_MODE=observation-error; expected=2; restarts=0 ;;
+        restart-failure) KILLALL_STATUS=2; expected=2 ;;
+        later-write-failure) WRITE_FAILURE_KEY=minimize-to-application; expected=2; restarts=0 ;;
+        final-mismatch) DOCK_RESTART_MODE=mismatch; expected=2 ;;
+        final-error) DOCK_RESTART_MODE=observation-error; expected=2 ;;
+    esac
+    run apply_macos_settings
+    expect_status "$expected" "$status" "Dock Bootstrap $mode"
+    assert_changed "$changed" "$mode mutation accounting"
+    assert_count '^write:' "$writes" "$mode write count"
+    assert_count '^killall:Dock' "$restarts" "$mode restart count"
+    if [[ $expected -ne 0 ]]; then
+        assert_no_success "$output" "$mode has no false success"
+    else
+        : > "$MUTATION_LOG"
+        run apply_macos_settings
+        expect_status 0 "$status" "$mode second Bootstrap succeeds"
+        assert_changed false "$mode second Bootstrap unchanged"
+        assert_no_mutation "$mode second Bootstrap no writes/restart"
+    fi
+done
+
+reset_case
+dock_fixture
+MODULE_CHANGED=true
+run apply_dock_settings
+expect_status 0 "$status" 'matching Dock with earlier module mutation succeeds'
+assert_changed true 'earlier module mutation preserved'
+assert_no_mutation 'earlier module mutation does not trigger Dock restart'
+ENABLED_CATEGORIES=macos-finder
+: > "$OBSERVATION_LOG"
+run preview_macos_settings
+expect_status 0 "$status" 'disabled Dock skipped by existing category gate'
+[[ ! -s "$OBSERVATION_LOG" ]] || fail 'disabled Dock inspected'
+ENABLED_CATEGORIES=all
+state_set com.apple.dock minimize-to-application bool false
+run apply_macos_settings
+expect_status 0 "$status" 'no Blueprint includes expanded Dock'
+assert_count '^write:' 1 'all-inclusive applies new Dock preference'
+assert_count '^killall:Dock' 1 'all-inclusive Dock restart once'
 
 # Screenshot path validation: fixtures only, never real user directories.
 for bad in '' relative '~otheruser/Shot' '$VAR/Shot' '$HOME/Shot' '${HOME}/Shot' '$(touch sentinel)' '`touch sentinel`' "$HOME/../escape" "$HOME/./bad" "$HOME//bad" $'/tmp/a\nb' $'/tmp/a\tb'; do

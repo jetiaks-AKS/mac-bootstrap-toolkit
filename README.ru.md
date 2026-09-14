@@ -82,6 +82,9 @@ Blueprint — необязательный локальный слой выбо�
 Finder поддерживает 13 настроек в существующей категории `macos-finder`;
 [точный inventory и ограничения](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
 
+Dock поддерживает 9 настроек в `macos-dock`;
+[настройки Dock и ограничения enum](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
+
 ### Preview
 
 - неизменяющая проверка `--dry-run` для Applications, Git configuration,

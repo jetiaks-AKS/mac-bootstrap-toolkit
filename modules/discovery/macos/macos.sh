@@ -85,6 +85,14 @@ macos_collect_preference() {
         return 0
     fi
 
+    if [[ "$domain" == com.apple.dock &&
+          ( ( "$key" == orientation && ! "$value" =~ $MACOS_DOCK_ORIENTATION_PATTERN ) ||
+            ( "$key" == mineffect && ! "$value" =~ $MACOS_DOCK_MINEFFECT_PATTERN ) ) ]]; then
+        warning "Skipping unsupported Dock $key: $value"
+        DOCK_DISCOVERY_WARNING=true
+        return 0
+    fi
+
     if ! printf '%s|%s|%s|%s\n' \
         "$domain" "$key" "$generated_type" "$value" >> "$output_file"; then
         error "Failed to serialize macOS preference: $domain $key"

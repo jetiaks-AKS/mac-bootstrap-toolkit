@@ -1,6 +1,8 @@
 #!/bin/bash
 
 MACOS_FINDER_WINDOW_TARGET_PATTERN='^(PfCm|PfVo|PfHm|PfDe|PfDo|PfAF)$'
+MACOS_DOCK_ORIENTATION_PATTERN='^(left|bottom|right)$'
+MACOS_DOCK_MINEFFECT_PATTERN='^(genie|scale)$'
 
 # Shared scalar contract for macOS Discovery and consumers. No generated code.
 macos_record_bytes_valid() {
@@ -22,7 +24,9 @@ validate_defaults_config() {
     fi
 
     if ! macos_record_bytes_valid "$config_file" || ! LC_ALL=C awk -F '|' -v category="$category" \
-        -v finder_target_pattern="$MACOS_FINDER_WINDOW_TARGET_PATTERN" '
+        -v finder_target_pattern="$MACOS_FINDER_WINDOW_TARGET_PATTERN" \
+        -v dock_orientation_pattern="$MACOS_DOCK_ORIENTATION_PATTERN" \
+        -v dock_mineffect_pattern="$MACOS_DOCK_MINEFFECT_PATTERN" '
         BEGIN {
             allowed["finder", "NSGlobalDomain", "AppleShowAllExtensions"] = "bool"
             allowed["finder", "com.apple.finder", "ShowPathbar"] = "bool"
@@ -42,6 +46,10 @@ validate_defaults_config() {
             allowed["dock", "com.apple.dock", "tilesize"] = "int"
             allowed["dock", "com.apple.dock", "magnification"] = "bool"
             allowed["dock", "com.apple.dock", "largesize"] = "int"
+            allowed["dock", "com.apple.dock", "orientation"] = "string"
+            allowed["dock", "com.apple.dock", "mineffect"] = "string"
+            allowed["dock", "com.apple.dock", "minimize-to-application"] = "bool"
+            allowed["dock", "com.apple.dock", "show-process-indicators"] = "bool"
             allowed["keyboard", "NSGlobalDomain", "KeyRepeat"] = "int"
             allowed["keyboard", "NSGlobalDomain", "InitialKeyRepeat"] = "int"
             allowed["trackpad", "com.apple.AppleMultitouchTrackpad", "Clicking"] = "bool"
@@ -55,6 +63,8 @@ validate_defaults_config() {
         { if (seen[$1, $2]++) exit 2 }
         allowed[category, $1, $2] != $3 { exit 2 }
         category == "finder" && $2 == "NewWindowTarget" && $4 !~ finder_target_pattern { exit 2 }
+        category == "dock" && $2 == "orientation" && $4 !~ dock_orientation_pattern { exit 2 }
+        category == "dock" && $2 == "mineffect" && $4 !~ dock_mineffect_pattern { exit 2 }
         category == "screenshots" {
             # Only absolute paths or leading ~/; no shell syntax or traversal.
             if ($4 !~ /^(\/|~\/)/ || $4 ~ /[$`\\]/ || $4 ~ /\/\// ||

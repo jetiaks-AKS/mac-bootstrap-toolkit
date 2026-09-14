@@ -29,8 +29,13 @@ apply_dock_settings() {
         return 2
     fi
 
-    if ! killall Dock >/dev/null 2>&1; then
+    if [[ "$DEFAULTS_CONFIG_CHANGED" == true ]] && ! killall Dock >/dev/null 2>&1; then
         error "Failed to restart Dock"
+        return 2
+    fi
+
+    if ! check_dock; then
+        error "Failed to verify Dock"
         return 2
     fi
 

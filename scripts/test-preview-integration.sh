@@ -98,7 +98,7 @@ defaults() {
         read-type)
             [[ "$TEST_CASE" != macos-error ]] || return 2
             case "$3" in
-                FXPreferredViewStyle|NewWindowTarget|location) echo 'Type is string' ;;
+                FXPreferredViewStyle|NewWindowTarget|orientation|mineffect|location) echo 'Type is string' ;;
                 KeyRepeat) echo 'Type is integer' ;;
                 *) echo 'Type is boolean' ;;
             esac ;;
@@ -106,6 +106,8 @@ defaults() {
             case "$3" in
                 FXPreferredViewStyle) echo icnv ;;
                 NewWindowTarget) echo PfDe ;;
+                orientation) echo right ;;
+                mineffect) echo scale ;;
                 location)
                     if [[ "$TEST_CASE" == workflow-directory-only ]]; then echo "$HOME/Captures"; else echo "$HOME/OldCaptures"; fi ;;
                 KeyRepeat) echo 5 ;;
@@ -161,6 +163,12 @@ com.apple.finder|ShowMountedServersOnDesktop|bool|1
 com.apple.finder|FXEnableExtensionChangeWarning|bool|1
 FINDER
     printf 'com.apple.dock|autohide|bool|1\n' > "$generated/macos/dock.conf"
+    cat >> "$generated/macos/dock.conf" <<'DOCK'
+com.apple.dock|orientation|string|bottom
+com.apple.dock|mineffect|string|genie
+com.apple.dock|minimize-to-application|bool|1
+com.apple.dock|show-process-indicators|bool|1
+DOCK
     printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
     printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\n' > "$generated/macos/trackpad.conf"
     printf 'com.apple.screencapture|location|string|%s\n' "$TEST_ROOT/home/Captures" > "$generated/macos/screenshots.conf"
@@ -249,6 +257,10 @@ Would change macOS setting: com.apple.finder/ShowMountedServersOnDesktop (false 
 Would change macOS setting: com.apple.finder/FXEnableExtensionChangeWarning (false -> true)
 Would restart process: Finder
 Would change macOS setting: com.apple.dock/autohide (false -> true)
+Would change macOS setting: com.apple.dock/orientation (right -> bottom)
+Would change macOS setting: com.apple.dock/mineffect (scale -> genie)
+Would change macOS setting: com.apple.dock/minimize-to-application (false -> true)
+Would change macOS setting: com.apple.dock/show-process-indicators (false -> true)
 Would restart process: Dock
 Would change macOS setting: NSGlobalDomain/KeyRepeat (5 -> 2)
 Would change macOS setting: com.apple.AppleMultitouchTrackpad/Clicking (false -> true)
@@ -335,6 +347,20 @@ run_case disabled-finder-enum 0
 if grep -q '^defaults .*com.apple.finder' "$TEST_ROOT/observations"; then
     echo 'FAIL: disabled Finder was inspected'; ((TEST_FAILURES++))
 fi
+for key in orientation mineffect; do
+    reset_fixture
+    printf 'com.apple.dock|%s|string|unsupported\n' "$key" > "$FIXTURE/config/generated/macos/dock.conf"
+    run_case "invalid-dock-$key" 2
+    if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
+        echo 'FAIL: invalid Dock enum reached preflight/domains'; ((TEST_FAILURES++))
+    fi
+    write_blueprint
+    sed -i '' 's/macos-dock="true"/macos-dock="false"/' "$FIXTURE/config/blueprint.conf"
+    run_case "disabled-dock-$key" 0
+    if grep -q '^defaults .*com.apple.dock' "$TEST_ROOT/observations"; then
+        echo 'FAIL: disabled Dock was inspected'; ((TEST_FAILURES++))
+    fi
+done
 reset_fixture
 printf '[broken]\n' > "$FIXTURE/config/blueprint.conf"
 run_case malformed-blueprint 2

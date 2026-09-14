@@ -13,6 +13,10 @@ serialize_dock_settings() {
     macos_collect_preference "$output_file" com.apple.dock tilesize int || return 2
     macos_collect_preference "$output_file" com.apple.dock magnification bool || return 2
     macos_collect_preference "$output_file" com.apple.dock largesize int || return 2
+    macos_collect_preference "$output_file" com.apple.dock orientation string || return 2
+    macos_collect_preference "$output_file" com.apple.dock mineffect string || return 2
+    macos_collect_preference "$output_file" com.apple.dock minimize-to-application bool || return 2
+    macos_collect_preference "$output_file" com.apple.dock show-process-indicators bool || return 2
 
     return 0
 
@@ -21,6 +25,7 @@ serialize_dock_settings() {
 export_dock_settings() {
 
     local output_file="config/generated/macos/dock.conf"
+    DOCK_DISCOVERY_WARNING=false
 
     action "Exporting Dock configuration..."
 
@@ -32,6 +37,7 @@ export_dock_settings() {
 if [[ "$VERBOSE" == true ]]; then
     detail "Configuration saved to: $output_file"
 fi
+    [[ "$DOCK_DISCOVERY_WARNING" == false ]] || return 1
     success "Dock configuration exported"
 
     return 0
