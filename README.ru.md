@@ -88,6 +88,11 @@ Dock поддерживает 9 настроек в `macos-dock`;
 Keyboard поддерживает 9 настроек в `macos-keyboard` без перезапуска процессов;
 [настройки Keyboard и validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
 
+Trackpad восстанавливает две primary stored preferences в `macos-trackpad`:
+tap to click и secondary click. Tracking speed, Natural Scrolling, дополнительные
+gestures и синхронизация внешнего Magic Trackpad остаются deferred;
+[контракт Trackpad](docs/toolkit/CONFIGURATION.md#trackpad-reliability-stage-9e3).
+
 ### Preview
 
 - неизменяющая проверка `--dry-run` для Applications, Git configuration,

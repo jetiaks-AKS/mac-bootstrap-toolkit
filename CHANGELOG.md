@@ -11,6 +11,13 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9E.3: narrowed `macos-trackpad` to the two reliable primary stored bool
+  preferences `Clicking` and `TrackpadRightClick`. Trackpad Apply now performs a
+  final stored-state Check without process restart or external-device writes.
+* Removed unreliable tracking-speed restoration from the supported Trackpad
+  contract. Stale generated `com.apple.trackpad.scaling` records are rejected
+  before inspection or mutation and can be refreshed through Discovery.
+
 * Stage 9E.1: expanded `macos-dock` from nine to eleven settings with
   `launchanim` and `mru-spaces`, retaining one Dock restart only after writes.
 * Added `macos-windows` with four typed `NSGlobalDomain` preferences, strict

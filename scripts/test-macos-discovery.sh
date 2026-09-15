@@ -43,7 +43,7 @@ mock_native_type() {
         ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|launchanim|mru-spaces|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
-        tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode|com.apple.trackpad.scaling)
+        tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode)
             echo "Type is integer"
             ;;
         FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|AppleActionOnDoubleClick|AppleWindowTabbingMode|location)
@@ -68,7 +68,6 @@ mock_value() {
         KeyRepeat) echo 2 ;;
         InitialKeyRepeat) echo 15 ;;
         AppleKeyboardUIMode) echo 3 ;;
-        com.apple.trackpad.scaling) echo 2 ;;
         FXPreferredViewStyle) echo Nlsv ;;
         FXDefaultSearchScope) echo SCcf ;;
         NewWindowTarget) echo PfHm ;;
@@ -235,11 +234,40 @@ fi
 
 reset_fixture
 export_trackpad_settings >/dev/null
-if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == $'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\nNSGlobalDomain|com.apple.trackpad.scaling|int|2\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|0' ]]; then
-    pass "Trackpad present preferences preserve the existing format"
+expected_trackpad=$'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|0'
+if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == "$expected_trackpad" ]]; then
+    pass "Trackpad exact two-record inventory uses the scalar format"
 else
     fail "Trackpad populated format changed"
 fi
+
+for key in Clicking TrackpadRightClick; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.AppleMultitouchTrackpad|$key"
+    export_trackpad_settings >/dev/null
+    expected_remaining="$(printf '%s\n' "$expected_trackpad" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key remains unmanaged"
+    else
+        fail "absent $key changed Trackpad inventory incorrectly"
+    fi
+
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_trackpad" > config/generated/macos/trackpad.conf
+        before_checksum="$(cksum config/generated/macos/trackpad.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.AppleMultitouchTrackpad|$key"
+        export_trackpad_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/trackpad.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Trackpad snapshot"
+        else
+            fail "$key $mode Trackpad publication safety"
+        fi
+    done
+done
 
 reset_fixture
 export_screenshots_settings >/dev/null

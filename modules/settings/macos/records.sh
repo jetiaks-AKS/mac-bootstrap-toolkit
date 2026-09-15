@@ -70,7 +70,6 @@ validate_defaults_config() {
             allowed["keyboard", "NSGlobalDomain", "NSAutomaticQuoteSubstitutionEnabled"] = "bool"
             allowed["keyboard", "NSGlobalDomain", "NSAutomaticDashSubstitutionEnabled"] = "bool"
             allowed["trackpad", "com.apple.AppleMultitouchTrackpad", "Clicking"] = "bool"
-            allowed["trackpad", "NSGlobalDomain", "com.apple.trackpad.scaling"] = "int"
             allowed["trackpad", "com.apple.AppleMultitouchTrackpad", "TrackpadRightClick"] = "bool"
             allowed["screenshots", "com.apple.screencapture", "location"] = "string"
             if (category !~ /^(finder|dock|windows|keyboard|trackpad|screenshots)$/) exit 2

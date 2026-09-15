@@ -91,6 +91,11 @@ process restart; see the [stored-preference contract](docs/toolkit/CONFIGURATION
 Keyboard supports 9 settings in `macos-keyboard`, with no process restart; see
 [Keyboard inventory and validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
 
+Trackpad restores two primary stored preferences in `macos-trackpad`: tap to
+click and secondary click. Tracking speed, Natural Scrolling, additional
+gestures, and external Magic Trackpad synchronization remain deferred; see the
+[Trackpad reliability contract](docs/toolkit/CONFIGURATION.md#trackpad-reliability-stage-9e3).
+
 ### Preview
 
 - non-mutating `--dry-run` inspection for Applications, Git configuration,

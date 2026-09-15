@@ -128,7 +128,6 @@ Finder поддерживает 13 настроек, Dock — 11, Window Managem
 | Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
 | Keyboard (9D) | `NSGlobalDomain` | `AppleKeyboardUIMode` / int; `ApplePressAndHoldEnabled`, `NSAutomaticCapitalizationEnabled`, `NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`, `NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled` / bool |
 | Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
-| Trackpad | `NSGlobalDomain` | `com.apple.trackpad.scaling` / int |
 | Screenshots | `com.apple.screencapture` | `location` / string, path-контракт ниже |
 
 Unknown/cross-category domain/key, wrong type, duplicate domain/key, неверное
@@ -136,7 +135,7 @@ Unknown/cross-category domain/key, wrong type, duplicate domain/key, невер�
 scalar отвергаются с `2`. Байты проверяются до shell parsing; строка не теряет
 значимый trailing newline незаметно. Bool допускает `0/1/true/false`; int —
 целое с необязательным минусом. Новые неподтверждённые диапазоны и enum limits
-не вводятся. Float остаётся задачей 9E.3: текущие integer Trackpad records совместимы.
+не вводятся. Generic numeric/float contract не добавляется.
 
 Пустые строки/строки из пробелов и пустые category-файлы допустимы. Последняя
 запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
@@ -248,6 +247,26 @@ Check → Write → Verify и final Check всех managed records. Успешн
 Проверяется сохранённое managed state, а не эффект в уже открытых приложениях.
 Shortcuts, input sources/layouts, dictation, text replacements, per-app и
 hardware-specific Keyboard configuration остаются вне Stage 9D.
+
+#### Trackpad Reliability (Stage 9E.3)
+
+`macos-trackpad` содержит ровно две primary Apple trackpad stored preferences:
+`Clicking` (tap to click) и `TrackpadRightClick` (secondary click enabled), обе
+в `com.apple.AppleMultitouchTrackpad` с типом bool. Absent source preference
+остаётся unmanaged; observation/type/candidate validation error возвращает `2`
+и сохраняет предыдущий generated snapshot.
+
+Preview и Bootstrap используют общий typed stored-state truth model. Apply
+выполняет Check → Write → Verify для каждого изменяемого record и final Check
+всего managed Trackpad state. Процессы не перезапускаются. Success подтверждает
+stored preferences, но не immediate runtime behavior, external Magic Trackpad,
+Bluetooth/ByHost synchronization или device-wide restoration.
+
+Старый `trackpad.conf` с `NSGlobalDomain|com.apple.trackpad.scaling|int|...`
+отклоняется до inspection/mutation; generated state следует обновить через
+Discovery. Tracking speed остаётся deferred из-за недоказанных numeric и HID
+runtime contracts. Natural Scrolling относится к общей будущей Input/Scrolling
+области. Additional gestures и hardware-aware synchronization также deferred.
 
 #### Screenshot destination
 

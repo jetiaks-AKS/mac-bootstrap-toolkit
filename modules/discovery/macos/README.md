@@ -15,7 +15,7 @@ Discovery считывает текущие значения параметро�
 - Finder — 13 supported settings
 - Dock — 9 supported settings
 - Keyboard — 9 supported settings
-- Trackpad
+- Trackpad — 2 supported stored preferences
 - Screenshots
 
 ---
@@ -75,6 +75,13 @@ Keyboard сохраняет `KeyRepeat`, `InitialKeyRepeat` и семь новы
 Absent values остаются unmanaged. Ошибка сбора/валидации сохраняет предыдущий
 Keyboard snapshot. Bootstrap выбирает все managed records через `macos-keyboard`
 и не перезапускает процессы.
+
+Trackpad сохраняет ровно два bool records из `com.apple.AppleMultitouchTrackpad`:
+`Clicking` и `TrackpadRightClick`. Они описывают primary stored preferences, без
+обещания синхронизации external Magic Trackpad, Bluetooth или ByHost state.
+Tracking speed исключён из supported inventory; старый generated record с
+`com.apple.trackpad.scaling` не проходит validation и требует повторной Discovery.
+Natural Scrolling, дополнительные gestures и hardware-aware restoration deferred.
 
 ---
 

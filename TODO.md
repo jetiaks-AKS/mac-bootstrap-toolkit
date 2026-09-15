@@ -12,14 +12,13 @@ TODO содержит ближайшие конкретные техническ
 
 # Stage 9 — Next
 
-- [ ] 9E.2: доказать безопасный notification/reload lifecycle для WindowManager
-  tiling preferences без kill/logout/GUI automation
-- [ ] 9E.3: проверить Trackpad numeric/float compatibility и hardware awareness
+- [ ] повторно проверить private `Clicking` и `TrackpadRightClick` contracts при
+  переходе на macOS 27
 
-Stages 9A–9E.1 реализованы в Unreleased. Finder поддерживает 13 настроек,
-Dock — 11, Window Management — 4, Keyboard — 9.
-Finder Favorites/per-folder view state остаются deferred; Trackpad
-float/hardware work перенесён в 9E.3;
+Stages 9A–9E.3 реализованы в Unreleased. Finder поддерживает 13 настроек,
+Dock — 11, Window Management — 4, Keyboard — 9, Trackpad — 2.
+Finder Favorites/per-folder view state, WindowManager tiling, Trackpad tracking
+speed, Natural Scrolling, gestures и external-device synchronization deferred;
 новые категории, restart manager и Global Verification в 9A не добавлены.
 
 ---

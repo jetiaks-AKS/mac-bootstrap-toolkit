@@ -227,9 +227,10 @@ Configuration → Blueprint → Preview → Bootstrap с локальным Chec
   typed verification and final Check without process restart
 - [x] 9E.1 — Dock + Window Management Scalar Expansion: Dock 11 settings;
   `macos-windows` 4 confirmed NSGlobalDomain settings without process restart
-- [ ] 9E.2 — WindowManager Lifecycle Research: доказать безопасный
-  notification/reload lifecycle для четырёх tiling preferences
-- [ ] 9E.3 — Trackpad Reliability: numeric/float compatibility и hardware awareness
+- [x] 9E.2 — WindowManager Lifecycle Research: lifecycle исследован;
+  реализация четырёх tiling preferences deferred
+- [x] 9E.3 — Trackpad Reliability: supported scope сокращён до двух primary
+  stored bool preferences; tracking speed и device synchronization deferred
 - [ ] 9F — Menu Bar / Control Center Compatibility: сначала доказать owner,
   безопасное чтение/запись и reload; uncertain settings не объявлять supported
 - [ ] 9G — Secondary scalar settings, только при низком риске
@@ -238,8 +239,9 @@ Configuration → Blueprint → Preview → Bootstrap с локальным Chec
 9A не добавляет новых preferences, типов или Blueprint categories. 9B добавляет
 ровно шесть Finder preferences в существующую категорию; 9C — четыре Dock preferences.
 9D добавляет семь Keyboard preferences. 9E.1 добавляет два Dock preferences и
-четыре Window Management preferences. Следующая фаза — 9E.2 WindowManager lifecycle;
-остальные фазы требуют отдельной реализации. Private databases, UI automation и raw
+четыре Window Management preferences. 9E.2 оставляет WindowManager tiling deferred;
+9E.3 сохраняет только два надёжных Trackpad bool records. Остальные фазы требуют
+отдельной реализации. Private databases, UI automation и raw
 machine-specific metadata не входят в scope. Generic settings/planner engines
 не являются требованием.
 

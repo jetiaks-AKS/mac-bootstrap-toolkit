@@ -189,7 +189,7 @@ NSGlobalDomain|NSAutomaticPeriodSubstitutionEnabled|bool|1
 NSGlobalDomain|NSAutomaticQuoteSubstitutionEnabled|bool|1
 NSGlobalDomain|NSAutomaticDashSubstitutionEnabled|bool|1
 KEYBOARD
-    printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\n' > "$generated/macos/trackpad.conf"
+    printf 'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|1\n' > "$generated/macos/trackpad.conf"
     printf 'com.apple.screencapture|location|string|%s\n' "$TEST_ROOT/home/Captures" > "$generated/macos/screenshots.conf"
 }
 
@@ -296,6 +296,7 @@ Would change macOS setting: NSGlobalDomain/NSAutomaticPeriodSubstitutionEnabled 
 Would change macOS setting: NSGlobalDomain/NSAutomaticQuoteSubstitutionEnabled (false -> true)
 Would change macOS setting: NSGlobalDomain/NSAutomaticDashSubstitutionEnabled (false -> true)
 Would change macOS setting: com.apple.AppleMultitouchTrackpad/Clicking (false -> true)
+Would change macOS setting: com.apple.AppleMultitouchTrackpad/TrackpadRightClick (false -> true)
 Would create screenshots directory: $TEST_ROOT/home/Captures
 Would change macOS setting: com.apple.screencapture/location ($TEST_ROOT/home/OldCaptures -> $TEST_ROOT/home/Captures)
 Would restart process: SystemUIServer
@@ -421,6 +422,18 @@ for entry in AppleActionOnDoubleClick:string AppleWindowTabbingMode:string; do
         echo 'FAIL: disabled Window Management was inspected'; ((TEST_FAILURES++))
     fi
 done
+reset_fixture
+printf 'NSGlobalDomain|com.apple.trackpad.scaling|int|1\n' > "$FIXTURE/config/generated/macos/trackpad.conf"
+run_case stale-trackpad-scaling 2
+if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
+    echo 'FAIL: stale Trackpad scaling reached preflight/domains'; ((TEST_FAILURES++))
+fi
+write_blueprint
+sed -i '' 's/macos-trackpad="true"/macos-trackpad="false"/' "$FIXTURE/config/blueprint.conf"
+run_case disabled-stale-trackpad-scaling 0
+if grep -q '^defaults .*trackpad' "$TEST_ROOT/observations"; then
+    echo 'FAIL: disabled stale Trackpad input was inspected'; ((TEST_FAILURES++))
+fi
 reset_fixture
 printf '[broken]\n' > "$FIXTURE/config/blueprint.conf"
 run_case malformed-blueprint 2

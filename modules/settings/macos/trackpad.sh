@@ -29,7 +29,12 @@ apply_trackpad_settings() {
         return 2
     fi
 
-    success "Trackpad configured successfully"
+    if ! check_trackpad; then
+        error "Failed to verify Trackpad preferences"
+        return 2
+    fi
+
+    success "Trackpad preferences configured successfully"
     return 0
 
 }

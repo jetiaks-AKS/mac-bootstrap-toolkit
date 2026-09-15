@@ -11,7 +11,6 @@ serialize_trackpad_settings() {
     : > "$output_file" || return 2
 
     macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad Clicking bool || return 2
-    macos_collect_preference "$output_file" NSGlobalDomain com.apple.trackpad.scaling int || return 2
     macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad TrackpadRightClick bool || return 2
 
     return 0

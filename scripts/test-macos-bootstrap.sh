@@ -143,6 +143,12 @@ defaults() {
                     windows-final-error) READ_FAILURE='NSGlobalDomain|AppleActionOnDoubleClick' ;;
                 esac
             fi
+            if [[ "$domain|$key" == 'com.apple.AppleMultitouchTrackpad|TrackpadRightClick' ]]; then
+                case "$POST_WRITE_MODE" in
+                    trackpad-final-mismatch) state_set com.apple.AppleMultitouchTrackpad Clicking bool false ;;
+                    trackpad-final-error) READ_FAILURE='com.apple.AppleMultitouchTrackpad|Clicking' ;;
+                esac
+            fi
             ;;
         *) return 2 ;;
     esac
@@ -236,7 +242,7 @@ run apply_defaults_config "$FINDER_CONFIG" finder
 expect_status 2 "$status" 'NUL rejected before shell parsing'
 assert_no_mutation 'NUL record performs no write'
 
-# All existing category identities, empty files, and old integer speed remain valid.
+# All existing category identities and empty files remain valid.
 reset_case
 for pair in finder dock keyboard trackpad screenshots; do
     run validate_defaults_config "$TEST_ROOT/generated/macos/$pair.conf" "$pair"
@@ -244,8 +250,10 @@ for pair in finder dock keyboard trackpad screenshots; do
 done
 record "$TRACKPAD_CONFIG" 'NSGlobalDomain|com.apple.trackpad.scaling|int|1'
 state_set NSGlobalDomain com.apple.trackpad.scaling int 1
-run check_trackpad
-expect_status 0 "$status" 'existing integer Trackpad scaling remains valid'
+run apply_trackpad_settings
+expect_status 2 "$status" 'stale Trackpad scaling record rejected'
+assert_no_mutation 'stale Trackpad scaling rejected before mutation'
+[[ ! -s "$OBSERVATION_LOG" ]] && pass 'stale Trackpad scaling rejected before inspection' || fail 'stale Trackpad scaling reached inspection'
 record "$KEYBOARD_CONFIG" 'NSGlobalDomain|KeyRepeat|int|-03'
 state_set NSGlobalDomain KeyRepeat int -3
 run check_keyboard
@@ -943,6 +951,113 @@ run apply_macos_settings
 expect_status 0 "$status" 'no Blueprint includes expanded Keyboard'
 assert_count '^write:' 1 'all-inclusive applies new Keyboard preference'
 assert_count '^killall:' 0 'all-inclusive Keyboard no restart'
+
+# Stage 9E.3: Trackpad keeps exactly two primary stored boolean preferences.
+TRACKPAD_RECORDS=$'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|1'
+trackpad_fixture() {
+    record "$TRACKPAD_CONFIG" "$TRACKPAD_RECORDS"
+    state_set com.apple.AppleMultitouchTrackpad Clicking bool 1
+    state_set com.apple.AppleMultitouchTrackpad TrackpadRightClick bool 1
+}
+
+while IFS='|' read -r domain key type value; do
+    reset_case
+    record "$TRACKPAD_CONFIG" "$domain|$key|$type|$value"
+    run validate_defaults_config "$TRACKPAD_CONFIG" trackpad
+    expect_status 0 "$status" "$key Trackpad schema accepted"
+    for invalid in "com.apple.driver.AppleBluetoothMultitouch.trackpad|$key|$type|$value" \
+                   "NSGlobalDomain|$key|$type|$value" \
+                   "$domain|$key|int|1"; do
+        record "$TRACKPAD_CONFIG" "$invalid"
+        run apply_trackpad_settings
+        expect_status 2 "$status" "$key unsupported domain/type rejected"
+        assert_no_mutation "$key unsupported input blocks writes"
+    done
+done <<< "$TRACKPAD_RECORDS"
+
+for mode in matching mismatch absent observation-error invalid-type stale-scaling; do
+    reset_case
+    trackpad_fixture
+    ENABLED_CATEGORIES=macos-trackpad
+    case "$mode" in
+        mismatch) state_set com.apple.AppleMultitouchTrackpad Clicking bool 0 ;;
+        absent) awk -F '|' '$2 != "Clicking"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        observation-error) READ_TYPE_FAILURE='com.apple.AppleMultitouchTrackpad|Clicking' ;;
+        invalid-type) record "$TRACKPAD_CONFIG" 'com.apple.AppleMultitouchTrackpad|Clicking|int|1' ;;
+        stale-scaling) record "$TRACKPAD_CONFIG" 'NSGlobalDomain|com.apple.trackpad.scaling|int|1' ;;
+    esac
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_macos_settings
+    case "$mode" in
+        matching) expected=0; plans=0 ;;
+        mismatch|absent) expected=0; plans=1 ;;
+        *) expected=2; plans=0 ;;
+    esac
+    expect_status "$expected" "$status" "Trackpad Preview $mode"
+    [[ "$(grep -c 'Would change macOS setting:' <<< "$output" || true)" == "$plans" ]] || fail "$mode Trackpad plan count"
+    [[ "$output" != *'Would restart process:'* ]] || fail "$mode Trackpad unexpected restart plan"
+    assert_changed preserved "$mode Trackpad Preview preserves MODULE_CHANGED"
+    assert_no_mutation "$mode Trackpad Preview remains read-only"
+    case "$mode" in invalid-type|stale-scaling) [[ ! -s "$OBSERVATION_LOG" ]] || fail "$mode Trackpad input reached inspection" ;; esac
+done
+
+for mode in matching mismatch multiple absent observation-error write-failure verify-mismatch verify-error later-write-failure final-mismatch final-error; do
+    reset_case
+    trackpad_fixture
+    ENABLED_CATEGORIES=macos-trackpad
+    expected=0; changed=true; writes=1
+    case "$mode" in
+        matching) changed=false; writes=0 ;;
+        mismatch) state_set com.apple.AppleMultitouchTrackpad Clicking bool 0 ;;
+        multiple|later-write-failure)
+            state_set com.apple.AppleMultitouchTrackpad Clicking bool 0
+            state_set com.apple.AppleMultitouchTrackpad TrackpadRightClick bool 0
+            writes=2 ;;
+        absent) awk -F '|' '$2 != "Clicking"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        *) state_set com.apple.AppleMultitouchTrackpad TrackpadRightClick bool 0 ;;
+    esac
+    case "$mode" in
+        observation-error) READ_TYPE_FAILURE='com.apple.AppleMultitouchTrackpad|Clicking'; expected=2; changed=false; writes=0 ;;
+        write-failure) WRITE_STATUS=2; expected=2; changed=false ;;
+        verify-mismatch) POST_WRITE_MODE=mismatch; expected=2 ;;
+        verify-error) POST_WRITE_MODE=observation-error; expected=2 ;;
+        later-write-failure) WRITE_FAILURE_KEY=TrackpadRightClick; expected=2 ;;
+        final-mismatch) POST_WRITE_MODE=trackpad-final-mismatch; expected=2 ;;
+        final-error) POST_WRITE_MODE=trackpad-final-error; expected=2 ;;
+    esac
+    run apply_macos_settings
+    expect_status "$expected" "$status" "Trackpad Bootstrap $mode"
+    assert_changed "$changed" "$mode Trackpad mutation accounting"
+    assert_count '^write:' "$writes" "$mode Trackpad write count"
+    assert_count '^killall:' 0 "$mode Trackpad no restart/signals"
+    if grep -Eq 'Bluetooth|ByHost|IOHID' "$MUTATION_LOG"; then
+        fail "$mode Trackpad wrote unsupported external/device state"
+    else
+        pass "$mode Trackpad avoids Bluetooth/ByHost/IOHID writes"
+    fi
+    if [[ $expected -ne 0 ]]; then
+        assert_no_success "$output" "$mode Trackpad has no false success"
+    else
+        if [[ "$mode" != matching ]]; then
+            [[ "$output" == *'Trackpad preferences configured successfully'* ]] || fail "$mode Trackpad truthful success missing"
+        fi
+        : > "$MUTATION_LOG"
+        MODULE_CHANGED=false
+        run apply_macos_settings
+        expect_status 0 "$status" "$mode second Trackpad Bootstrap succeeds"
+        assert_changed false "$mode second Trackpad Bootstrap unchanged"
+        assert_no_mutation "$mode second Trackpad Bootstrap no-op"
+    fi
+done
+
+reset_case
+trackpad_fixture
+MODULE_CHANGED=true
+run apply_trackpad_settings
+expect_status 0 "$status" 'matching Trackpad with earlier module mutation succeeds'
+assert_changed true 'earlier mutation survives matching Trackpad'
+assert_no_mutation 'matching Trackpad does not restart or write'
 
 # Screenshot path validation: fixtures only, never real user directories.
 for bad in '' relative '~otheruser/Shot' '$VAR/Shot' '$HOME/Shot' '${HOME}/Shot' '$(touch sentinel)' '`touch sentinel`' "$HOME/../escape" "$HOME/./bad" "$HOME//bad" $'/tmp/a\nb' $'/tmp/a\tb'; do
