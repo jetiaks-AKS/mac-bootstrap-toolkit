@@ -6,12 +6,11 @@ English | [Русский](ARCHITECTURE.ru.md)
 
 Mac Bootstrap Toolkit is a modular Bash system for discovering and
 reproducing supported parts of a macOS working environment. This document
-defines the current architectural responsibilities and their planned
-extension; implementation scheduling belongs in the Roadmap.
+defines the current component responsibilities, state flow, boundaries, and
+architectural invariants. Development sequencing belongs in the Roadmap;
+configuration formats and value-level contracts belong in Configuration.
 
 ## Current architecture
-
-The implemented architecture is:
 
 ```text
 Current Mac
@@ -20,16 +19,19 @@ Discovery
     ↓
 Generated Configuration
     ↓
-Blueprint
+Blueprint / Desired Selection
+    ↓
+Preview
     ↓
 Bootstrap
     ↓
 Target Mac
 ```
 
-Discovery records supported current state, Generated Configuration stores the
-observed values, Blueprint selects the desired restoration scope, and
-Bootstrap applies the selected supported values.
+Discovery records supported observed state. Generated Configuration stores
+those machine-specific values. Blueprint optionally selects the restoration
+scope. Preview reports supported changes without applying them. Bootstrap
+applies the selected supported values on the target Mac.
 
 ## State and responsibility model
 
@@ -42,206 +44,153 @@ Generated Configuration
     +
 Blueprint Desired Selection
     ↓
-Selected supported state
-    ↓
-Bootstrap
+Selected Supported State
+    ├── Preview
+    └── Bootstrap
 ```
 
-- **Observed State** is the supported state detected on the source Mac.
-- **Generated Configuration** stores machine-specific observed values.
-- **Blueprint** stores Desired Selection: categories and items included in the
+- **Observed State** is supported state detected on the source Mac.
+- **Generated Configuration** is the local representation of observed values.
+- **Blueprint Desired Selection** contains categories and items included in the
   restoration scope.
-- **Bootstrap** consumes generated values through that selection and applies
-  the selected supported state.
+- **Selected Supported State** is the intersection of generated values,
+  Blueprint selection, and current consumer support.
 
-Blueprint does not own, copy, or rewrite discovered values. Observed State and
-Desired Selection remain separate responsibilities.
+Blueprint does not own, copy, or rewrite discovered values. Preview does not
+own configuration or define another desired-state model. Bootstrap does not
+discover source state. These responsibilities remain separate.
 
 ## Current architectural contracts
 
 ### Discovery
 
-Discovery observes supported state without modifying that observed domain. Its
-export lifecycle is:
+Discovery observes its supported domain without mutating that domain. Its
+publication lifecycle is an architectural invariant:
 
 ```text
 Collect → Validate → Serialize → Safe Publication
 ```
 
-Generated output is replaced only after the new state has been collected,
-validated, and serialized successfully. A handled collection, serialization,
-or publication failure preserves the previous valid generated state.
-
-Discovery is not a backup system: it records configuration and metadata but
-does not copy user documents or repository contents.
+Generated output is replaced only after the complete candidate has been
+collected, validated, and serialized successfully. A handled failure preserves
+the previous valid generated state. Discovery records configuration and
+metadata; it does not copy user documents or repository contents.
 
 ### Generated Configuration
 
 `config/generated/` contains private, local, machine-specific derived state and
-is excluded from Git. Producer and consumer formats must remain compatible.
+is excluded from Git. Producer and consumer formats must remain compatible,
+and generated content must always be parsed as data rather than executed.
 
-Application data uses simple formats, global Git state uses native
-non-executable Git configuration, and sectioned Workspace repository data uses
-the existing Configuration Engine. Git generated state is parsed as data and
-must never be consumed through `source` or `eval`.
-
-Most generated files publish independently. Workspace metadata in
-`workspace.conf` also publishes independently, while `folders.conf`,
-`repositories.conf`, `vscode-workspaces.conf`, and `inventory.conf` form one
-grouped snapshot and publish together.
+Most generated files publish independently. `workspace.conf` also publishes
+independently, while `folders.conf`, `repositories.conf`,
+`vscode-workspaces.conf`, and `inventory.conf` form one consistency group and
+publish as a single Workspace snapshot.
 
 Generated state can contain personal paths, Git identity, repository URLs, and
-editor settings, so it should be reviewed and transferred privately.
+editor settings, so it must be reviewed and transferred privately. Exact file
+formats and portability rules are defined in [Configuration](CONFIGURATION.md).
 
 ### Blueprint
 
-Blueprint validates and stores Desired Selection in the private local
+Blueprint validates and stores Desired Selection in private local
 `config/blueprint.conf`. It selects discovered categories and items without
 duplicating their values from Generated Configuration.
 
-When Blueprint is absent, Bootstrap preserves the compatible legacy
-all-inclusive behavior for the supported generated scope.
+When Blueprint is absent, consumers retain compatible all-inclusive behavior
+for the supported generated scope. A legacy Blueprint that omits a newer
+category remains valid and leaves that category disabled until explicit
+migration.
+
+### Preview
+
+Preview is a read-only mode of the existing restoration model. It consumes the
+same Generated Configuration, Blueprint Desired Selection, validation rules,
+and observation semantics as Bootstrap rather than introducing a second
+desired-state model.
+
+Preview reports planned supported changes, distinguishes observation failure
+from confirmed absence or mismatch, and does not mutate target state. It does
+not own or rewrite configuration. Its result can gate Bootstrap in Guided
+Workflow.
 
 ### Bootstrap
 
-Bootstrap applies selected supported values through the current module-level
-lifecycle:
+Bootstrap applies selected supported values through the module-level lifecycle:
 
 ```text
 Check → Apply → Verify
 ```
 
-This **Verify** is current local post-apply verification performed by a module
-when the resulting state is observable with its existing mechanisms. It is not
-the future aggregate Global Verification capability.
+Required selected input is validated before mutation. Observation failure is
+distinct from legitimate absence or mismatch and must not be converted into
+“apply required.” Modules apply only confirmed necessary changes, preserve
+existing data where safety is uncertain, and remain idempotent.
 
-Bootstrap modules remain idempotent: they inspect current state, apply only
-needed changes, and locally verify results where supported. Required generated
-input is validated before mutation where applicable. Observation failure
-remains distinct from legitimate absence or mismatch and must not be converted
-into “apply required.” Unsafe existing state is reported rather than corrected
-destructively.
-
-For Bootstrap, Blueprint and the required generated inputs of the selected
-scope are validated after logger setup and before preflight or Core checks.
-This blocks malformed input before Homebrew installation or target-state
-mutation. The current preflight still authenticates through `sudo -v`; a future
-Preview execution uses a separate read-only startup path rather than this one.
+Verify is a local post-apply check performed when the resulting managed state
+is observable by the module. It does not imply aggregate verification of the
+whole Mac or effective visual verification beyond the module's stated
+contract.
 
 Discovery of VS Code Workspace metadata and generation of
 `vscode-workspaces.conf` are implemented. Bootstrap restoration of
-`.code-workspace` is not implemented and is disconnected from production
-Bootstrap orchestration.
+`.code-workspace` remains intentionally disconnected until a safe restoration
+consumer is implemented.
 
 ### Core boundary
 
-`modules/core/` provides shared output, logging, module lifecycle, preflight,
-configuration, and common environment services. Domain-specific Discovery and
-Bootstrap behavior remains outside Core.
+`modules/core/` owns shared output, logging, lifecycle orchestration, preflight,
+configuration infrastructure, and common environment services. Domain-specific
+Discovery, Preview, and Bootstrap behavior remains outside Core.
 
-## Architecture extension status
+macOS producers and consumers share a typed supported-record boundary.
+Screenshot restoration additionally crosses into filesystem safety; its path,
+portability, and category-specific behavior are defined in
+[Configuration](CONFIGURATION.md), not duplicated here.
 
-The architecture path is:
+## Guided Workflow
+
+Guided Workflow orchestrates existing modes rather than introducing another
+configuration source or desired-state engine:
 
 ```text
-Discovery
-    ↓
-Generated Configuration
+Readiness / optional Discovery
     ↓
 Blueprint
     ↓
-Dry-run / Preview
+Preview
     ↓
-Bootstrap
+Conditional Bootstrap
 ```
 
-The `--dry-run` CLI, its read-only startup path, and domain Preview for
-Applications, Git configuration, VS Code settings, Workspace, and macOS are
-implemented. Global Verification is Future / Optional and unimplemented.
+Blueprint cancellation stops the workflow. Preview errors block Bootstrap.
+When changes are planned, Bootstrap requires explicit user confirmation; zero
+planned changes do not invoke Bootstrap. Each underlying mode retains its own
+responsibility, validation, logging, Summary, and public status semantics.
+Inputs are revalidated before actual Apply where required. State is not frozen
+between Preview and confirmation, and Global Verification is not currently part
+of Workflow.
 
-### Dry-run / Preview
+## Verification boundary
 
-Dry-run / Preview is a non-mutating mode of the existing Bootstrap model. Its
-current foundation validates Blueprint and selected required inputs, performs
-read-only prerequisite inspection without sudo or installation, and then
-reaches an explicit Preview dispatch. Domain-specific planned-change output is
-implemented for Homebrew formulae and casks, App Store applications, and VS
-Code extensions by reusing their Bootstrap validators, Blueprint filters, and
-presence readers. Git configuration Preview reuses native generated-config
-validation and global-value inspection; VS Code settings Preview reuses source
-validation and byte comparison. Workspace Preview reuses its validated selected
-records and folder/repository inspection helpers. An absent repository produces
-only a clone plan; Preview does not infer its future branch state. macOS Preview
-reuses typed defaults validation and observation and reports related process
-restarts once per changed category. Preview inspections use inspection-only
-lifecycle accounting and do not use Bootstrap `MODULE_CHANGED` state. Preview
-is not a configuration source or a separately required planning engine.
-
-Screenshots uses the generated `location` as its only destination source. Its
-local Check observes both the preference and the resolved directory. A missing
-safe directory inside HOME is a real change even when the preference matches;
-Preview signals that plan through `preview_action`, including in Guided Workflow.
-Apply prepares and verifies the directory before writing the preference. Only
-actual preference writes require SystemUIServer restart. Final Verify checks the
-managed preference and usable directory, not visual Screenshot UI behavior.
-See [Configuration](CONFIGURATION.md) for path and compatibility rules.
-
-macOS Discovery and consumers share the fixed current-category scalar contract
-in `modules/settings/macos/records.sh`. Candidate files are validated before
-publication. Bootstrap validates selected categories and Screenshot path
-availability before preflight. Legacy Blueprint files that omit
-`macos-windows` remain valid and keep that category disabled until explicit
-migration.
-
-Startup order is CLI → logger → Blueprint validation → selected-input
-validation → read-only preflight → read-only Core inspection → domain Preview
-→ Summary → exit code. Startup validation/preflight errors stop execution.
-Core and domain errors remain in shared accounting while later read-only
-inspections continue. Each domain may stop its own inspection on error.
-Errors take precedence (`2`), then warnings (`1`); plans alone return `0`.
-The production-entrypoint integration harness checks all domains together,
-external mutation spies, target snapshots, and terminal/logger Summary parity.
-
-### Global Verification
-
-Global Verification is an optional future post-Bootstrap capability that could evaluate
-the resulting selected state and produce an aggregate confirmation. It is
-distinct from the current local module-level Verify step and does not require
-a separate complex engine to be defined in advance.
+Local Verify is part of current module lifecycles. Global Verification is a
+separate optional future capability that could evaluate the resulting selected
+state and provide an aggregate post-Bootstrap report. It is not required by the
+current architecture and does not justify a separate engine in advance.
 
 ## Optional future directions
 
-A separate Restore Engine and an AI Assistant remain optional directions, not
-required stages of the architecture. They should be considered only if a clear
-responsibility emerges that the established model cannot cover cleanly.
+A Restore Engine, AI Assistant, and other large architectural extensions remain
+optional. They should be considered only when a clear responsibility appears
+that the established model cannot cover cleanly.
 
-## Architecture and implementation status
+## Documentation ownership
 
-This document defines architectural responsibilities and boundaries.
-Implementation stages and release gates are maintained in
+This document owns stable architectural responsibilities and boundaries.
+Current formats and value-level contracts are in
+[Configuration](CONFIGURATION.md), operational behavior in [CLI](CLI.md) and
+[Quick Start](../getting-started/QUICKSTART.md), development direction in
 [ROADMAP.md](../../ROADMAP.md), near-term work in [TODO.md](../../TODO.md), and
-completed release history in `CHANGELOG.md`.
+completed history in [CHANGELOG.md](../../CHANGELOG.md).
 
 Return to the [main README](../../README.md).
-
-### Guided Workflow
-
-`--workflow` orchestrates the existing mode dispatcher in isolated subshells:
-optional Discovery → Blueprint Save → mandatory Preview → conditional Bootstrap.
-Each stage retains its logger, Summary and counters; `logs/latest.log` belongs
-to the last executed stage. There is no separate workflow log or planner.
-The initial readiness check uses selector prerequisites and existing Bootstrap
-input validation with all scopes enabled, independently of an old Blueprint.
-Optional inputs retain existing warning/skip rules. Discovery is followed by
-another readiness check. Selected-input validation still runs in both Preview
-and Bootstrap. Selector Save is reported separately from its unchanged standalone
-exit status, so cancellation cannot reuse an older Blueprint.
-Preview 0/1 permits confirmation (default No) only when plans exist; 2 stops.
-With no plans, Workflow finishes without confirmation, retaining warnings.
-Existing plan sites set the Preview-only `PREVIEW_HAS_CHANGES` flag through
-`preview_action`; no output parsing or Bootstrap change accounting is used.
-The isolated Preview stage signals no plans internally (3/4 for success/warnings);
-Workflow maps these back to public 0/1 semantics. Stage warnings remain
-exit 1, errors exit 2; cancellation adds no failure. EOF cancels prompts.
-Global Verification remains unimplemented. Inputs are revalidated before Apply;
-this MVP does not freeze files or system state between Preview and confirmation.

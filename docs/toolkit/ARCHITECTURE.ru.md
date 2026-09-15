@@ -6,12 +6,11 @@
 
 Mac Bootstrap Toolkit — модульная Bash-система для обнаружения и
 воспроизведения поддерживаемых частей рабочего окружения macOS. Этот документ
-определяет текущие архитектурные ответственности и их запланированное
-расширение; порядок реализации описывается в Roadmap.
+определяет текущую ответственность компонентов, поток состояния, границы и
+архитектурные инварианты. Последовательность развития описывается в Roadmap, а
+форматы и контракты значений — в Configuration.
 
 ## Текущая архитектура
-
-Реализованная архитектура:
 
 ```text
 Current Mac
@@ -20,20 +19,24 @@ Discovery
     ↓
 Generated Configuration
     ↓
-Blueprint
+Blueprint / Desired Selection
+    ↓
+Preview
     ↓
 Bootstrap
     ↓
 Target Mac
 ```
 
-Discovery фиксирует поддерживаемое текущее состояние, Generated Configuration
-хранит обнаруженные значения, Blueprint выбирает целевой scope восстановления,
-а Bootstrap применяет выбранные поддерживаемые значения.
+Discovery фиксирует поддерживаемое наблюдаемое состояние. Generated
+Configuration хранит эти значения для конкретного Mac. Blueprint при
+необходимости выбирает область восстановления. Preview показывает
+поддерживаемые изменения без их применения. Bootstrap применяет выбранные
+значения на целевом Mac.
 
 ## Модель состояния и ответственности
 
-Toolkit разделяет обнаруженные значения и целевой выбор:
+Toolkit отделяет наблюдаемые значения от целевого выбора:
 
 ```text
 Observed State
@@ -42,213 +45,158 @@ Generated Configuration
     +
 Blueprint Desired Selection
     ↓
-Selected supported state
-    ↓
-Bootstrap
+Selected Supported State
+    ├── Preview
+    └── Bootstrap
 ```
 
 - **Observed State** — поддерживаемое состояние, обнаруженное на исходном Mac.
-- **Generated Configuration** хранит machine-specific обнаруженные значения.
-- **Blueprint** хранит Desired Selection: категории и компоненты, включённые в
-  scope восстановления.
-- **Bootstrap** получает generated-значения через этот выбор и применяет
-  выбранное поддерживаемое состояние.
+- **Generated Configuration** — локальное представление наблюдаемых значений.
+- **Blueprint Desired Selection** — категории и компоненты, включённые в область
+  восстановления.
+- **Selected Supported State** — пересечение generated-значений, выбора
+  Blueprint и текущих возможностей потребителей.
 
 Blueprint не владеет обнаруженными значениями, не копирует и не перезаписывает
-их. Observed State и Desired Selection остаются разными ответственностями.
+их. Preview не владеет конфигурацией и не определяет вторую модель целевого
+состояния. Bootstrap не обнаруживает исходное состояние. Эти ответственности
+остаются разделёнными.
 
 ## Текущие архитектурные контракты
 
 ### Discovery
 
-Discovery наблюдает поддерживаемое состояние, не изменяя исследуемую область.
-Lifecycle экспортёра:
+Discovery наблюдает поддерживаемую область, не изменяя её. Цикл публикации
+является архитектурным инвариантом:
 
 ```text
 Collect → Validate → Serialize → Safe Publication
 ```
 
-Generated-результат заменяется только после успешного сбора, валидации и
-сериализации нового состояния. Обработанная ошибка сбора, сериализации или
-публикации сохраняет предыдущий валидный generated-результат.
-
-Discovery не является системой резервного копирования: он фиксирует
-конфигурацию и метаданные, но не копирует пользовательские документы или
-содержимое репозиториев.
+Generated-результат заменяется только после успешного полного сбора, проверки и
+сериализации кандидата. Обработанная ошибка сохраняет предыдущее валидное
+generated-состояние. Discovery фиксирует конфигурацию и метаданные, но не
+копирует пользовательские документы или содержимое репозиториев.
 
 ### Generated Configuration
 
-`config/generated/` содержит приватное локальное machine-specific производное
-состояние и исключён из Git. Форматы producers и consumers должны оставаться
-совместимыми.
+`config/generated/` содержит приватное локальное производное состояние
+конкретного Mac и исключён из Git. Форматы producer и consumer должны оставаться
+совместимыми, а generated-содержимое всегда разбирается как данные и не
+выполняется.
 
-Для данных приложений используются простые форматы, для глобального Git-состояния
-— нативная невыполняемая Git configuration, а для секционных данных Workspace
-repositories — существующий Configuration Engine. Generated Git-состояние
-разбирается как данные и никогда не должно потребляться через `source` или
-`eval`.
+Большинство generated-файлов публикуются независимо. `workspace.conf` также
+публикуется отдельно, а `folders.conf`, `repositories.conf`,
+`vscode-workspaces.conf` и `inventory.conf` образуют одну группу согласованности
+и публикуются как единый снимок Workspace.
 
-Большинство generated-файлов публикуются независимо. Workspace metadata в
-`workspace.conf` также публикуется отдельно, а `folders.conf`,
-`repositories.conf`, `vscode-workspaces.conf` и `inventory.conf` образуют один
-связанный snapshot и публикуются совместно.
-
-Generated-состояние может содержать личные пути, Git identity, repository URLs
-и настройки редактора, поэтому его следует проверять и передавать приватно.
+Generated-состояние может содержать личные пути, Git identity, URL
+репозиториев и настройки редактора, поэтому его необходимо проверять и
+передавать приватно. Точные форматы и правила переносимости определены в
+[Configuration](CONFIGURATION.md).
 
 ### Blueprint
 
-Blueprint валидирует и хранит Desired Selection в приватном локальном
+Blueprint проверяет и хранит Desired Selection в приватном локальном
 `config/blueprint.conf`. Он выбирает обнаруженные категории и компоненты, не
 дублируя их значения из Generated Configuration.
 
-При отсутствии Blueprint Bootstrap сохраняет совместимое legacy
-all-inclusive-поведение для поддерживаемого generated scope.
+При отсутствии Blueprint потребители сохраняют совместимое all-inclusive
+поведение для поддерживаемой generated-области. Старый Blueprint без более
+новой категории остаётся валидным и сохраняет эту категорию выключенной до
+явной миграции.
+
+### Preview
+
+Preview — неизменяющий режим существующей модели восстановления. Он использует
+те же Generated Configuration, Blueprint Desired Selection, правила проверки и
+семантику наблюдения, что и Bootstrap, а не создаёт вторую модель целевого
+состояния.
+
+Preview показывает планируемые поддерживаемые изменения, отличает ошибку
+наблюдения от подтверждённого отсутствия или несовпадения и не изменяет целевое
+состояние. Он не владеет конфигурацией и не перезаписывает её. Его результат
+может разрешать или блокировать Bootstrap в Guided Workflow.
 
 ### Bootstrap
 
-Bootstrap применяет выбранные поддерживаемые значения через текущий локальный
-lifecycle модулей:
+Bootstrap применяет выбранные поддерживаемые значения через локальный цикл
+модулей:
 
 ```text
 Check → Apply → Verify
 ```
 
-Этот **Verify** — текущая локальная post-apply проверка модуля, когда итоговое
-состояние наблюдаемо его существующими средствами. Это не будущая aggregate
-Global Verification capability.
+Обязательный выбранный ввод проверяется до мутации. Ошибка наблюдения отличается
+от допустимого отсутствия или несовпадения и не должна превращаться в «требуется
+Apply». Модули применяют только подтверждённо необходимые изменения, сохраняют
+существующие данные при сомнениях в безопасности и остаются идемпотентными.
 
-Bootstrap-модули остаются идемпотентными: наблюдают текущее состояние,
-применяют только необходимые изменения и выполняют локальную проверку там, где
-она поддерживается. Обязательный generated-ввод валидируется до мутации, когда
-он требуется. Ошибка наблюдения остаётся отличной от допустимого отсутствия или
-несовпадения и не должна превращаться в «apply required». Небезопасное
-существующее состояние сообщается пользователю, а не исправляется разрушительно.
-
-В Bootstrap Blueprint и обязательные generated inputs выбранного scope
-валидируются после настройки logger, но до preflight и Core checks. Это
-блокирует malformed input до установки Homebrew или изменения target state.
-Текущий mutating preflight по-прежнему выполняет аутентификацию через `sudo -v`;
-Preview использует отдельный read-only startup path, а не этот.
+Verify — локальная проверка после Apply, выполняемая, когда модуль способен
+наблюдать итоговое управляемое состояние. Она не означает сводную проверку всего
+Mac или визуального эффекта за пределами заявленного контракта модуля.
 
 Discovery метаданных VS Code Workspace и генерация
 `vscode-workspaces.conf` реализованы. Bootstrap-восстановление
-`.code-workspace` не реализовано и отключено от production-оркестрации
-Bootstrap.
+`.code-workspace` намеренно не подключено до появления безопасного потребителя
+восстановления.
 
 ### Граница Core
 
-`modules/core/` предоставляет общие механизмы вывода, логирования, lifecycle
-модулей, preflight, конфигурации и базовые сервисы окружения. Предметная логика
-Discovery и Bootstrap остаётся за пределами Core.
+`modules/core/` отвечает за общие механизмы вывода, логирования, оркестрации
+жизненного цикла модулей, preflight, конфигурационную инфраструктуру и базовые
+сервисы окружения. Предметное поведение Discovery, Preview и Bootstrap остаётся
+за пределами Core.
 
-## Статус расширения архитектуры
+Производители и потребители настроек macOS используют общую границу
+типизированных поддерживаемых записей. Восстановление снимков экрана также
+затрагивает безопасность файловой системы; правила путей, переносимости и
+поведение категории определены в [Configuration](CONFIGURATION.md) и здесь не
+дублируются.
 
-Архитектурный путь:
+## Guided Workflow
+
+Guided Workflow оркестрирует существующие режимы, а не вводит ещё один источник
+конфигурации или движок целевого состояния:
 
 ```text
-Discovery
-    ↓
-Generated Configuration
+Readiness / optional Discovery
     ↓
 Blueprint
     ↓
-Dry-run / Preview
+Preview
     ↓
-Bootstrap
+Conditional Bootstrap
 ```
 
-CLI `--dry-run`, его read-only startup path и domain Preview для Applications,
-Git configuration, VS Code settings, Workspace и macOS реализованы. Global
-Verification относится к Future / Optional и пока не реализована.
+Отмена Blueprint останавливает Workflow. Ошибки Preview блокируют Bootstrap.
+При наличии планируемых изменений Bootstrap требует явного подтверждения
+пользователя; при отсутствии изменений Bootstrap не запускается. Каждый базовый
+режим сохраняет собственную ответственность, проверку, логирование, Summary и
+публичную семантику статусов. Перед фактическим Apply входные данные повторно
+проверяются там, где это требуется. Состояние между Preview и подтверждением не
+замораживается; Global Verification сейчас не входит в Workflow.
 
-### Dry-run / Preview
+## Граница проверки
 
-Dry-run / Preview — неизменяющий режим существующей Bootstrap-модели. Текущая
-foundation валидирует Blueprint и обязательные inputs выбранного scope,
-выполняет read-only inspection prerequisites без sudo и установки, затем
-переходит к явному Preview dispatch. Planned actions для Homebrew formulae и
-casks, App Store applications и VS Code extensions формируются с повторным
-использованием Bootstrap validators, Blueprint filters и presence readers. Git
-configuration Preview повторно использует валидацию native generated config и
-inspection глобальных значений; VS Code settings Preview повторно использует
-валидацию source и byte comparison. Workspace Preview повторно использует
-валидированные selected records и inspection helpers папок и репозиториев.
-Отсутствующий репозиторий формирует только clone-план: Preview не предполагает
-его будущую branch state. macOS Preview повторно использует typed defaults
-validation и observation и выводит связанный restart один раз для изменяемой
-category. Preview inspections используют только inspection accounting и не
-используют Bootstrap state `MODULE_CHANGED`. Preview не является источником
-конфигурации или обязательным отдельным planning engine.
+Локальный Verify входит в текущий жизненный цикл модулей. Global Verification —
+отдельная необязательная будущая возможность для сводной оценки выбранного
+состояния после Bootstrap. Она не требуется текущей архитектурой и не служит
+основанием заранее создавать отдельный движок.
 
-Единственный источник Screenshot destination — generated `location`. Check
-проверяет preference и разрешённый каталог. Отсутствующий безопасный каталог
-внутри HOME требует Apply даже при совпадающем preference. Preview сообщает
-этот план через `preview_action`, в том числе для Guided Workflow. Apply создаёт
-и проверяет каталог до записи preference; SystemUIServer перезапускается только
-после реальной preference mutation. Финальный Verify подтверждает preference и
-доступность каталога, а не визуальное обновление Screenshot UI.
-Path-контракт описан в [Configuration](CONFIGURATION.md).
+## Необязательные будущие направления
 
-Discovery и consumers используют общий фиксированный scalar-контракт текущих
-категорий из `modules/settings/macos/records.sh`. Candidate-файл валидируется
-до публикации. Startup проверяет selected categories и Screenshot path до
-preflight. Старый Blueprint без записи `macos-windows` остаётся валидным и
-сохраняет категорию выключенной до явной миграции.
+Restore Engine, AI Assistant и другие крупные архитектурные расширения остаются
+необязательными. Их следует рассматривать только при появлении ясной
+ответственности, которую существующая модель не может покрыть чисто.
 
-Порядок startup: CLI → logger → Blueprint validation → selected-input
-validation → read-only preflight → read-only Core inspection → domain Preview
-→ Summary → exit code. Ошибки startup validation/preflight останавливают запуск.
-Ошибки Core и domains сохраняются в общем accounting, а последующие read-only
-inspections продолжаются. Каждый domain может остановить собственную проверку
-при ошибке. Приоритет статусов: error `2`, затем warning `1`; планы без проблем
-возвращают `0`. Integration harness реального entrypoint проверяет все domains
-совместно, mutation spies, snapshots targets и parity terminal/logger Summary.
+## Владение документацией
 
-### Global Verification
-
-Global Verification — опциональная будущая post-Bootstrap capability, которая сможет
-оценивать итоговое выбранное состояние и формировать aggregate-подтверждение.
-Она отличается от текущего локального Verify внутри модулей и не требует
-заранее определять отдельный сложный engine.
-
-## Опциональные будущие направления
-
-Отдельный Restore Engine и AI Assistant остаются опциональными направлениями,
-а не обязательными этапами архитектуры. Их следует рассматривать только при
-появлении ясной ответственности, которую нельзя чисто покрыть установленной
-моделью.
-
-## Архитектура и статус реализации
-
-Этот документ определяет архитектурные ответственности и границы. Этапы
-реализации и release gates поддерживаются в [ROADMAP.md](../../ROADMAP.md),
-ближайшие задачи — в [TODO.md](../../TODO.md), а история завершённых релизов —
-в `CHANGELOG.md`.
+Этот документ описывает устойчивые архитектурные ответственности и границы.
+Текущие форматы и контракты значений находятся в
+[Configuration](CONFIGURATION.md), эксплуатационное поведение — в [CLI](CLI.md)
+и [Quick Start](../getting-started/QUICKSTART.md), направление развития — в
+[ROADMAP.md](../../ROADMAP.md), ближайшие задачи — в [TODO.md](../../TODO.md), а
+история завершённых изменений — в [CHANGELOG.md](../../CHANGELOG.md).
 
 Вернуться к [основному README](../../README.md).
-
-### Guided Workflow
-
-`--workflow` оркестрирует существующий dispatch режимов в изолированных
-subshell:
-optional Discovery → Blueprint Save → mandatory Preview → conditional Bootstrap.
-Каждый этап сохраняет собственные Logger, Summary и счётчики;
-`logs/latest.log` относится к последнему выполненному этапу. Отдельного
-workflow log или planner нет.
-
-Начальная readiness-проверка использует prerequisites selector и существующую
-валидацию Bootstrap input для полного scope независимо от старого Blueprint.
-После Discovery readiness проверяется повторно. Selected input снова
-валидируется внутри Preview и Bootstrap. Немедленная отмена Blueprint через
-`q` / `Q`, включая nested Edit, сохраняет исходный файл и останавливает
-Workflow до Preview и Bootstrap.
-
-Preview `0` или `1` предлагает подтверждение Bootstrap с default No только при
-наличии planned changes; `2` останавливает Workflow. При отсутствии planned
-changes Workflow сообщает `No changes to apply` и завершается без prompt,
-сохраняя warning status. Существующие места формирования планов выставляют
-Preview-only `PREVIEW_HAS_CHANGES` через `preview_action`; вывод не разбирается,
-а Bootstrap change accounting не используется. Global Verification остаётся
-нереализованной. Перед Apply Bootstrap повторно валидирует input; состояние
-между Preview и подтверждением не замораживается.
