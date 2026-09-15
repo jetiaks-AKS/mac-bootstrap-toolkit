@@ -51,8 +51,12 @@ Workspace Discovery сохраняет в `folders.conf` наблюдаемые 
 legacy-поведение.
 
 Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
-и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Расширения
+и модулями macOS Finder, Dock, Window Management, Keyboard, Trackpad и Screenshots. Расширения
 VS Code по-прежнему управляются отдельно своей item-секцией.
+
+Blueprint до появления `macos-windows` остаётся валидным и сохраняет новую
+категорию выключенной до явной миграции. Selector при сохранении добавляет её
+явно. Без Blueprint все поддерживаемые категории остаются включёнными.
 
 Создать или изменить локальный Blueprint можно командами:
 

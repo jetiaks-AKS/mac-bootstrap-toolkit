@@ -101,6 +101,7 @@ write_fixture_file modules/vscode/settings.sh \
 write_fixture_file modules/settings/macos/macos.sh \
     'FINDER_CONFIG=finder' \
     'DOCK_CONFIG=dock' \
+    'WINDOWS_CONFIG=windows' \
     'KEYBOARD_CONFIG=keyboard' \
     'TRACKPAD_CONFIG=trackpad' \
     'SCREENSHOTS_CONFIG=screenshots' \

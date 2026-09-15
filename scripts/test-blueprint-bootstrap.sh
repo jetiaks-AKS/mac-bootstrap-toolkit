@@ -187,6 +187,7 @@ write_blueprint() {
         echo 'vscode-settings="true"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
+        echo 'macos-windows="true"'
         echo 'macos-keyboard="true"'
         echo 'macos-trackpad="true"'
         echo 'macos-screenshots="true"'
@@ -397,6 +398,7 @@ fi
 
 set_blueprint_category macos-finder false
 set_blueprint_category macos-dock false
+set_blueprint_category macos-windows false
 set_blueprint_category macos-keyboard false
 set_blueprint_category macos-trackpad false
 set_blueprint_category macos-screenshots false
@@ -419,6 +421,11 @@ check_finder() {
 
 check_dock() {
     record_orchestration_step check-dock
+    return "$CHECK_RESULT"
+}
+
+check_windows() {
+    record_orchestration_step check-windows
     return "$CHECK_RESULT"
 }
 
@@ -453,6 +460,10 @@ apply_trackpad_settings() {
     record_orchestration_step apply-trackpad
 }
 
+apply_windows_settings() {
+    record_orchestration_step apply-windows
+}
+
 apply_screenshots_settings() {
     record_orchestration_step apply-screenshots
 }
@@ -460,7 +471,7 @@ apply_screenshots_settings() {
 rm -f "$BLUEPRINT_FILE"
 PROCESSED_ITEMS=""
 check_macos_settings
-expected_steps="check-finder check-dock check-keyboard check-trackpad check-screenshots"
+expected_steps="check-finder check-dock check-windows check-keyboard check-trackpad check-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "missing Blueprint keeps all macOS modules eligible"
@@ -480,6 +491,7 @@ fi
 
 set_blueprint_category macos-finder false
 set_blueprint_category macos-dock false
+set_blueprint_category macos-windows false
 set_blueprint_category macos-keyboard false
 set_blueprint_category macos-trackpad false
 set_blueprint_category macos-screenshots false
@@ -497,7 +509,7 @@ set_blueprint_category macos-dock false
 set_blueprint_category macos-trackpad false
 PROCESSED_ITEMS=""
 check_macos_settings
-expected_steps="check-finder check-keyboard check-screenshots"
+expected_steps="check-finder check-windows check-keyboard check-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "mixed Blueprint categories check macOS modules independently"
@@ -508,7 +520,7 @@ fi
 CHECK_RESULT=1
 PROCESSED_ITEMS=""
 apply_macos_components
-expected_steps="check-finder apply-finder check-keyboard apply-keyboard check-screenshots apply-screenshots"
+expected_steps="check-finder apply-finder check-windows apply-windows check-keyboard apply-keyboard check-screenshots apply-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "mixed Blueprint categories apply macOS modules independently"

@@ -7,6 +7,7 @@
 source modules/settings/macos/defaults.sh
 source modules/settings/macos/finder.sh
 source modules/settings/macos/dock.sh
+source modules/settings/macos/windows.sh
 source modules/settings/macos/keyboard.sh
 source modules/settings/macos/trackpad.sh
 source modules/settings/macos/screenshots.sh
@@ -34,6 +35,9 @@ preview_macos_settings() {
     fi
     if blueprint_category_enabled macos-dock; then
         preview_macos_category "$DOCK_CONFIG" Dock dock || return 2
+    fi
+    if blueprint_category_enabled macos-windows; then
+        preview_macos_category "$WINDOWS_CONFIG" "" windows || return 2
     fi
     if blueprint_category_enabled macos-keyboard; then
         preview_macos_category "$KEYBOARD_CONFIG" "" keyboard || return 2
@@ -68,6 +72,16 @@ check_macos_settings() {
 
     if blueprint_category_enabled macos-dock; then
         check_dock
+        category_result=$?
+        case $category_result in
+            0) ;;
+            1) settings_result=1 ;;
+            *) return 2 ;;
+        esac
+    fi
+
+    if blueprint_category_enabled macos-windows; then
+        check_windows
         category_result=$?
         case $category_result in
             0) ;;
@@ -153,6 +167,19 @@ apply_macos_components() {
             0) ;;
             1)
                 apply_dock_settings || apply_result=2
+                ;;
+            *) apply_result=2 ;;
+        esac
+    fi
+
+    if blueprint_category_enabled macos-windows; then
+        check_windows
+        category_result=$?
+
+        case $category_result in
+            0) ;;
+            1)
+                apply_windows_settings || apply_result=2
                 ;;
             *) apply_result=2 ;;
         esac

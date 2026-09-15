@@ -17,6 +17,8 @@ serialize_dock_settings() {
     macos_collect_preference "$output_file" com.apple.dock mineffect string || return 2
     macos_collect_preference "$output_file" com.apple.dock minimize-to-application bool || return 2
     macos_collect_preference "$output_file" com.apple.dock show-process-indicators bool || return 2
+    macos_collect_preference "$output_file" com.apple.dock launchanim bool || return 2
+    macos_collect_preference "$output_file" com.apple.dock mru-spaces bool || return 2
 
     return 0
 

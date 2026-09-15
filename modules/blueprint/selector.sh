@@ -316,6 +316,7 @@ blueprint_selector_write() {
         echo "vscode-settings=\"$BLUEPRINT_VSCODE_SETTINGS\""
         echo "macos-finder=\"$BLUEPRINT_MACOS_FINDER\""
         echo "macos-dock=\"$BLUEPRINT_MACOS_DOCK\""
+        echo "macos-windows=\"$BLUEPRINT_MACOS_WINDOWS\""
         echo "macos-keyboard=\"$BLUEPRINT_MACOS_KEYBOARD\""
         echo "macos-trackpad=\"$BLUEPRINT_MACOS_TRACKPAD\""
         echo "macos-screenshots=\"$BLUEPRINT_MACOS_SCREENSHOTS\""
@@ -405,6 +406,7 @@ blueprint_selector_edit() {
     blueprint_selector_prompt_category vscode-settings "VS Code Settings" BLUEPRINT_VSCODE_SETTINGS || return $?
     blueprint_selector_prompt_category macos-finder "Finder" BLUEPRINT_MACOS_FINDER || return $?
     blueprint_selector_prompt_category macos-dock "Dock" BLUEPRINT_MACOS_DOCK || return $?
+    blueprint_selector_prompt_category macos-windows "Window Management" BLUEPRINT_MACOS_WINDOWS || return $?
     blueprint_selector_prompt_category macos-keyboard "Keyboard" BLUEPRINT_MACOS_KEYBOARD || return $?
     blueprint_selector_prompt_category macos-trackpad "Trackpad" BLUEPRINT_MACOS_TRACKPAD || return $?
     blueprint_selector_prompt_category macos-screenshots "Screenshots" BLUEPRINT_MACOS_SCREENSHOTS || return $?
@@ -437,6 +439,7 @@ blueprint_selector_edit() {
     printf '  VS Code Settings       %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_VSCODE_SETTINGS")"
     printf '  Finder                 %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_FINDER")"
     printf '  Dock                   %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_DOCK")"
+    printf '  Window Management      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_WINDOWS")"
     printf '  Keyboard               %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_KEYBOARD")"
     printf '  Trackpad               %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_TRACKPAD")"
     printf '  Screenshots            %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_SCREENSHOTS")"

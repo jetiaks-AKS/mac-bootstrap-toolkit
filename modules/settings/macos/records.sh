@@ -3,6 +3,8 @@
 MACOS_FINDER_WINDOW_TARGET_PATTERN='^(PfCm|PfVo|PfHm|PfDe|PfDo|PfAF)$'
 MACOS_DOCK_ORIENTATION_PATTERN='^(left|bottom|right)$'
 MACOS_DOCK_MINEFFECT_PATTERN='^(genie|scale)$'
+MACOS_WINDOW_DOUBLE_CLICK_PATTERN='^(Minimize|Maximize|Fill|None)$'
+MACOS_WINDOW_TABBING_PATTERN='^(manual|always|fullscreen)$'
 
 # Shared scalar contract for macOS Discovery and consumers. No generated code.
 macos_record_bytes_valid() {
@@ -26,7 +28,9 @@ validate_defaults_config() {
     if ! macos_record_bytes_valid "$config_file" || ! LC_ALL=C awk -F '|' -v category="$category" \
         -v finder_target_pattern="$MACOS_FINDER_WINDOW_TARGET_PATTERN" \
         -v dock_orientation_pattern="$MACOS_DOCK_ORIENTATION_PATTERN" \
-        -v dock_mineffect_pattern="$MACOS_DOCK_MINEFFECT_PATTERN" '
+        -v dock_mineffect_pattern="$MACOS_DOCK_MINEFFECT_PATTERN" \
+        -v window_double_click_pattern="$MACOS_WINDOW_DOUBLE_CLICK_PATTERN" \
+        -v window_tabbing_pattern="$MACOS_WINDOW_TABBING_PATTERN" '
         BEGIN {
             allowed["finder", "NSGlobalDomain", "AppleShowAllExtensions"] = "bool"
             allowed["finder", "com.apple.finder", "ShowPathbar"] = "bool"
@@ -50,6 +54,12 @@ validate_defaults_config() {
             allowed["dock", "com.apple.dock", "mineffect"] = "string"
             allowed["dock", "com.apple.dock", "minimize-to-application"] = "bool"
             allowed["dock", "com.apple.dock", "show-process-indicators"] = "bool"
+            allowed["dock", "com.apple.dock", "launchanim"] = "bool"
+            allowed["dock", "com.apple.dock", "mru-spaces"] = "bool"
+            allowed["windows", "NSGlobalDomain", "AppleActionOnDoubleClick"] = "string"
+            allowed["windows", "NSGlobalDomain", "AppleWindowTabbingMode"] = "string"
+            allowed["windows", "NSGlobalDomain", "NSCloseAlwaysConfirmsChanges"] = "bool"
+            allowed["windows", "NSGlobalDomain", "NSQuitAlwaysKeepsWindows"] = "bool"
             allowed["keyboard", "NSGlobalDomain", "KeyRepeat"] = "int"
             allowed["keyboard", "NSGlobalDomain", "InitialKeyRepeat"] = "int"
             allowed["keyboard", "NSGlobalDomain", "ApplePressAndHoldEnabled"] = "bool"
@@ -63,7 +73,7 @@ validate_defaults_config() {
             allowed["trackpad", "NSGlobalDomain", "com.apple.trackpad.scaling"] = "int"
             allowed["trackpad", "com.apple.AppleMultitouchTrackpad", "TrackpadRightClick"] = "bool"
             allowed["screenshots", "com.apple.screencapture", "location"] = "string"
-            if (category !~ /^(finder|dock|keyboard|trackpad|screenshots)$/) exit 2
+            if (category !~ /^(finder|dock|windows|keyboard|trackpad|screenshots)$/) exit 2
         }
         /^ *$/ { next }
         NF != 4 || $1 == "" || $2 == "" { exit 2 }
@@ -72,6 +82,8 @@ validate_defaults_config() {
         category == "finder" && $2 == "NewWindowTarget" && $4 !~ finder_target_pattern { exit 2 }
         category == "dock" && $2 == "orientation" && $4 !~ dock_orientation_pattern { exit 2 }
         category == "dock" && $2 == "mineffect" && $4 !~ dock_mineffect_pattern { exit 2 }
+        category == "windows" && $2 == "AppleActionOnDoubleClick" && $4 !~ window_double_click_pattern { exit 2 }
+        category == "windows" && $2 == "AppleWindowTabbingMode" && $4 !~ window_tabbing_pattern { exit 2 }
         category == "screenshots" {
             # Only absolute paths or leading ~/; no shell syntax or traversal.
             if ($4 !~ /^(\/|~\/)/ || $4 ~ /[$`\\]/ || $4 ~ /\/\// ||

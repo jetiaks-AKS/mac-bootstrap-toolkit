@@ -82,8 +82,11 @@ before and after changes where applicable.
 Finder supports 13 settings in the existing `macos-finder` category; see the
 [exact inventory and target limits](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
 
-Dock supports 9 settings in `macos-dock`; see the
-[Dock inventory and enum limits](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
+Dock supports 11 settings in `macos-dock`; see the
+[Dock inventory and enum limits](docs/toolkit/CONFIGURATION.md#dock-and-window-management-expansion-stage-9e1).
+
+Window Management supports 4 global settings in `macos-windows`, without a
+process restart; see the [stored-preference contract](docs/toolkit/CONFIGURATION.md#dock-and-window-management-expansion-stage-9e1).
 
 Keyboard supports 9 settings in `macos-keyboard`, with no process restart; see
 [Keyboard inventory and validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).

@@ -98,7 +98,7 @@ defaults() {
         read-type)
             [[ "$TEST_CASE" != macos-error ]] || return 2
             case "$3" in
-                FXPreferredViewStyle|NewWindowTarget|orientation|mineffect|location) echo 'Type is string' ;;
+                FXPreferredViewStyle|NewWindowTarget|orientation|mineffect|AppleActionOnDoubleClick|AppleWindowTabbingMode|location) echo 'Type is string' ;;
                 KeyRepeat|AppleKeyboardUIMode) echo 'Type is integer' ;;
                 *) echo 'Type is boolean' ;;
             esac ;;
@@ -108,6 +108,8 @@ defaults() {
                 NewWindowTarget) echo PfDe ;;
                 orientation) echo right ;;
                 mineffect) echo scale ;;
+                AppleActionOnDoubleClick) echo Fill ;;
+                AppleWindowTabbingMode) echo manual ;;
                 location)
                     if [[ "$TEST_CASE" == workflow-directory-only ]]; then echo "$HOME/Captures"; else echo "$HOME/OldCaptures"; fi ;;
                 KeyRepeat) echo 5 ;;
@@ -168,7 +170,15 @@ com.apple.dock|orientation|string|bottom
 com.apple.dock|mineffect|string|genie
 com.apple.dock|minimize-to-application|bool|1
 com.apple.dock|show-process-indicators|bool|1
+com.apple.dock|launchanim|bool|1
+com.apple.dock|mru-spaces|bool|1
 DOCK
+    cat > "$generated/macos/windows.conf" <<'WINDOWS'
+NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize
+NSGlobalDomain|AppleWindowTabbingMode|string|fullscreen
+NSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1
+NSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1
+WINDOWS
     printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
     cat >> "$generated/macos/keyboard.conf" <<'KEYBOARD'
 NSGlobalDomain|ApplePressAndHoldEnabled|bool|1
@@ -187,7 +197,7 @@ write_blueprint() {
     {
         echo '[categories]'
         local category
-        for category in git-configuration vscode-settings macos-finder macos-dock macos-keyboard macos-trackpad macos-screenshots; do
+        for category in git-configuration vscode-settings macos-finder macos-dock macos-windows macos-keyboard macos-trackpad macos-screenshots; do
             printf '%s="true"\n' "$category"
         done
         printf '[homebrew-packages]\npresent\nabsent\n'
@@ -270,7 +280,13 @@ Would change macOS setting: com.apple.dock/orientation (right -> bottom)
 Would change macOS setting: com.apple.dock/mineffect (scale -> genie)
 Would change macOS setting: com.apple.dock/minimize-to-application (false -> true)
 Would change macOS setting: com.apple.dock/show-process-indicators (false -> true)
+Would change macOS setting: com.apple.dock/launchanim (false -> true)
+Would change macOS setting: com.apple.dock/mru-spaces (false -> true)
 Would restart process: Dock
+Would change macOS setting: NSGlobalDomain/AppleActionOnDoubleClick (Fill -> Minimize)
+Would change macOS setting: NSGlobalDomain/AppleWindowTabbingMode (manual -> fullscreen)
+Would change macOS setting: NSGlobalDomain/NSCloseAlwaysConfirmsChanges (false -> true)
+Would change macOS setting: NSGlobalDomain/NSQuitAlwaysKeepsWindows (false -> true)
 Would change macOS setting: NSGlobalDomain/KeyRepeat (5 -> 2)
 Would change macOS setting: NSGlobalDomain/ApplePressAndHoldEnabled (false -> true)
 Would change macOS setting: NSGlobalDomain/AppleKeyboardUIMode (0 -> 3)
@@ -391,6 +407,20 @@ for entry in AppleKeyboardUIMode:int ApplePressAndHoldEnabled:bool; do
         echo 'FAIL: disabled Keyboard was inspected'; ((TEST_FAILURES++))
     fi
 done
+for entry in AppleActionOnDoubleClick:string AppleWindowTabbingMode:string; do
+    reset_fixture
+    printf 'NSGlobalDomain|%s|%s|invalid\n' "${entry%:*}" "${entry#*:}" > "$FIXTURE/config/generated/macos/windows.conf"
+    run_case "invalid-windows-$entry" 2
+    if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
+        echo 'FAIL: invalid Window Management input reached preflight/domains'; ((TEST_FAILURES++))
+    fi
+    write_blueprint
+    sed -i '' 's/macos-windows="true"/macos-windows="false"/' "$FIXTURE/config/blueprint.conf"
+    run_case "disabled-windows-$entry" 0
+    if grep -q '^defaults .*NSGlobalDomain.*AppleActionOnDoubleClick\|^defaults .*NSGlobalDomain.*AppleWindowTabbingMode' "$TEST_ROOT/observations"; then
+        echo 'FAIL: disabled Window Management was inspected'; ((TEST_FAILURES++))
+    fi
+done
 reset_fixture
 printf '[broken]\n' > "$FIXTURE/config/blueprint.conf"
 run_case malformed-blueprint 2
@@ -402,13 +432,13 @@ if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
     echo 'FAIL: invalid input reached preflight/domains'; ((TEST_FAILURES++))
 fi
 reset_fixture
-workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
 TEST_MODE=--workflow run_case workflow-save-preview 0 <<< "$workflow_input"
 assert_contains "$TEST_ROOT/output" 'Blueprint saved'
 assert_contains "$TEST_ROOT/output" 'Modules Inspected'
 assert_contains "$TEST_ROOT/output" 'Apply these changes'
 cp "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint"
-workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
 TEST_MODE=--workflow run_case workflow-save-cancel 0 <<< "$workflow_input"
 cmp -s "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint" || {
     echo 'FAIL: cancelled selector changed old Blueprint'; ((TEST_FAILURES++));
@@ -433,7 +463,7 @@ for preview_status in 0 1; do
     reset_fixture
     {
         echo '[categories]'
-        for category in git-configuration vscode-settings macos-finder macos-dock macos-keyboard macos-trackpad macos-screenshots; do
+        for category in git-configuration vscode-settings macos-finder macos-dock macos-windows macos-keyboard macos-trackpad macos-screenshots; do
             enabled=false
             [[ "$preview_status" != 1 || "$category" != vscode-settings ]] || enabled=true
             printf '%s="%s"\n' "$category" "$enabled"
@@ -443,7 +473,7 @@ for preview_status in 0 1; do
         done
     } > "$FIXTURE/config/blueprint.conf"
     rm "$FIXTURE/config/generated/vscode/settings.json"
-    workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\ny'
+    workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\ny'
     TEST_MODE=--workflow run_case "workflow-zero-plans-$preview_status" "$preview_status" <<< "$workflow_input"
     assert_contains "$TEST_ROOT/output" 'No changes to apply'
     assert_contains "$TEST_ROOT/output" 'Workflow finished.'
@@ -459,7 +489,7 @@ sed -i '' 's/="true"/="false"/g; s/macos-screenshots="false"/macos-screenshots="
 # Preserve all required sections while removing item selections.
 awk '/^\[/ || /=/' "$FIXTURE/config/blueprint.conf" > "$TEST_ROOT/directory-blueprint"
 cp "$TEST_ROOT/directory-blueprint" "$FIXTURE/config/blueprint.conf"
-workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
 TEST_MODE=--workflow run_case workflow-directory-only 0 <<< "$workflow_input"
 assert_contains "$TEST_ROOT/output" "Would create screenshots directory: $TEST_ROOT/home/Captures"
 assert_contains "$TEST_ROOT/output" 'Apply these changes'
@@ -480,7 +510,7 @@ for mode in --blueprint --workflow; do
                 choice) quit_input=q ;;
                 restore) quit_input=$'\n\n\n\n\n\nQ' ;;
                 edit) quit_input=$'e\n1\nq' ;;
-                save) quit_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\nQ' ;;
+                save) quit_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\nQ' ;;
             esac
             [[ "$mode" != --workflow ]] || quit_input=$'n\n'"$quit_input"
             TEST_MODE="$mode" run_case "$mode-$prompt_type-quit-$existing" 0 <<< "$quit_input"

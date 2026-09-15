@@ -96,6 +96,7 @@ write_blueprint() {
         echo 'vscode-settings="false"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
+        echo 'macos-windows="true"'
         echo 'macos-keyboard="false"'
         echo 'macos-trackpad="false"'
         echo 'macos-screenshots="true"'
@@ -177,10 +178,18 @@ expect_status "category true" 0 blueprint_category_enabled \
     git-configuration "$BLUEPRINT_FILE"
 expect_status "category false" 1 blueprint_category_enabled \
     vscode-settings "$BLUEPRINT_FILE"
+expect_status "Window Management category true" 0 blueprint_category_enabled \
+    macos-windows "$BLUEPRINT_FILE"
 expect_output "selected items" "git" blueprint_selected_items \
     homebrew-packages "$BLUEPRINT_FILE"
 expect_status "selected workspace candidate remains active" 0 \
     blueprint_item_selected workspace-folders Projects "$BLUEPRINT_FILE"
+
+awk '$0 != "macos-windows=\"true\""' "$BLUEPRINT_FILE" > "$TEST_ROOT/legacy-blueprint.conf"
+expect_status "legacy Blueprint without macos-windows remains valid" 0 \
+    blueprint_validate "$TEST_ROOT/legacy-blueprint.conf"
+expect_status "legacy Blueprint keeps macos-windows disabled until migration" 1 \
+    blueprint_category_enabled macos-windows "$TEST_ROOT/legacy-blueprint.conf"
 
 awk '
     { print }

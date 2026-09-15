@@ -112,8 +112,9 @@ Toolkit намеренно не требует одного универсаль
 перед atomic publication, startup validation и consumers. Категория передаётся
 явно; имя файла не определяет разрешённые domain/key.
 
-Текущий allowlist: foundation 9A и расширения Finder 9B, Dock 9C, Keyboard 9D.
-Finder поддерживает 13 настроек, Dock — 9, Keyboard — 9:
+Текущий allowlist: foundation 9A и расширения Finder 9B, Dock 9C/9E.1,
+Keyboard 9D и Window Management 9E.1.
+Finder поддерживает 13 настроек, Dock — 11, Window Management — 4, Keyboard — 9:
 
 | Категория | Domain | Keys / type |
 |---|---|---|
@@ -122,6 +123,8 @@ Finder поддерживает 13 настроек, Dock — 9, Keyboard — 9:
 | Finder (9B) | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
 | Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
 | Dock (9C) | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
+| Dock (9E.1) | `com.apple.dock` | `launchanim`, `mru-spaces` / bool |
+| Window Management (9E.1) | `NSGlobalDomain` | `AppleActionOnDoubleClick`, `AppleWindowTabbingMode` / string enum; `NSCloseAlwaysConfirmsChanges`, `NSQuitAlwaysKeepsWindows` / bool |
 | Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
 | Keyboard (9D) | `NSGlobalDomain` | `AppleKeyboardUIMode` / int; `ApplePressAndHoldEnabled`, `NSAutomaticCapitalizationEnabled`, `NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`, `NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled` / bool |
 | Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
@@ -133,7 +136,7 @@ Unknown/cross-category domain/key, wrong type, duplicate domain/key, невер�
 scalar отвергаются с `2`. Байты проверяются до shell parsing; строка не теряет
 значимый trailing newline незаметно. Bool допускает `0/1/true/false`; int —
 целое с необязательным минусом. Новые неподтверждённые диапазоны и enum limits
-не вводятся. Float остаётся задачей 9E: текущие integer Trackpad records совместимы.
+не вводятся. Float остаётся задачей 9E.3: текущие integer Trackpad records совместимы.
 
 Пустые строки/строки из пробелов и пустые category-файлы допустимы. Последняя
 запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
@@ -190,8 +193,37 @@ Apply выполняет typed Check → Write → Verify, учитывает у
 перезапускает Dock максимум один раз и выполняет final Check. Ошибки Verify/restart
 сохраняют Changed и возвращают `2` без success. No-op и повторный идентичный Bootstrap
 не выполняют writes/restart. Проверяется managed state, а не визуальный эффект UI.
-Dock tiles (`persistent-apps`, `persistent-others`, `recent-apps`), дополнительные
-animation preferences, hot corners, Mission Control и Spaces остаются вне Stage 9C.
+Dock tiles (`persistent-apps`, `persistent-others`, `recent-apps`), hot corners и
+остальные Mission Control/Spaces settings остаются вне Stage 9C.
+
+#### Dock and Window Management Expansion (Stage 9E.1)
+
+Dock расширен до 11 scalar records: `launchanim` и `mru-spaces` используют общий
+bool contract и существующую категорию `macos-dock`. Они участвуют в том же
+Check → Write → Verify и общем единственном Dock restart после фактических writes.
+Absent source preferences остаются unmanaged.
+
+Новая категория `macos-windows` использует `config/generated/macos/windows.conf`
+и содержит ровно четыре `NSGlobalDomain` records. `AppleActionOnDoubleClick`
+допускает `Minimize`, `Maximize`, `Fill`, `None`; `AppleWindowTabbingMode` —
+`manual`, `always`, `fullscreen`. Другие и пустые значения consumer отклоняет;
+Discovery безопасно пропускает unsupported scalar enum с warning. Два остальных
+ключа используют bool contract.
+
+`NSQuitAlwaysKeepsWindows` хранится и переносится без инверсии. В System Settings
+его UI сформулирован как «Close windows when quitting an application», поэтому
+UI switch имеет обратный смысл относительно stored bool.
+
+Window Management не перезапускает процессы. Verify подтверждает typed stored
+preference read-back и final Check всех managed records, но не заявляет проверку
+видимого эффекта в уже открытых приложениях. Старый Blueprint без
+`macos-windows` остаётся валидным и сохраняет новую категорию выключенной до
+явной миграции/сохранения через selector; отсутствие Blueprint остаётся
+all-inclusive.
+
+`com.apple.WindowManager` tiling preferences отложены в Stage 9E.2: текущий
+stored-value contract подтверждён, но безопасный notification/reload lifecycle
+без restart/logout пока не доказан.
 
 #### Keyboard Expansion (Stage 9D)
 

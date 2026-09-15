@@ -40,13 +40,13 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|Clicking|TrackpadRightClick)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|launchanim|mru-spaces|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
         tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode|com.apple.trackpad.scaling)
             echo "Type is integer"
             ;;
-        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|location)
+        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|AppleActionOnDoubleClick|AppleWindowTabbingMode|location)
             echo "Type is string"
             ;;
         *)
@@ -57,10 +57,10 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|Clicking)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|launchanim|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|Clicking)
             echo 1
             ;;
-        NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|TrackpadRightClick)
+        NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|mru-spaces|TrackpadRightClick)
             echo 0
             ;;
         tilesize) echo 48 ;;
@@ -74,6 +74,8 @@ mock_value() {
         NewWindowTarget) echo PfHm ;;
         orientation) echo bottom ;;
         mineffect) echo genie ;;
+        AppleActionOnDoubleClick) echo Minimize ;;
+        AppleWindowTabbingMode) echo fullscreen ;;
         location) echo "/Users/test/Screen Shots" ;;
         *) return 2 ;;
     esac
@@ -134,9 +136,11 @@ source "$PROJECT_ROOT/modules/discovery/macos/macos.sh"
 
 ORIGINAL_SERIALIZE_KEYBOARD="$(declare -f serialize_keyboard_settings)"
 ORIGINAL_SERIALIZE_DOCK="$(declare -f serialize_dock_settings)"
+ORIGINAL_SERIALIZE_WINDOWS="$(declare -f serialize_windows_settings)"
 ORIGINAL_SERIALIZE_FINDER="$(declare -f serialize_finder_settings)"
 ORIGINAL_EXPORT_FINDER="$(declare -f export_finder_settings)"
 ORIGINAL_EXPORT_DOCK="$(declare -f export_dock_settings)"
+ORIGINAL_EXPORT_WINDOWS="$(declare -f export_windows_settings)"
 ORIGINAL_EXPORT_KEYBOARD="$(declare -f export_keyboard_settings)"
 ORIGINAL_EXPORT_TRACKPAD="$(declare -f export_trackpad_settings)"
 ORIGINAL_EXPORT_SCREENSHOTS="$(declare -f export_screenshots_settings)"
@@ -150,9 +154,11 @@ fail() {
 reset_functions() {
     eval "$ORIGINAL_SERIALIZE_KEYBOARD"
     eval "$ORIGINAL_SERIALIZE_DOCK"
+    eval "$ORIGINAL_SERIALIZE_WINDOWS"
     eval "$ORIGINAL_SERIALIZE_FINDER"
     eval "$ORIGINAL_EXPORT_FINDER"
     eval "$ORIGINAL_EXPORT_DOCK"
+    eval "$ORIGINAL_EXPORT_WINDOWS"
     eval "$ORIGINAL_EXPORT_KEYBOARD"
     eval "$ORIGINAL_EXPORT_TRACKPAD"
     eval "$ORIGINAL_EXPORT_SCREENSHOTS"
@@ -200,11 +206,21 @@ fi
 reset_fixture
 export_dock_settings >/dev/null
 dock_status=$?
-expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64\ncom.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|0'
+expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64\ncom.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|0\ncom.apple.dock|launchanim|bool|1\ncom.apple.dock|mru-spaces|bool|0'
 if [[ $dock_status -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_dock" ]]; then
-    pass "Dock exact nine-record inventory preserves the existing format"
+    pass "Dock exact eleven-record inventory preserves the existing format"
 else
     fail "Dock populated format changed"
+fi
+
+reset_fixture
+export_windows_settings >/dev/null
+windows_status=$?
+expected_windows=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1'
+if [[ $windows_status -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_windows" ]]; then
+    pass "Window Management exact four-record inventory uses the scalar format"
+else
+    fail "Window Management populated format changed"
 fi
 
 reset_fixture
@@ -334,7 +350,7 @@ else
 fi
 
 # Stage 9C: each new key is independently observed; absence remains unmanaged.
-new_dock_keys=(orientation mineffect minimize-to-application show-process-indicators)
+new_dock_keys=(orientation mineffect minimize-to-application show-process-indicators launchanim mru-spaces)
 for key in "${new_dock_keys[@]}"; do
     reset_fixture
     MOCK_MODE=absent
@@ -343,7 +359,7 @@ for key in "${new_dock_keys[@]}"; do
     result=$?
     expected_remaining="$(printf '%s\n' "$expected_dock" | awk -F '|' -v key="$key" '$2 != key')"
     if [[ $result -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_remaining" ]]; then
-        pass "absent $key omitted with the other eight records intact"
+        pass "absent $key omitted with the other ten records intact"
     else
         fail "absent $key changed the remaining inventory"
     fi
@@ -434,6 +450,70 @@ for key in orientation mineffect; do
         fail "Dock $key warning lost"
     fi
 done
+
+# Stage 9E.1: Window Management enums and category publication.
+new_windows_keys=(AppleActionOnDoubleClick AppleWindowTabbingMode NSCloseAlwaysConfirmsChanges NSQuitAlwaysKeepsWindows)
+for key in "${new_windows_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="NSGlobalDomain|$key"
+    export_windows_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_windows" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other Window Management records intact"
+    else
+        fail "absent $key changed the Window Management inventory"
+    fi
+
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+        before_checksum="$(cksum config/generated/macos/windows.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="NSGlobalDomain|$key"
+        export_windows_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Window Management snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+for entry in AppleActionOnDoubleClick:Minimize AppleActionOnDoubleClick:Maximize AppleActionOnDoubleClick:Fill AppleActionOnDoubleClick:None AppleActionOnDoubleClick:invalid AppleActionOnDoubleClick: AppleWindowTabbingMode:manual AppleWindowTabbingMode:always AppleWindowTabbingMode:fullscreen AppleWindowTabbingMode:invalid AppleWindowTabbingMode:; do
+    reset_fixture
+    key="${entry%%:*}"
+    value="${entry#*:}"
+    MOCK_MODE=raw_value
+    MOCK_TARGET="NSGlobalDomain|$key"
+    MOCK_VALUE="$value"
+    export_windows_settings >/dev/null
+    result=$?
+    case "$key:$value" in
+        AppleActionOnDoubleClick:Minimize|AppleActionOnDoubleClick:Maximize|AppleActionOnDoubleClick:Fill|AppleActionOnDoubleClick:None|AppleWindowTabbingMode:manual|AppleWindowTabbingMode:always|AppleWindowTabbingMode:fullscreen)
+            expected_enum="$(printf '%s\n' "$expected_windows" | awk -F '|' -v OFS='|' -v key="$key" -v value="$value" '$2 == key {$4=value} {print}')"
+            [[ $result -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_enum" ]] &&
+                pass "supported Window Management $key $value exported" || fail "supported Window Management enum export" ;;
+        *)
+            expected_remaining="$(printf '%s\n' "$expected_windows" | awk -F '|' -v key="$key" '$2 != key')"
+            [[ $result -eq 1 && "$(cat config/generated/macos/windows.conf)" == "$expected_remaining" &&
+               "$WARNING_MESSAGES" == *"Skipping unsupported Window Management $key:"* ]] &&
+                pass "unsupported Window Management $key omitted with warning" || fail "unsupported Window Management enum handling" ;;
+    esac
+done
+
+reset_fixture
+printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+before_checksum="$(cksum config/generated/macos/windows.conf)"
+serialize_windows_settings() { printf 'NSGlobalDomain|AppleActionOnDoubleClick|string|invalid\n' > "$1"; }
+export_windows_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'invalid Window Management candidate preserves previous snapshot'
+else
+    fail 'invalid Window Management candidate published'
+fi
 
 # Stage 9D: each new key is independently observed; absence remains unmanaged.
 new_keyboard_keys=(ApplePressAndHoldEnabled NSAutomaticCapitalizationEnabled NSAutomaticSpellingCorrectionEnabled NSAutomaticPeriodSubstitutionEnabled NSAutomaticQuoteSubstitutionEnabled NSAutomaticDashSubstitutionEnabled AppleKeyboardUIMode)
@@ -578,11 +658,12 @@ fi
 category_functions=(
     export_finder_settings
     export_dock_settings
+    export_windows_settings
     export_keyboard_settings
     export_trackpad_settings
     export_screenshots_settings
 )
-category_files=(finder.conf dock.conf keyboard.conf trackpad.conf screenshots.conf)
+category_files=(finder.conf dock.conf windows.conf keyboard.conf trackpad.conf screenshots.conf)
 
 for ((category_index = 0; category_index < ${#category_functions[@]}; category_index++)); do
     reset_fixture
@@ -605,6 +686,7 @@ done
 category_targets=(
     'NSGlobalDomain|AppleShowAllExtensions'
     'com.apple.dock|autohide'
+    'NSGlobalDomain|AppleActionOnDoubleClick'
     'NSGlobalDomain|KeyRepeat'
     'com.apple.AppleMultitouchTrackpad|Clicking'
     'com.apple.screencapture|location'

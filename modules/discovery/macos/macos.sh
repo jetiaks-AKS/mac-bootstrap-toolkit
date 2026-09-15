@@ -93,6 +93,14 @@ macos_collect_preference() {
         return 0
     fi
 
+    if [[ "$domain" == NSGlobalDomain &&
+          ( ( "$key" == AppleActionOnDoubleClick && ! "$value" =~ $MACOS_WINDOW_DOUBLE_CLICK_PATTERN ) ||
+            ( "$key" == AppleWindowTabbingMode && ! "$value" =~ $MACOS_WINDOW_TABBING_PATTERN ) ) ]]; then
+        warning "Skipping unsupported Window Management $key: $value"
+        WINDOWS_DISCOVERY_WARNING=true
+        return 0
+    fi
+
     if ! printf '%s|%s|%s|%s\n' \
         "$domain" "$key" "$generated_type" "$value" >> "$output_file"; then
         error "Failed to serialize macOS preference: $domain $key"
@@ -112,6 +120,7 @@ macos_serialize_candidate() {
 
 source modules/discovery/macos/finder.sh
 source modules/discovery/macos/dock.sh
+source modules/discovery/macos/windows.sh
 source modules/discovery/macos/keyboard.sh
 source modules/discovery/macos/trackpad.sh
 source modules/discovery/macos/screenshots.sh
@@ -132,6 +141,15 @@ discover_macos() {
     echo
 
     export_dock_settings
+    exporter_result=$?
+
+    if [[ $exporter_result -gt $discovery_result ]]; then
+        discovery_result=$exporter_result
+    fi
+
+    echo
+
+    export_windows_settings
     exporter_result=$?
 
     if [[ $exporter_result -gt $discovery_result ]]; then

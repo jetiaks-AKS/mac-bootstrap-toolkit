@@ -280,6 +280,10 @@ bootstrap_validate_selected_inputs() {
         validate_defaults_config "$DOCK_CONFIG" dock || return 2
     fi
 
+    if blueprint_category_enabled macos-windows; then
+        validate_defaults_config "$WINDOWS_CONFIG" windows || return 2
+    fi
+
     if blueprint_category_enabled macos-keyboard; then
         validate_defaults_config "$KEYBOARD_CONFIG" keyboard || return 2
     fi
@@ -549,6 +553,7 @@ case "$MODE" in
 
         if blueprint_category_enabled macos-finder ||
            blueprint_category_enabled macos-dock ||
+           blueprint_category_enabled macos-windows ||
            blueprint_category_enabled macos-keyboard ||
            blueprint_category_enabled macos-trackpad ||
            blueprint_category_enabled macos-screenshots; then

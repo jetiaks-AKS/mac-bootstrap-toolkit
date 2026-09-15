@@ -11,6 +11,12 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9E.1: expanded `macos-dock` from nine to eleven settings with
+  `launchanim` and `mru-spaces`, retaining one Dock restart only after writes.
+* Added `macos-windows` with four typed `NSGlobalDomain` preferences, strict
+  title-bar/tab enums, stored-value Preview/Verify, and no process restart.
+  Legacy Blueprints keep the new category disabled until explicitly migrated.
+
 * Stage 9D: expanded `macos-keyboard` from two to nine supported settings with
   press-and-hold, keyboard UI mode, automatic capitalization/spelling/period
   substitution, and smart quote/dash substitution. `AppleKeyboardUIMode` uses

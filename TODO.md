@@ -12,12 +12,14 @@ TODO содержит ближайшие конкретные техническ
 
 # Stage 9 — Next
 
-- [ ] 9E: проверить Trackpad numeric/float compatibility и hardware awareness;
-  сохранить Stage 9A validation и текущие Blueprint categories
+- [ ] 9E.2: доказать безопасный notification/reload lifecycle для WindowManager
+  tiling preferences без kill/logout/GUI automation
+- [ ] 9E.3: проверить Trackpad numeric/float compatibility и hardware awareness
 
-Stages 9A–9D реализованы в Unreleased. Finder поддерживает 13 настроек,
-Dock и Keyboard — по 9.
-Trackpad float/hardware work остаётся в 9E;
+Stages 9A–9E.1 реализованы в Unreleased. Finder поддерживает 13 настроек,
+Dock — 11, Window Management — 4, Keyboard — 9.
+Finder Favorites/per-folder view state остаются deferred; Trackpad
+float/hardware work перенесён в 9E.3;
 новые категории, restart manager и Global Verification в 9A не добавлены.
 
 ---

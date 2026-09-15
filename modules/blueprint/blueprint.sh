@@ -27,7 +27,7 @@ blueprint_exists() {
 blueprint_category_supported() {
 
     case "$1" in
-        git-configuration|vscode-settings|macos-finder|macos-dock|macos-keyboard|macos-trackpad|macos-screenshots)
+        git-configuration|vscode-settings|macos-finder|macos-dock|macos-windows|macos-keyboard|macos-trackpad|macos-screenshots)
             return 0
             ;;
         *)
@@ -91,6 +91,10 @@ blueprint_category_enabled() {
             ;;
         false)
             return 1
+            ;;
+        "")
+            [[ "$category" == macos-windows ]] && return 1
+            return 2
             ;;
         *)
             return 2
@@ -170,6 +174,7 @@ blueprint_validate_syntax() {
             categories["vscode-settings"] = 1
             categories["macos-finder"] = 1
             categories["macos-dock"] = 1
+            categories["macos-windows"] = 1
             categories["macos-keyboard"] = 1
             categories["macos-trackpad"] = 1
             categories["macos-screenshots"] = 1
@@ -267,6 +272,9 @@ blueprint_validate_syntax() {
             }
 
             for (category in categories) {
+                if (category == "macos-windows" && category_count[category] == 0) {
+                    continue
+                }
                 if (category_count[category] != 1) {
                     invalid("Missing Blueprint category: " category)
                 }
@@ -578,6 +586,7 @@ blueprint_show_bootstrap_summary() {
     blueprint_summary_category "VS Code Settings" vscode-settings
     blueprint_summary_category "Finder" macos-finder
     blueprint_summary_category "Dock" macos-dock
+    blueprint_summary_category "Window Management" macos-windows
     blueprint_summary_category "Keyboard" macos-keyboard
     blueprint_summary_category "Trackpad" macos-trackpad
     blueprint_summary_category "Screenshots" macos-screenshots

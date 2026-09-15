@@ -49,6 +49,7 @@ Roadmap показывает завершённые крупные этапы, �
 
 - [x] Finder
 - [x] Dock
+- [x] Window Management
 - [x] Keyboard
 - [x] Trackpad
 - [x] Screenshots
@@ -100,7 +101,7 @@ Roadmap показывает завершённые крупные этапы, �
 - [x] VS Code extensions и settings
 - [x] Workspace folders и Git repositories
 - [x] Global Git configuration
-- [x] Finder, Dock, Keyboard, Trackpad и Screenshots
+- [x] Finder, Dock, Window Management, Keyboard, Trackpad и Screenshots
 
 ## Consumer safety
 
@@ -211,7 +212,7 @@ framework.
 
 # Этап 9 — macOS Coverage Expansion
 
-**Статус: In progress (9A–9D implemented, Unreleased)**
+**Статус: In progress (9A–9E.1 implemented, Unreleased)**
 
 Расширять полезное покрытие существующих категорий через Discovery → Generated
 Configuration → Blueprint → Preview → Bootstrap с локальным Check → Apply → Verify.
@@ -224,7 +225,11 @@ Configuration → Blueprint → Preview → Bootstrap с локальным Chec
   unsupported-enum omission and one restart after actual writes
 - [x] 9D — Keyboard Expansion: 9 settings, existing bool/int contracts,
   typed verification and final Check without process restart
-- [ ] 9E — Trackpad Reliability: numeric/float compatibility и hardware awareness
+- [x] 9E.1 — Dock + Window Management Scalar Expansion: Dock 11 settings;
+  `macos-windows` 4 confirmed NSGlobalDomain settings without process restart
+- [ ] 9E.2 — WindowManager Lifecycle Research: доказать безопасный
+  notification/reload lifecycle для четырёх tiling preferences
+- [ ] 9E.3 — Trackpad Reliability: numeric/float compatibility и hardware awareness
 - [ ] 9F — Menu Bar / Control Center Compatibility: сначала доказать owner,
   безопасное чтение/запись и reload; uncertain settings не объявлять supported
 - [ ] 9G — Secondary scalar settings, только при низком риске
@@ -232,7 +237,8 @@ Configuration → Blueprint → Preview → Bootstrap с локальным Chec
 
 9A не добавляет новых preferences, типов или Blueprint categories. 9B добавляет
 ровно шесть Finder preferences в существующую категорию; 9C — четыре Dock preferences.
-9D добавляет семь Keyboard preferences. Следующая фаза — 9E Trackpad Reliability;
+9D добавляет семь Keyboard preferences. 9E.1 добавляет два Dock preferences и
+четыре Window Management preferences. Следующая фаза — 9E.2 WindowManager lifecycle;
 остальные фазы требуют отдельной реализации. Private databases, UI automation и raw
 machine-specific metadata не входят в scope. Generic settings/planner engines
 не являются требованием.

@@ -52,12 +52,20 @@ scalar-значение (включая `PfLo`) пропускается с warn
 успешной публикации остальных валидных записей. `NewWindowTargetPath` не экспортируется.
 Ошибки чтения/type и небезопасные scalar-значения сохраняют прежний snapshot с `2`.
 
-Dock сохраняет пять прежних настроек и четыре новых: `orientation`, `mineffect`,
-`minimize-to-application`, `show-process-indicators`. Для `orientation` допустимы
+Dock сохраняет пять прежних настроек и шесть новых: `orientation`, `mineffect`,
+`minimize-to-application`, `show-process-indicators`, `launchanim`, `mru-spaces`. Для `orientation` допустимы
 `left/bottom/right`, для `mineffect` — `genie/scale`. Неподдерживаемый scalar enum
 пропускается с warning и статусом `1` после публикации остальных валидных records.
 Absent preferences не получают синтезированных defaults; observation/type/scalar
 ошибки сохраняют прежний Dock snapshot с `2`.
+
+Window Management сохраняет четыре `NSGlobalDomain` preference в отдельный
+`windows.conf`: `AppleActionOnDoubleClick`, `AppleWindowTabbingMode`,
+`NSCloseAlwaysConfirmsChanges`, `NSQuitAlwaysKeepsWindows`. Первый enum допускает
+`Minimize/Maximize/Fill/None`, второй — `manual/always/fullscreen`. Unsupported
+enum пропускается с warning; absent остаётся unmanaged. Категория не требует
+process restart и проверяет сохранённое preference read-back, а не видимый эффект
+в уже открытых приложениях.
 
 Keyboard сохраняет `KeyRepeat`, `InitialKeyRepeat` и семь новых настроек:
 `ApplePressAndHoldEnabled`, `AppleKeyboardUIMode`, `NSAutomaticCapitalizationEnabled`,

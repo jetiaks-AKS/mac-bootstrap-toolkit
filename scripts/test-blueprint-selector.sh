@@ -87,6 +87,7 @@ write_existing_blueprint() {
         echo 'vscode-settings="true"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
+        echo 'macos-windows="true"'
         echo 'macos-keyboard="true"'
         echo 'macos-trackpad="true"'
         echo 'macos-screenshots="true"'
@@ -333,7 +334,7 @@ fi
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 BLUEPRINT_FILE="$TEST_ROOT/new/blueprint.conf"
 mkdir -p "$(dirname "$BLUEPRINT_FILE")"
-wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 reset_selector_log
 summary_output="$(blueprint_selector_run <<< "$wizard_defaults")"
 if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
@@ -366,7 +367,7 @@ fi
 
 write_existing_blueprint
 before_checksum="$(cksum "$BLUEPRINT_FILE")"
-cancel_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+cancel_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
 reset_selector_log
 cancel_output="$(blueprint_selector_run <<< "$cancel_input")"
 after_checksum="$(cksum "$BLUEPRINT_FILE")"
@@ -431,7 +432,7 @@ for existing in yes no; do
                 choice) prefix='' ;;
                 restore) prefix=$'\n\n\n\n\n\n' ;;
                 edit) prefix=$'e\n1\n' ;;
-                save) prefix=$'\n\n\n\n\n\n\n\n\n\n\n\n\n' ;;
+                save) prefix=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n' ;;
                 later-choice) prefix=$'e\n1\nd\na\n' ;;
             esac
             if [[ "$existing" == yes ]]; then

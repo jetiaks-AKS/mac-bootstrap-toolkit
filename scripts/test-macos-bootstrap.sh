@@ -37,6 +37,7 @@ source modules/settings/macos/macos.sh
 
 FINDER_CONFIG="$TEST_ROOT/generated/macos/finder.conf"
 DOCK_CONFIG="$TEST_ROOT/generated/macos/dock.conf"
+WINDOWS_CONFIG="$TEST_ROOT/generated/macos/windows.conf"
 KEYBOARD_CONFIG="$TEST_ROOT/generated/macos/keyboard.conf"
 TRACKPAD_CONFIG="$TEST_ROOT/generated/macos/trackpad.conf"
 SCREENSHOTS_CONFIG="$TEST_ROOT/generated/macos/screenshots.conf"
@@ -136,6 +137,12 @@ defaults() {
                     keyboard-final-error) READ_FAILURE='NSGlobalDomain|KeyRepeat' ;;
                 esac
             fi
+            if [[ "$domain|$key" == 'NSGlobalDomain|AppleWindowTabbingMode' ]]; then
+                case "$POST_WRITE_MODE" in
+                    windows-final-mismatch) state_set NSGlobalDomain AppleActionOnDoubleClick string Fill ;;
+                    windows-final-error) READ_FAILURE='NSGlobalDomain|AppleActionOnDoubleClick' ;;
+                esac
+            fi
             ;;
         *) return 2 ;;
     esac
@@ -163,6 +170,7 @@ reset_case() {
     : > "$OBSERVATION_LOG"
     : > "$FINDER_CONFIG"
     : > "$DOCK_CONFIG"
+    : > "$WINDOWS_CONFIG"
     : > "$KEYBOARD_CONFIG"
     : > "$TRACKPAD_CONFIG"
     : > "$SCREENSHOTS_CONFIG"
@@ -482,7 +490,7 @@ assert_count '^killall:Finder' 1 'all-inclusive Finder restart once'
 
 # Stage 9C: exact old/new Dock inventory uses the shared production consumer.
 DOCK_OLD_RECORDS=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64'
-DOCK_NEW_RECORDS=$'com.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|1'
+DOCK_NEW_RECORDS=$'com.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|1\ncom.apple.dock|launchanim|bool|1\ncom.apple.dock|mru-spaces|bool|0'
 dock_fixture() {
     record "$DOCK_CONFIG" "$DOCK_OLD_RECORDS"$'\n'"$DOCK_NEW_RECORDS"
     local domain key type value
@@ -546,14 +554,16 @@ for mode in matching bool multiple target mineffect absent observation-error inv
     dock_fixture
     ENABLED_CATEGORIES=macos-dock
     case "$mode" in
-        bool|multiple) state_set com.apple.dock minimize-to-application bool false ;;
+        bool) state_set com.apple.dock minimize-to-application bool false ;;
+        multiple)
+            state_set com.apple.dock launchanim bool false
+            state_set com.apple.dock mru-spaces bool true ;;
         target) state_set com.apple.dock orientation string left ;;
         mineffect) state_set com.apple.dock mineffect string scale ;;
         absent) awk -F '|' '$2 != "show-process-indicators"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
         observation-error) READ_FAILURE='com.apple.dock|autohide' ;;
         invalid-enum) printf 'com.apple.dock|orientation|string|PfLo\n' > "$DOCK_CONFIG" ;;
     esac
-    [[ "$mode" != multiple ]] || state_set com.apple.dock orientation string right
     MODULE_CHANGED=preserved
     PREVIEW_HAS_CHANGES=false
     run preview_macos_settings
@@ -573,7 +583,7 @@ for mode in matching bool multiple target mineffect absent observation-error inv
         [[ "$PREVIEW_HAS_CHANGES" == false ]] || fail "$mode invented Preview signal"
     fi
     case "$mode" in
-        multiple) [[ "$output" == *'orientation (right -> bottom)'*'minimize-to-application (false -> true)'*'Would restart process: Dock'* ]] || fail 'Dock plan order/values' ;;
+        multiple) [[ "$output" == *'launchanim (false -> true)'*'mru-spaces (true -> false)'*'Would restart process: Dock'* ]] || fail 'Dock new-setting plan order/values' ;;
         target) [[ "$output" == *'orientation (left -> bottom)'* ]] || fail 'Dock target plan value' ;;
         mineffect) [[ "$output" == *'mineffect (scale -> genie)'* ]] || fail 'Dock effect plan value' ;;
         absent) [[ "$output" == *'show-process-indicators (absent -> true)'* ]] || fail 'Dock absent plan' ;;
@@ -592,7 +602,11 @@ for mode in matching bool multiple target mineffect absent observation-error wri
         matching) changed=false; writes=0; restarts=0 ;;
         bool) state_set com.apple.dock minimize-to-application bool false ;;
         mineffect) state_set com.apple.dock mineffect string scale ;;
-        multiple|later-write-failure)
+        multiple)
+            state_set com.apple.dock launchanim bool false
+            state_set com.apple.dock mru-spaces bool true
+            writes=2 ;;
+        later-write-failure)
             state_set com.apple.dock minimize-to-application bool false
             state_set com.apple.dock orientation string left
             writes=2 ;;
@@ -643,6 +657,126 @@ run apply_macos_settings
 expect_status 0 "$status" 'no Blueprint includes expanded Dock'
 assert_count '^write:' 1 'all-inclusive applies new Dock preference'
 assert_count '^killall:Dock' 1 'all-inclusive Dock restart once'
+
+# Stage 9E.1: Window Management uses four NSGlobalDomain scalar records and no restart.
+WINDOWS_RECORDS=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1'
+windows_fixture() {
+    record "$WINDOWS_CONFIG" "$WINDOWS_RECORDS"
+    local domain key type value
+    while IFS='|' read -r domain key type value; do
+        state_set "$domain" "$key" "$type" "$value"
+    done < "$WINDOWS_CONFIG"
+}
+
+while IFS='|' read -r domain key type value; do
+    reset_case
+    record "$WINDOWS_CONFIG" "$domain|$key|$type|$value"
+    run validate_defaults_config "$WINDOWS_CONFIG" windows
+    expect_status 0 "$status" "$key Window Management schema accepted"
+    run validate_defaults_config "$WINDOWS_CONFIG" dock
+    expect_status 2 "$status" "$key Window Management crossover rejected"
+    wrong_type=string
+    [[ "$type" != string ]] || wrong_type=bool
+    for invalid in "com.apple.WindowManager|$key|$type|$value" "$domain|$key|$wrong_type|$value" "$domain|$key|$type|$value"$'\n'"$domain|$key|$type|$value"; do
+        record "$WINDOWS_CONFIG" "$invalid"
+        run apply_windows_settings
+        expect_status 2 "$status" "$key invalid domain/type/duplicate blocked"
+        assert_no_mutation "$key invalid Window Management input blocks writes"
+    done
+    record "$WINDOWS_CONFIG" "$domain|$key|$type|$value"
+    run apply_windows_settings
+    expect_status 0 "$status" "$key absent Window Management target restored"
+    assert_changed true "$key Window Management write accounted"
+    assert_count '^write:' 1 "$key Window Management one write"
+    assert_count '^killall:' 0 "$key Window Management no restart"
+    : > "$MUTATION_LOG"
+    MODULE_CHANGED=false
+    run apply_windows_settings
+    expect_status 0 "$status" "$key repeated Window Management Apply succeeds"
+    assert_changed false "$key repeated Window Management Apply unchanged"
+    assert_no_mutation "$key repeated Window Management Apply no mutation"
+done <<< "$WINDOWS_RECORDS"
+
+for value in Minimize Maximize Fill None invalid ''; do
+    reset_case
+    record "$WINDOWS_CONFIG" "NSGlobalDomain|AppleActionOnDoubleClick|string|$value"
+    run validate_defaults_config "$WINDOWS_CONFIG" windows
+    expected=0
+    case "$value" in Minimize|Maximize|Fill|None) ;; *) expected=2 ;; esac
+    expect_status "$expected" "$status" "AppleActionOnDoubleClick enum '$value'"
+done
+for value in manual always fullscreen invalid ''; do
+    reset_case
+    record "$WINDOWS_CONFIG" "NSGlobalDomain|AppleWindowTabbingMode|string|$value"
+    run validate_defaults_config "$WINDOWS_CONFIG" windows
+    expected=0
+    case "$value" in manual|always|fullscreen) ;; *) expected=2 ;; esac
+    expect_status "$expected" "$status" "AppleWindowTabbingMode enum '$value'"
+done
+
+for mode in matching enum multiple absent observation-error invalid-enum; do
+    reset_case
+    windows_fixture
+    ENABLED_CATEGORIES=macos-windows
+    case "$mode" in
+        enum|multiple) state_set NSGlobalDomain AppleActionOnDoubleClick string Fill ;;
+        absent) awk -F '|' '$2 != "AppleWindowTabbingMode"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        observation-error) READ_FAILURE='NSGlobalDomain|AppleActionOnDoubleClick' ;;
+        invalid-enum) printf 'NSGlobalDomain|AppleActionOnDoubleClick|string|invalid\n' > "$WINDOWS_CONFIG" ;;
+    esac
+    [[ "$mode" != multiple ]] || state_set NSGlobalDomain NSCloseAlwaysConfirmsChanges bool false
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_macos_settings
+    case "$mode" in observation-error|invalid-enum) expected=2; plans=0 ;; matching) expected=0; plans=0 ;; multiple) expected=0; plans=2 ;; *) expected=0; plans=1 ;; esac
+    expect_status "$expected" "$status" "Window Management Preview $mode"
+    [[ "$(grep -c 'Would change macOS setting:' <<< "$output" || true)" == "$plans" ]] || fail "$mode Window Management plan count"
+    [[ "$output" != *'Would restart process:'* ]] || fail "$mode Window Management unexpected restart plan"
+    assert_changed preserved "$mode Window Management Preview preserves MODULE_CHANGED"
+    assert_no_mutation "$mode Window Management Preview no writes/restart"
+done
+
+for mode in matching enum bool multiple absent observation-error write-failure verify-mismatch verify-error later-write-failure final-mismatch final-error; do
+    reset_case
+    windows_fixture
+    ENABLED_CATEGORIES=macos-windows
+    expected=0; changed=true; writes=1
+    case "$mode" in
+        matching) changed=false; writes=0 ;;
+        enum) state_set NSGlobalDomain AppleActionOnDoubleClick string Fill ;;
+        bool) state_set NSGlobalDomain NSQuitAlwaysKeepsWindows bool false ;;
+        multiple|later-write-failure|final-mismatch|final-error)
+            state_set NSGlobalDomain AppleActionOnDoubleClick string Fill
+            state_set NSGlobalDomain AppleWindowTabbingMode string manual
+            writes=2 ;;
+        absent) awk -F '|' '$2 != "AppleWindowTabbingMode"' "$STATE_FILE" > "$STATE_FILE.next"; mv "$STATE_FILE.next" "$STATE_FILE" ;;
+        *) state_set NSGlobalDomain AppleActionOnDoubleClick string Fill ;;
+    esac
+    case "$mode" in
+        observation-error) READ_FAILURE='NSGlobalDomain|AppleActionOnDoubleClick'; expected=2; changed=false; writes=0 ;;
+        write-failure) WRITE_STATUS=2; expected=2; changed=false ;;
+        verify-mismatch) POST_WRITE_MODE=mismatch; expected=2 ;;
+        verify-error) POST_WRITE_MODE=observation-error; expected=2 ;;
+        later-write-failure) WRITE_FAILURE_KEY=AppleWindowTabbingMode; expected=2 ;;
+        final-mismatch) POST_WRITE_MODE=windows-final-mismatch; expected=2 ;;
+        final-error) POST_WRITE_MODE=windows-final-error; expected=2 ;;
+    esac
+    run apply_macos_settings
+    expect_status "$expected" "$status" "Window Management Bootstrap $mode"
+    assert_changed "$changed" "$mode Window Management mutation accounting"
+    assert_count '^write:' "$writes" "$mode Window Management write count"
+    assert_count '^killall:' 0 "$mode Window Management no restart"
+    if [[ $expected -ne 0 ]]; then
+        assert_no_success "$output" "$mode Window Management no false success"
+    else
+        : > "$MUTATION_LOG"
+        MODULE_CHANGED=false
+        run apply_macos_settings
+        expect_status 0 "$status" "$mode second Window Management Bootstrap succeeds"
+        assert_changed false "$mode second Window Management Bootstrap unchanged"
+        assert_no_mutation "$mode second Window Management Bootstrap no mutation"
+    fi
+done
 
 # Stage 9D: exact old/new Keyboard inventory uses the shared production consumer.
 KEYBOARD_OLD_RECORDS=$'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15'
