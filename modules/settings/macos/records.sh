@@ -60,6 +60,7 @@ validate_defaults_config() {
             allowed["windows", "NSGlobalDomain", "AppleWindowTabbingMode"] = "string"
             allowed["windows", "NSGlobalDomain", "NSCloseAlwaysConfirmsChanges"] = "bool"
             allowed["windows", "NSGlobalDomain", "NSQuitAlwaysKeepsWindows"] = "bool"
+            allowed["windows", "com.apple.WindowManager", "HideDesktop"] = "bool"
             allowed["keyboard", "NSGlobalDomain", "KeyRepeat"] = "int"
             allowed["keyboard", "NSGlobalDomain", "InitialKeyRepeat"] = "int"
             allowed["keyboard", "NSGlobalDomain", "ApplePressAndHoldEnabled"] = "bool"

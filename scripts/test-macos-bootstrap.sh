@@ -214,6 +214,11 @@ assert_count() {
     actual="$(grep -c "$1" "$MUTATION_LOG" || true)"
     [[ "$actual" == "$2" ]] && pass "$3" || fail "$3 ($actual)"
 }
+assert_observation_count() {
+    local actual
+    actual="$(grep -c "$1" "$OBSERVATION_LOG" || true)"
+    [[ "$actual" == "$2" ]] && pass "$3" || fail "$3 ($actual)"
+}
 
 # Production schema rejects unsafe records before writes, including late errors.
 invalid_records=(
@@ -666,8 +671,8 @@ expect_status 0 "$status" 'no Blueprint includes expanded Dock'
 assert_count '^write:' 1 'all-inclusive applies new Dock preference'
 assert_count '^killall:Dock' 1 'all-inclusive Dock restart once'
 
-# Stage 9E.1: Window Management uses four NSGlobalDomain scalar records and no restart.
-WINDOWS_RECORDS=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1'
+# Stage 9E.1/9E.6: Window Management uses five scalar records and no restart.
+WINDOWS_RECORDS=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1\ncom.apple.WindowManager|HideDesktop|bool|1'
 windows_fixture() {
     record "$WINDOWS_CONFIG" "$WINDOWS_RECORDS"
     local domain key type value
@@ -685,7 +690,9 @@ while IFS='|' read -r domain key type value; do
     expect_status 2 "$status" "$key Window Management crossover rejected"
     wrong_type=string
     [[ "$type" != string ]] || wrong_type=bool
-    for invalid in "com.apple.WindowManager|$key|$type|$value" "$domain|$key|$wrong_type|$value" "$domain|$key|$type|$value"$'\n'"$domain|$key|$type|$value"; do
+    wrong_domain=com.apple.WindowManager
+    [[ "$domain" != com.apple.WindowManager ]] || wrong_domain=NSGlobalDomain
+    for invalid in "$wrong_domain|$key|$type|$value" "$domain|$key|$wrong_type|$value" "$domain|$key|$type|$value"$'\n'"$domain|$key|$type|$value"; do
         record "$WINDOWS_CONFIG" "$invalid"
         run apply_windows_settings
         expect_status 2 "$status" "$key invalid domain/type/duplicate blocked"
@@ -704,6 +711,68 @@ while IFS='|' read -r domain key type value; do
     assert_changed false "$key repeated Window Management Apply unchanged"
     assert_no_mutation "$key repeated Window Management Apply no mutation"
 done <<< "$WINDOWS_RECORDS"
+
+for desired in true false; do
+    reset_case
+    record "$WINDOWS_CONFIG" "com.apple.WindowManager|HideDesktop|bool|$desired"
+    state_set com.apple.WindowManager HideDesktop bool "$([[ "$desired" == true ]] && echo false || echo true)"
+    MODULE_CHANGED=preserved
+    PREVIEW_HAS_CHANGES=false
+    run preview_macos_settings
+    expect_status 0 "$status" "HideDesktop $desired semantic Preview succeeds"
+    expected_plan='Would show Desktop items'
+    [[ "$desired" == true ]] && expected_plan='Would hide Desktop items'
+    [[ "$output" == *"$expected_plan"* ]] || fail "HideDesktop $desired semantic Preview missing"
+    [[ "$output" != *'com.apple.WindowManager'* && "$output" != *'HideDesktop'* ]] || fail "HideDesktop $desired Preview exposed private identity"
+    assert_changed preserved "HideDesktop $desired Preview preserves MODULE_CHANGED"
+    assert_no_mutation "HideDesktop $desired Preview remains read-only"
+
+    MODULE_CHANGED=false
+    run apply_windows_settings
+    expect_status 0 "$status" "HideDesktop $desired mismatch restored"
+    assert_changed true "HideDesktop $desired write accounted"
+    assert_count '^write:com.apple.WindowManager:HideDesktop:' 1 "HideDesktop $desired one write"
+    assert_count '^killall:' 0 "HideDesktop $desired no restart"
+    : > "$MUTATION_LOG"
+    MODULE_CHANGED=false
+    run apply_windows_settings
+    expect_status 0 "$status" "HideDesktop $desired repeated Apply succeeds"
+    assert_changed false "HideDesktop $desired repeated Apply unchanged"
+    assert_no_mutation "HideDesktop $desired repeated Apply no-op"
+done
+
+reset_case
+record "$WINDOWS_CONFIG" 'com.apple.WindowManager|HideDesktop|bool|true'
+READ_TYPE_FAILURE='com.apple.WindowManager|HideDesktop'
+run apply_windows_settings
+expect_status 2 "$status" 'HideDesktop observation error fails'
+assert_changed false 'HideDesktop observation error unchanged'
+assert_no_mutation 'HideDesktop observation error blocks write'
+
+for mode in write-failure verify-mismatch verify-error; do
+    reset_case
+    record "$WINDOWS_CONFIG" 'com.apple.WindowManager|HideDesktop|bool|true'
+    case "$mode" in
+        write-failure) WRITE_STATUS=2 ;;
+        verify-mismatch) POST_WRITE_MODE=mismatch ;;
+        verify-error) POST_WRITE_MODE=observation-error ;;
+    esac
+    run apply_windows_settings
+    expect_status 2 "$status" "HideDesktop $mode fails"
+    assert_count '^write:com.apple.WindowManager:HideDesktop:' 1 "HideDesktop $mode one write attempt"
+    assert_count '^killall:' 0 "HideDesktop $mode no restart"
+    assert_no_success "$output" "HideDesktop $mode no false success"
+done
+
+reset_case
+windows_fixture
+state_set NSGlobalDomain AppleActionOnDoubleClick string Fill
+: > "$OBSERVATION_LOG"
+run apply_windows_settings
+expect_status 0 "$status" 'final Windows Check includes matching HideDesktop'
+assert_observation_count '^read-type:com.apple.WindowManager:HideDesktop$' 2 'HideDesktop inspected during Apply and final Check'
+assert_observation_count '^read:com.apple.WindowManager:HideDesktop$' 2 'HideDesktop value read during Apply and final Check'
+assert_count '^killall:' 0 'final HideDesktop Check has no restart'
 
 for value in Minimize Maximize Fill None invalid ''; do
     reset_case

@@ -11,6 +11,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 9E.6: completed Stage 9 macOS settings expansion by adding the stored
+  `HideDesktop` bool preference to `macos-windows`. Preview describes whether
+  Desktop items would be hidden or shown; Apply uses the existing typed Windows
+  lifecycle without a process restart or a claim of visual-state verification.
+* Stage 9 is complete. Natural Scrolling, wallpaper-click behavior, Dock Items,
+  Menu Bar / Control Center and other private or version-sensitive candidates
+  remain deferred to a future explicit compatibility or feature project.
+
 * Stage 9E.3: narrowed `macos-trackpad` to the two reliable primary stored bool
   preferences `Clicking` and `TrackpadRightClick`. Trackpad Apply now performs a
   final stored-state Check without process restart or external-device writes.

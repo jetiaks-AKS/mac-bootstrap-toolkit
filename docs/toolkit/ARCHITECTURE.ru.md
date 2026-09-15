@@ -193,8 +193,8 @@ Path-контракт описан в [Configuration](CONFIGURATION.md).
 Discovery и consumers используют общий фиксированный scalar-контракт текущих
 категорий из `modules/settings/macos/records.sh`. Candidate-файл валидируется
 до публикации. Startup проверяет selected categories и Screenshot path до
-preflight. Stage 9E.1 добавляет `macos-windows`; legacy Blueprint без этой записи
-остаётся валидным и сохраняет категорию выключенной до явной миграции.
+preflight. Старый Blueprint без записи `macos-windows` остаётся валидным и
+сохраняет категорию выключенной до явной миграции.
 
 Порядок startup: CLI → logger → Blueprint validation → selected-input
 validation → read-only preflight → read-only Core inspection → domain Preview

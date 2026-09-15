@@ -105,170 +105,180 @@ Toolkit намеренно не требует одного универсаль
 Конфигурация должна разбираться как данные. Способ чтения обязан соответствовать
 формату и не превращать generated-содержимое в выполняемый shell-код.
 
-### macOS generated records (Stage 9A)
+### Настройки macOS
 
-Формат остаётся `domain|key|type|value`; supported types — `bool`, `int`, `string`.
-Общая validation в `modules/settings/macos/records.sh` используется Discovery
-перед atomic publication, startup validation и consumers. Категория передаётся
-явно; имя файла не определяет разрешённые domain/key.
+Формат — `domain|key|type|value`; поддерживаются типы `bool`, `int` и `string`.
+Общая проверка в `modules/settings/macos/records.sh` используется Discovery до
+атомарной публикации, при начальной проверке входных данных и потребителями.
+Категория передаётся явно; имя файла не определяет разрешённые domain/key.
 
-Текущий allowlist: foundation 9A и расширения Finder 9B, Dock 9C/9E.1,
-Keyboard 9D и Window Management 9E.1.
-Finder поддерживает 13 настроек, Dock — 11, Window Management — 4, Keyboard — 9:
+Точный текущий список разрешённых записей:
 
 | Категория | Domain | Keys / type |
 |---|---|---|
 | Finder | `NSGlobalDomain` | `AppleShowAllExtensions` / bool |
 | Finder | `com.apple.finder` | `ShowPathbar`, `ShowStatusBar`, `_FXSortFoldersFirst`, `FXRemoveOldTrashItems` / bool; `FXPreferredViewStyle`, `FXDefaultSearchScope` / string |
-| Finder (9B) | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
+| Finder | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
 | Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
-| Dock (9C) | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
-| Dock (9E.1) | `com.apple.dock` | `launchanim`, `mru-spaces` / bool |
-| Window Management (9E.1) | `NSGlobalDomain` | `AppleActionOnDoubleClick`, `AppleWindowTabbingMode` / string enum; `NSCloseAlwaysConfirmsChanges`, `NSQuitAlwaysKeepsWindows` / bool |
-| Keyboard | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
-| Keyboard (9D) | `NSGlobalDomain` | `AppleKeyboardUIMode` / int; `ApplePressAndHoldEnabled`, `NSAutomaticCapitalizationEnabled`, `NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`, `NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled` / bool |
-| Trackpad | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
-| Screenshots | `com.apple.screencapture` | `location` / string, path-контракт ниже |
+| Dock | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
+| Dock | `com.apple.dock` | `launchanim`, `mru-spaces` / bool |
+| Управление окнами | `NSGlobalDomain` | `AppleActionOnDoubleClick`, `AppleWindowTabbingMode` / string enum; `NSCloseAlwaysConfirmsChanges`, `NSQuitAlwaysKeepsWindows` / bool |
+| Управление окнами | `com.apple.WindowManager` | `HideDesktop` / bool |
+| Клавиатура | `NSGlobalDomain` | `KeyRepeat`, `InitialKeyRepeat` / int |
+| Клавиатура | `NSGlobalDomain` | `AppleKeyboardUIMode` / int; `ApplePressAndHoldEnabled`, `NSAutomaticCapitalizationEnabled`, `NSAutomaticSpellingCorrectionEnabled`, `NSAutomaticPeriodSubstitutionEnabled`, `NSAutomaticQuoteSubstitutionEnabled`, `NSAutomaticDashSubstitutionEnabled` / bool |
+| Трекпад | `com.apple.AppleMultitouchTrackpad` | `Clicking`, `TrackpadRightClick` / bool |
+| Снимки экрана | `com.apple.screencapture` | `location` / string, контракт пути ниже |
 
-Unknown/cross-category domain/key, wrong type, duplicate domain/key, неверное
-число полей, ASCII control bytes (включая NUL), delimiter в value и multiline
-scalar отвергаются с `2`. Байты проверяются до shell parsing; строка не теряет
-значимый trailing newline незаметно. Bool допускает `0/1/true/false`; int —
-целое с необязательным минусом. Новые неподтверждённые диапазоны и enum limits
-не вводятся. Generic numeric/float contract не добавляется.
+Неизвестные или относящиеся к другой категории domain/key, неверный тип,
+дубликат domain/key, неверное число полей, управляющие ASCII-байты (включая
+NUL), разделитель в значении и многострочное скалярное значение отвергаются с
+кодом `2`. Байты проверяются до разбора оболочкой; значимый завершающий перевод
+строки не теряется незаметно. Bool допускает `0/1/true/false`; int — целое с
+необязательным минусом. Неподтверждённые диапазоны и общий numeric/float-контракт
+не вводятся.
 
-Пустые строки/строки из пробелов и пустые category-файлы допустимы. Последняя
-запись без newline обрабатывается Check, Preview и Apply. Отсутствующий source
-preference не создаёт record; отсутствие record не удаляет target preference.
-Пустая generic string отличается от отсутствия; пустые Screenshot destination
-и enum-значения Finder/Dock запрещены. Ошибка candidate validation сохраняет
-предыдущий generated-файл.
-Generated data никогда не выполняются через `source`/`eval`.
+Пустые строки, строки из пробелов и пустые файлы категорий допустимы. Последняя
+запись без перевода строки обрабатывается Check, Preview и Apply. Отсутствующая
+исходная настройка не создаёт запись; отсутствие записи не удаляет целевую
+настройку. Пустая обычная строка отличается от отсутствия; пустые значения пути
+снимков экрана и enum Finder/Dock запрещены. Ошибка проверки кандидата сохраняет
+предыдущий сгенерированный файл. Generated data никогда не выполняются через
+`source` или `eval`.
 
 После успешного `defaults write` Changed устанавливается до Verify. Ошибка
-Verify/restart возвращает `2`, не сообщает success и не сбрасывает Changed.
-Rollback не выполняется. Проверка read-back подтверждает сохранённые preferences,
-а не визуальный эффект в приложениях.
+Verify или перезапуска возвращает `2`, не сообщает об успехе и не сбрасывает
+Changed. Откат не выполняется. Повторное чтение подтверждает сохранённые
+настройки, а не визуальный эффект в приложениях.
 
-#### Finder Expansion (Stage 9B)
+#### Finder
 
-Все 13 настроек выбираются существующей Blueprint-категорией `macos-finder`.
+Все записи выбираются существующей категорией Blueprint `macos-finder`.
 Старый семистрочный `finder.conf`, пустой файл и no-Blueprint all-inclusive
 поведение совместимы; формат записей не меняется.
 
 `NewWindowTarget` поддерживает только `PfCm`, `PfVo`, `PfHm`, `PfDe`, `PfDo`, `PfAF`.
-Consumer отвергает другие значения, включая `PfLo` и пустую строку, до inspection
-и мутаций. Custom target `PfLo` и парный `NewWindowTargetPath` не восстанавливаются.
-Discovery пропускает отсутствующий preference без синтеза defaults. Неподдерживаемый
-scalar target пропускается с warning: остальные валидные Finder records публикуются,
+Потребитель отвергает другие значения, включая `PfLo` и пустую строку, до
+проверки и мутаций. Пользовательский вариант `PfLo` и парный
+`NewWindowTargetPath` не восстанавливаются. Discovery пропускает отсутствующую
+настройку без синтеза значения. Неподдерживаемое скалярное значение пропускается
+с предупреждением: остальные валидные записи Finder публикуются,
 статус — `1`. Ошибка чтения, неверный native type или небезопасный scalar возвращает
-`2` и сохраняет предыдущий Finder snapshot. Весь candidate проходит shared validation.
-Отсутствующая record оставляет соответствующий target preference unmanaged.
+`2` и сохраняет предыдущий снимок Finder. Весь кандидат проходит общую проверку.
+Отсутствующая запись оставляет соответствующую целевую настройку неуправляемой.
 
-Preview планирует изменения в порядке records и один Finder restart при наличии
-записей к изменению. Apply использует typed Check → Write → Verify; успешная запись
-сразу сохраняется в `MODULE_CHANGED`. Finder перезапускается максимум один раз после
-успешной записи всех изменяемых records, затем выполняется final Check. Ошибки Write,
-Verify/restart возвращают `2` без success; ранее выполненные записи остаются учтены.
-No-op и повторный идентичный Bootstrap не пишут preferences и не перезапускают Finder.
+Preview планирует изменения в порядке записей и один перезапуск Finder при
+наличии изменений. Apply использует типизированный `Check → Write → Verify`;
+успешная запись сразу сохраняется в `MODULE_CHANGED`. Finder перезапускается максимум один раз после
+успешной записи всех изменяемых значений, затем выполняется итоговый Check.
+Ошибки Write, Verify или перезапуска возвращают `2` без ложного сообщения об
+успехе; ранее выполненные записи остаются учтены. Повторный идентичный Bootstrap
+не записывает настройки и не перезапускает Finder.
 
-#### Dock Expansion (Stage 9C)
+#### Dock
 
-Dock поддерживает девять настроек в существующей категории `macos-dock`:
-пять прежних и четыре новых — `orientation`, `mineffect`, `minimize-to-application`,
-`show-process-indicators`. Старый пятистрочный и пустой `dock.conf` остаются валидными;
-Blueprint и no-Blueprint all-inclusive поведение, формат records не меняются.
+Категория `macos-dock` поддерживает записи из таблицы выше, включая
+`orientation`, `mineffect`, `minimize-to-application`,
+`show-process-indicators`, `launchanim` и `mru-spaces`. Старый пятистрочный и
+пустой `dock.conf` остаются валидными; формат записей и совместимость Blueprint
+не меняются.
 
 `orientation` допускает только `left/bottom/right`, `mineffect` — только `genie/scale`.
-Другие значения, включая пустые, отвергаются consumer до inspection и мутаций.
-Discovery сериализует supported present values; absent preferences остаются unmanaged.
-Неподдерживаемый scalar enum пропускается с warning: остальные валидные Dock records
+Другие значения, включая пустые, отвергаются потребителем до проверки и
+мутаций. Discovery сериализует только присутствующие поддерживаемые значения;
+отсутствующие настройки остаются неуправляемыми. Неподдерживаемое значение enum
+пропускается с предупреждением: остальные валидные записи Dock
 публикуются со статусом `1`, без угадывания или замены значения. Ошибка наблюдения,
-неверный native type, unsafe scalar или candidate validation возвращает `2` и сохраняет
-предыдущий generated Dock snapshot.
+неверный нативный тип, небезопасное скалярное значение или проверка кандидата
+возвращает `2` и сохраняет предыдущий сгенерированный снимок Dock.
 
-Preview использует порядок records и планирует один Dock restart при наличии изменений.
-Apply выполняет typed Check → Write → Verify, учитывает успешную запись сразу, затем
-перезапускает Dock максимум один раз и выполняет final Check. Ошибки Verify/restart
-сохраняют Changed и возвращают `2` без success. No-op и повторный идентичный Bootstrap
-не выполняют writes/restart. Проверяется managed state, а не визуальный эффект UI.
-Dock tiles (`persistent-apps`, `persistent-others`, `recent-apps`), hot corners и
-остальные Mission Control/Spaces settings остаются вне Stage 9C.
+Preview использует порядок записей и планирует один перезапуск Dock при наличии
+изменений. Apply выполняет типизированный `Check → Write → Verify`, сразу
+учитывает успешную запись, затем перезапускает Dock максимум один раз и выполняет
+итоговый Check. Ошибки Verify или перезапуска сохраняют Changed и возвращают `2`
+без ложного успеха. Повторный идентичный Bootstrap ничего не записывает и не
+перезапускает. Проверяется управляемое сохранённое состояние, а не визуальный
+эффект. Элементы Dock (`persistent-apps`, `persistent-others`, `recent-apps`),
+активные углы и остальные настройки Mission Control и Spaces не поддерживаются.
 
-#### Dock and Window Management Expansion (Stage 9E.1)
+#### Управление окнами
 
-Dock расширен до 11 scalar records: `launchanim` и `mru-spaces` используют общий
-bool contract и существующую категорию `macos-dock`. Они участвуют в том же
-Check → Write → Verify и общем единственном Dock restart после фактических writes.
-Absent source preferences остаются unmanaged.
-
-Новая категория `macos-windows` использует `config/generated/macos/windows.conf`
-и содержит ровно четыре `NSGlobalDomain` records. `AppleActionOnDoubleClick`
+Категория `macos-windows` использует `config/generated/macos/windows.conf`
+и содержит ровно пять записей: четыре `NSGlobalDomain` и
+`com.apple.WindowManager|HideDesktop|bool`. `AppleActionOnDoubleClick`
 допускает `Minimize`, `Maximize`, `Fill`, `None`; `AppleWindowTabbingMode` —
-`manual`, `always`, `fullscreen`. Другие и пустые значения consumer отклоняет;
-Discovery безопасно пропускает unsupported scalar enum с warning. Два остальных
-ключа используют bool contract.
+`manual`, `always`, `fullscreen`. Другие и пустые значения потребитель
+отклоняет; Discovery безопасно пропускает неподдерживаемое значение enum с
+предупреждением. Два остальных ключа используют тип bool.
+
+`HideDesktop=true` скрывает стандартные элементы Desktop, а `false` показывает
+их. Отсутствующая исходная настройка остаётся неуправляемой. Preview использует
+семантические планы `Would hide Desktop items` / `Would show Desktop items` и
+не раскрывает domain, key или исходное значение bool в обычном выводе.
 
 `NSQuitAlwaysKeepsWindows` хранится и переносится без инверсии. В System Settings
 его UI сформулирован как «Close windows when quitting an application», поэтому
-UI switch имеет обратный смысл относительно stored bool.
+переключатель интерфейса имеет обратный смысл относительно сохранённого bool.
 
-Window Management не перезапускает процессы. Verify подтверждает typed stored
-preference read-back и final Check всех managed records, но не заявляет проверку
+Управление окнами не перезапускает процессы. Verify подтверждает типизированное
+чтение сохранённой настройки и итоговый Check всех управляемых записей, но не
+заявляет проверку
 видимого эффекта в уже открытых приложениях. Старый Blueprint без
 `macos-windows` остаётся валидным и сохраняет новую категорию выключенной до
 явной миграции/сохранения через selector; отсутствие Blueprint остаётся
 all-inclusive.
 
-`com.apple.WindowManager` tiling preferences отложены в Stage 9E.2: текущий
-stored-value contract подтверждён, но безопасный notification/reload lifecycle
-без restart/logout пока не доказан.
+Настройки тайлинга `com.apple.WindowManager`, показ рабочего стола щелчком по
+обоям, элементы Dock и Menu Bar / Control Center не поддерживаются. Для них не
+доказан безопасный и воспроизводимый контракт восстановления.
 
-#### Keyboard Expansion (Stage 9D)
+#### Клавиатура
 
-Keyboard поддерживает девять настроек в существующей категории `macos-keyboard`:
-`KeyRepeat`, `InitialKeyRepeat` и семь новых ключей из таблицы выше.
+Категория `macos-keyboard` поддерживает `KeyRepeat`, `InitialKeyRepeat` и
+остальные ключи из таблицы выше.
 `AppleKeyboardUIMode` использует общий int contract и существующую числовую
 нормализацию; отдельный диапазон не задаётся. Остальные шесть новых ключей — bool
-с представлениями `0/1/true/false`. Неверный type, нецелое значение, invalid bool,
-дубликаты и unsafe scalar отклоняются shared validation.
+с представлениями `0/1/true/false`. Неверный тип, нецелое значение, некорректный
+bool, дубликаты и небезопасное скалярное значение отклоняются общей проверкой.
 
-Discovery сериализует present valid preferences и проверяет весь candidate перед
-публикацией. Absent preference остаётся unmanaged, без синтеза Apple defaults.
-Ошибка наблюдения, scalar или candidate validation возвращает `2` и сохраняет
-предыдущий Keyboard snapshot. Формат `domain|key|type|value`, старый двухстрочный
-и пустой `keyboard.conf`, Blueprint и no-Blueprint all-inclusive поведение совместимы.
+Discovery сериализует присутствующие валидные настройки и проверяет весь
+кандидат перед публикацией. Отсутствующая настройка остаётся неуправляемой, без
+синтеза Apple defaults. Ошибка наблюдения, скалярного значения или проверки
+кандидата возвращает `2` и сохраняет предыдущий снимок Keyboard. Формат
+`domain|key|type|value`, старый двухстрочный и пустой `keyboard.conf`, Blueprint
+и поведение без Blueprint остаются совместимыми.
 
-Preview показывает только необходимые setting changes в порядке records;
-Keyboard не планирует и не выполняет process restart. Apply использует typed
-Check → Write → Verify и final Check всех managed records. Успешная запись сразу
-учитывается в `MODULE_CHANGED`; поздняя ошибка возвращает `2` без false success.
-Повторный идентичный Bootstrap выполняет успешный no-op без writes/restart.
-Проверяется сохранённое managed state, а не эффект в уже открытых приложениях.
-Shortcuts, input sources/layouts, dictation, text replacements, per-app и
-hardware-specific Keyboard configuration остаются вне Stage 9D.
+Preview показывает только необходимые изменения в порядке записей; Keyboard не
+планирует и не выполняет перезапуск процесса. Apply использует типизированный
+`Check → Write → Verify` и итоговый Check всех управляемых записей. Успешная
+запись сразу учитывается в `MODULE_CHANGED`; поздняя ошибка возвращает `2` без
+ложного успеха. Повторный идентичный Bootstrap ничего не записывает и не
+перезапускает. Проверяется сохранённое управляемое состояние, а не эффект в уже
+открытых приложениях. Сочетания клавиш, источники и раскладки ввода, диктовка,
+замены текста, настройки отдельных приложений и аппаратно-зависимая
+конфигурация клавиатуры не поддерживаются.
 
-#### Trackpad Reliability (Stage 9E.3)
+#### Трекпад
 
-`macos-trackpad` содержит ровно две primary Apple trackpad stored preferences:
-`Clicking` (tap to click) и `TrackpadRightClick` (secondary click enabled), обе
+`macos-trackpad` содержит ровно две сохраняемые настройки трекпада Apple:
+`Clicking` (касание для щелчка) и `TrackpadRightClick` (вторичный щелчок), обе
 в `com.apple.AppleMultitouchTrackpad` с типом bool. Absent source preference
-остаётся unmanaged; observation/type/candidate validation error возвращает `2`
-и сохраняет предыдущий generated snapshot.
+остаётся неуправляемой; ошибка наблюдения, типа или проверки кандидата
+возвращает `2` и сохраняет предыдущий сгенерированный снимок.
 
-Preview и Bootstrap используют общий typed stored-state truth model. Apply
-выполняет Check → Write → Verify для каждого изменяемого record и final Check
-всего managed Trackpad state. Процессы не перезапускаются. Success подтверждает
-stored preferences, но не immediate runtime behavior, external Magic Trackpad,
-Bluetooth/ByHost synchronization или device-wide restoration.
+Preview и Bootstrap используют общую типизированную модель сохранённого
+состояния. Apply выполняет `Check → Write → Verify` для каждой изменяемой записи
+и итоговый Check всего управляемого состояния Trackpad. Процессы не
+перезапускаются. Успех подтверждает сохранённые настройки, но не немедленный
+эффект, внешний Magic Trackpad, синхронизацию Bluetooth/ByHost или
+восстановление всех устройств.
 
 Старый `trackpad.conf` с `NSGlobalDomain|com.apple.trackpad.scaling|int|...`
-отклоняется до inspection/mutation; generated state следует обновить через
-Discovery. Tracking speed остаётся deferred из-за недоказанных numeric и HID
-runtime contracts. Natural Scrolling относится к общей будущей Input/Scrolling
-области. Additional gestures и hardware-aware synchronization также deferred.
+отклоняется до проверки и мутации; сгенерированное состояние следует обновить
+через Discovery. Скорость трекпада, Natural Scrolling, дополнительные жесты и
+аппаратно-зависимая синхронизация не поддерживаются: для них не доказан полный
+контракт эффективного восстановления.
 
-#### Screenshot destination
+#### Снимки экрана
 
 Единственный источник назначения — `com.apple.screencapture/location` в
 `screenshots.conf`. Статическая `SCREENSHOTS_DIR` удалена; fallback-каталога нет.

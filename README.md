@@ -7,189 +7,69 @@ working environment.
 
 **Current version: 3.1.0 Stable**
 
----
-
 ## Overview
 
-Mac Bootstrap Toolkit can:
+Mac Bootstrap Toolkit discovers supported parts of an existing Mac, stores
+that state as local configuration, lets the user select a restoration scope,
+previews the resulting changes, and applies them on a target Mac.
 
-- discover supported components of an existing macOS environment;
-- generate machine-specific configuration automatically;
-- optionally select which discovered components should be restored;
-- bootstrap the selected environment on another Mac;
-- verify supported state before and after applying changes.
-
-The project focuses on reproducing the **user working environment**, rather
-than cloning the entire operating system.
-
----
-
-## Workflow
+The project reproduces a working environment rather than cloning an entire
+operating system.
 
 ```text
-Existing Mac
-     ↓
- Discovery
-     ↓
-Generated Configuration
-     ↓
- Blueprint
-     ↓
- Bootstrap
-     ↓
-Ready-to-Work Mac
+Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 ```
 
-Discovery captures the current environment in `config/generated/`.
+- **Discovery** records supported current state in `config/generated/`.
+- **Generated Configuration** is private, machine-specific derived data.
+- **Blueprint** optionally selects which discovered components to restore.
+- **Preview** inspects and reports selected changes without applying them.
+- **Bootstrap** applies the selected supported state idempotently and verifies
+  results where the current module can observe them.
 
-Blueprint is an optional local selection layer that controls which discovered
-components Bootstrap should process. Without a Blueprint, Bootstrap processes
-the full supported scope.
+Without a Blueprint, the full supported generated scope is processed.
 
----
+## Capabilities
 
-## Features
+- Homebrew formulae and casks;
+- App Store applications;
+- global Git configuration;
+- VS Code extensions and settings;
+- Workspace folders and Git repositories;
+- macOS settings for Finder, Dock, Window Management, Keyboard, Trackpad, and
+  Screenshots.
 
-### Discovery
-
-- Homebrew Packages and Casks
-- App Store applications
-- Git Configuration
-- VS Code Extensions and Settings
-- macOS Settings
-- Workspace structure and Git Repositories
-
-### Blueprint
-
-- interactive component selection;
-- item-level and category-level filtering;
-- editing of existing selections;
-- immediate `q` / `Q` cancellation from every prompt, including Edit, without
-  changing the saved Blueprint.
-
-### Bootstrap
-
-- Applications
-- Git Configuration
-- VS Code Extensions and Settings
-- macOS Settings
-- Workspace Folders
-- Git Repository and Branch restoration
-
-Toolkit operations are designed to be idempotent and verify supported state
-before and after changes where applicable.
-
-Finder supports 13 settings in the existing `macos-finder` category; see the
-[exact inventory and target limits](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
-
-Dock supports 11 settings in `macos-dock`; see the
-[Dock inventory and enum limits](docs/toolkit/CONFIGURATION.md#dock-and-window-management-expansion-stage-9e1).
-
-Window Management supports 4 global settings in `macos-windows`, without a
-process restart; see the [stored-preference contract](docs/toolkit/CONFIGURATION.md#dock-and-window-management-expansion-stage-9e1).
-
-Keyboard supports 9 settings in `macos-keyboard`, with no process restart; see
-[Keyboard inventory and validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
-
-Trackpad restores two primary stored preferences in `macos-trackpad`: tap to
-click and secondary click. Tracking speed, Natural Scrolling, additional
-gestures, and external Magic Trackpad synchronization remain deferred; see the
-[Trackpad reliability contract](docs/toolkit/CONFIGURATION.md#trackpad-reliability-stage-9e3).
-
-### Preview
-
-- non-mutating `--dry-run` inspection for Applications, Git configuration,
-  VS Code settings, Workspace, and macOS;
-- Blueprint-aware planned actions using the same validation and inspection
-  logic as Bootstrap;
-- Summary reporting for inspected modules, warnings, errors, and duration.
-
----
+The exact configuration formats, supported macOS preferences, validation
+rules, and restoration limits are documented in
+[Configuration](docs/toolkit/CONFIGURATION.md).
 
 ## Quick Start
 
-Check the system:
+Run the guided workflow from the repository root:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+Or run individual modes:
 
 ```bash
 ./bootstrap.sh --check
-```
-
-Discover the current environment:
-
-```bash
 ./bootstrap.sh --discover
-```
-
-Optionally create or edit a Blueprint:
-
-```bash
 ./bootstrap.sh --blueprint
-```
-
-Restore the environment:
-
-```bash
+./bootstrap.sh --dry-run
 ./bootstrap.sh --bootstrap
 ```
 
-Preview the selected changes without modifying target state:
-
-```bash
-./bootstrap.sh --dry-run
-```
-
-Run the guided flow interactively:
-
-```bash
-./bootstrap.sh --workflow
-```
-
-The first run still uses the canonical entrypoint:
-
-```bash
-./bootstrap.sh --workflow
-```
-
-When that Workflow reaches Bootstrap, or when `./bootstrap.sh --bootstrap` runs
-directly, Bootstrap installs and verifies the short launcher automatically.
-The repository entrypoint remains canonical. After installation, the launcher
-can be called from any working directory:
-
-```bash
-bs workflow
-bs discover
-bs blueprint
-bs preview
-bs bootstrap
-bs check
-```
-
-Discovery, Blueprint, Preview, and a Workflow that finishes after zero-change
-Preview do not install `bs`. For manual installation or repair, run
-`./scripts/install-bs.sh`. The installer uses the current Homebrew prefix when
-available and refuses to replace an unrelated `bs` command or file. Moving the
-repository later breaks the PATH symlink; remove the old symlink and rerun the
-installer from the new location.
-
-Reuse or refresh Generated Configuration, save Blueprint, and review mandatory
-Preview. When Preview finds planned changes, Workflow asks for explicit
-Bootstrap confirmation (default: No). Missing or invalid required input requires
-Discovery; declining it or cancelling Blueprint stops cleanly. Preview warnings
-allow confirmation when plans exist; errors block Bootstrap.
-If Preview finds no changes to apply, Workflow finishes without prompting for
-Bootstrap, preserving any warning status.
-`--verbose` is supported. Each executed stage keeps its existing log and Summary.
-Discovery retains its normal preflight and local configuration writes.
-
-
-Use `--verbose` with Check, Discovery, or Bootstrap for detailed output.
-
-See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.
-
----
+Use `--verbose` for additional diagnostics. Bootstrap can install the optional
+`bs` launcher; complete operating instructions, transfer guidance, and safety
+notes are in [Quick Start](docs/getting-started/QUICKSTART.md). CLI modes,
+output, logging, exit statuses, and launcher behavior are described in
+[CLI](docs/toolkit/CLI.md).
 
 ## Documentation
 
+- [Documentation index](docs/README.md)
 - [Quick Start](docs/getting-started/QUICKSTART.md)
 - [Architecture](docs/toolkit/ARCHITECTURE.md)
 - [Configuration](docs/toolkit/CONFIGURATION.md)
@@ -197,33 +77,19 @@ See [Quick Start](docs/getting-started/QUICKSTART.md) for the complete workflow.
 - [Roadmap](ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 
----
-
 ## Project Status
 
-**3.1.0 Stable**
+Version 3.1.0 is stable. Preview is implemented; aggregate Global Verification
+remains an optional future capability and is not required by the current
+architecture.
 
-Current architecture:
-
-```text
-Discovery → Generated Configuration → Blueprint → Bootstrap
-```
-
-Dry-run / Preview is included in 3.1.0. Global Verification is a Future / Optional capability.
-
-See [ROADMAP.md](ROADMAP.md) for further development.
-
----
+See [ROADMAP.md](ROADMAP.md) for current development direction.
 
 ## Support
 
-Mac Bootstrap Toolkit is free and open source.
-
-If the project saves you time and you would like to support its continued
-development, you can make a voluntary donation via
+Mac Bootstrap Toolkit is free and open source. If the project saves you time,
+you can support its continued development through a voluntary donation on
 [Boosty](https://boosty.to/jetiaks/donate).
-
----
 
 ## License
 

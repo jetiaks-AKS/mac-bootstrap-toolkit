@@ -2,228 +2,97 @@
 
 [English](README.md) | Русский
 
-Модульный Bash Toolkit для воспроизводимой подготовки и восстановления
+Модульный Bash-инструмент для воспроизводимой подготовки и восстановления
 рабочего окружения macOS.
 
 **Текущая версия: 3.1.0 Stable**
 
----
-
 ## Назначение
 
-Mac Bootstrap Toolkit позволяет:
+Mac Bootstrap Toolkit обнаруживает поддерживаемые части окружения исходного
+Mac, сохраняет их как локальную конфигурацию, позволяет выбрать область
+восстановления, предварительно показывает изменения и применяет их на целевом
+Mac.
 
-- анализировать поддерживаемые компоненты существующего окружения macOS;
-- автоматически формировать машинно-зависимую конфигурацию;
-- при необходимости выбирать, какие обнаруженные компоненты восстанавливать;
-- выполнять Bootstrap выбранного окружения на другом Mac;
-- проверять поддерживаемое состояние до и после применения изменений.
-
-Главная идея проекта — воспроизводить **рабочее пространство пользователя**,
-а не копировать всю операционную систему.
-
----
-
-## Workflow
+Проект воспроизводит рабочее окружение, а не копирует всю операционную систему.
 
 ```text
-Existing Mac
-     ↓
- Discovery
-     ↓
-Generated Configuration
-     ↓
- Blueprint
-     ↓
- Bootstrap
-     ↓
-Ready-to-Work Mac
+Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 ```
 
-Discovery сохраняет обнаруженное состояние в `config/generated/`.
+- **Discovery** сохраняет поддерживаемое текущее состояние в
+  `config/generated/`.
+- **Generated Configuration** — приватные производные данные конкретного Mac.
+- **Blueprint** при необходимости выбирает обнаруженные компоненты для
+  восстановления.
+- **Preview** без внесения изменений проверяет выбранное состояние и показывает
+  план.
+- **Bootstrap** идемпотентно применяет выбранное поддерживаемое состояние и
+  проверяет результат там, где модуль способен его наблюдать.
 
-Blueprint — необязательный локальный слой выбора, определяющий, какие
-обнаруженные компоненты должен обрабатывать Bootstrap. Без Blueprint
-обрабатывается полный поддерживаемый scope.
-
----
+Без Blueprint обрабатывается вся поддерживаемая сгенерированная конфигурация.
 
 ## Возможности
 
-### Discovery
+- формулы и cask-пакеты Homebrew;
+- приложения App Store;
+- глобальная конфигурация Git;
+- расширения и настройки VS Code;
+- папки рабочего пространства и репозитории Git;
+- настройки macOS для Finder, Dock, управления окнами, клавиатуры, трекпада и
+  снимков экрана.
 
-- Homebrew Packages и Casks
-- приложения App Store
-- Git Configuration
-- VS Code Extensions и Settings
-- настройки macOS
-- структура Workspace и Git Repositories
-
-### Blueprint
-
-- интерактивный выбор компонентов;
-- item-level и category-level фильтрация;
-- изменение существующего выбора;
-- немедленная отмена через `q` / `Q` в любом prompt, включая Edit, без
-  изменения сохранённого Blueprint.
-
-### Bootstrap
-
-- Applications
-- Git Configuration
-- VS Code Extensions и Settings
-- настройки macOS
-- Workspace Folders
-- восстановление Git Repositories и Branches
-
-Операции Toolkit проектируются идемпотентными и проверяют поддерживаемое
-состояние до и после изменений там, где это применимо.
-
-Finder поддерживает 13 настроек в существующей категории `macos-finder`;
-[точный inventory и ограничения](docs/toolkit/CONFIGURATION.md#finder-expansion-stage-9b).
-
-Dock поддерживает 9 настроек в `macos-dock`;
-[настройки Dock и ограничения enum](docs/toolkit/CONFIGURATION.md#dock-expansion-stage-9c).
-
-Keyboard поддерживает 9 настроек в `macos-keyboard` без перезапуска процессов;
-[настройки Keyboard и validation](docs/toolkit/CONFIGURATION.md#keyboard-expansion-stage-9d).
-
-Trackpad восстанавливает две primary stored preferences в `macos-trackpad`:
-tap to click и secondary click. Tracking speed, Natural Scrolling, дополнительные
-gestures и синхронизация внешнего Magic Trackpad остаются deferred;
-[контракт Trackpad](docs/toolkit/CONFIGURATION.md#trackpad-reliability-stage-9e3).
-
-### Preview
-
-- неизменяющая проверка `--dry-run` для Applications, Git configuration,
-  VS Code settings, Workspace и macOS;
-- Blueprint-aware planned actions на основе той же validation и inspection
-  логики, которую использует Bootstrap;
-- Summary по проверенным модулям, warnings, errors и duration.
-
----
+Точные форматы, перечень поддерживаемых настроек macOS, правила проверки и
+ограничения восстановления описаны в документе
+[«Конфигурация»](docs/toolkit/CONFIGURATION.md).
 
 ## Быстрый старт
 
-Проверить систему:
+Запустите пошаговый сценарий из корня репозитория:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+Или используйте отдельные режимы:
 
 ```bash
 ./bootstrap.sh --check
-```
-
-Проанализировать текущее окружение:
-
-```bash
 ./bootstrap.sh --discover
-```
-
-При необходимости создать или изменить Blueprint:
-
-```bash
 ./bootstrap.sh --blueprint
-```
-
-Восстановить окружение:
-
-```bash
+./bootstrap.sh --dry-run
 ./bootstrap.sh --bootstrap
 ```
 
-Предварительно просмотреть выбранные изменения без мутации target state:
-
-```bash
-./bootstrap.sh --dry-run
-```
-
-Запустить интерактивный сценарий:
-
-```bash
-./bootstrap.sh --workflow
-```
-
-Первый запуск по-прежнему использует каноническую точку входа:
-
-```bash
-./bootstrap.sh --workflow
-```
-
-Когда Workflow доходит до Bootstrap или напрямую выполняется
-`./bootstrap.sh --bootstrap`, Bootstrap автоматически устанавливает и проверяет
-короткий launcher. Repository entrypoint остаётся каноническим. После установки
-launcher работает из любого текущего каталога:
-
-```bash
-bs workflow
-bs discover
-bs blueprint
-bs preview
-bs bootstrap
-bs check
-```
-
-Discovery, Blueprint, Preview и Workflow, завершившийся после zero-change
-Preview, не устанавливают `bs`. Для ручной установки или восстановления
-используйте `./scripts/install-bs.sh`. Installer использует текущий Homebrew
-prefix, если он доступен, и не заменяет постороннюю команду или файл `bs`.
-После перемещения репозитория PATH symlink становится недействительным; удалите
-старую ссылку и повторно запустите installer из нового расположения.
-
-Используйте существующую Generated Configuration или обновите её, сохраните
-Blueprint и просмотрите обязательный Preview. Если Preview находит planned
-changes, Workflow запрашивает явное подтверждение Bootstrap (по умолчанию —
-Нет). Отсутствующий или некорректный обязательный ввод требует Discovery; отказ
-от Discovery или отмена Blueprint завершает сценарий без ошибки. Предупреждения
-Preview допускают подтверждение при наличии планов, ошибки блокируют Bootstrap.
-Если Preview не находит изменений, Workflow завершается без предложения
-Bootstrap, сохраняя статус предупреждений.
-Поддерживается `--verbose`. Каждый этап сохраняет свои логи и Summary.
-Discovery сохраняет обычный preflight и запись локальной конфигурации.
-
-
-Для подробного вывода Check, Discovery и Bootstrap поддерживают `--verbose`.
-
-Полный сценарий описан в
-[Quick Start](docs/getting-started/QUICKSTART.md).
-
----
+Флаг `--verbose` включает дополнительную диагностику. Bootstrap может
+установить необязательную короткую команду `bs`. Полный порядок работы,
+переноса конфигурации и меры безопасности приведены в
+[«Быстром старте»](docs/getting-started/QUICKSTART.md), а режимы CLI, вывод,
+журналы, коды завершения и поведение `bs` — в [документации CLI](docs/toolkit/CLI.md).
 
 ## Документация
 
-- [Quick Start](docs/getting-started/QUICKSTART.md)
-- [Architecture](docs/toolkit/ARCHITECTURE.md)
-- [Configuration](docs/toolkit/CONFIGURATION.md)
+- [Оглавление документации](docs/README.md)
+- [Быстрый старт](docs/getting-started/QUICKSTART.md)
+- [Архитектура](docs/toolkit/ARCHITECTURE.ru.md)
+- [Конфигурация](docs/toolkit/CONFIGURATION.md)
 - [CLI](docs/toolkit/CLI.md)
-- [Roadmap](ROADMAP.md)
-- [Changelog](CHANGELOG.md)
-
----
+- [План развития](ROADMAP.md)
+- [История изменений](CHANGELOG.md)
 
 ## Статус проекта
 
-**3.1.0 Stable**
+Версия 3.1.0 стабильна. Preview реализован; сводная глобальная проверка после
+Bootstrap остаётся необязательной будущей возможностью и не требуется текущей
+архитектурой.
 
-Текущая архитектура:
-
-```text
-Discovery → Generated Configuration → Blueprint → Bootstrap
-```
-
-Dry-run / Preview входит в релиз 3.1.0. Глобальный Verification относится к
-Future / Optional.
-
-Дальнейшее развитие описано в [ROADMAP.md](ROADMAP.md).
-
----
+Текущее направление развития описано в [ROADMAP.md](ROADMAP.md).
 
 ## Поддержка
 
 Mac Bootstrap Toolkit распространяется бесплатно и с открытым исходным кодом.
-
-Если проект оказался полезен, его дальнейшую разработку можно поддержать
-добровольным пожертвованием через
+Поддержать дальнейшую разработку можно добровольным пожертвованием через
 [Boosty](https://boosty.to/jetiaks/donate).
-
----
 
 ## Лицензия
 

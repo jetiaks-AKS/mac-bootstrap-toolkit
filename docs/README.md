@@ -25,7 +25,8 @@ documented only where it has a clear and stable responsibility.
 - [Contributing](../CONTRIBUTING.md) — development workflow, change principles,
   commit conventions, and validation.
 - [Release Process](git/RELEASE-PROCESS.md) — maintainer release procedure.
-- [Roadmap](../ROADMAP.md) — implementation stages and planned development.
+- [Roadmap](../ROADMAP.md) — current development direction and major product
+  decisions.
 - [TODO](../TODO.md) — immediate technical backlog.
 - [Changelog](../CHANGELOG.md) — completed release-visible changes.
 

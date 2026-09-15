@@ -178,6 +178,7 @@ NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize
 NSGlobalDomain|AppleWindowTabbingMode|string|fullscreen
 NSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1
 NSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1
+com.apple.WindowManager|HideDesktop|bool|1
 WINDOWS
     printf 'NSGlobalDomain|KeyRepeat|int|2\n' > "$generated/macos/keyboard.conf"
     cat >> "$generated/macos/keyboard.conf" <<'KEYBOARD'
@@ -287,6 +288,7 @@ Would change macOS setting: NSGlobalDomain/AppleActionOnDoubleClick (Fill -> Min
 Would change macOS setting: NSGlobalDomain/AppleWindowTabbingMode (manual -> fullscreen)
 Would change macOS setting: NSGlobalDomain/NSCloseAlwaysConfirmsChanges (false -> true)
 Would change macOS setting: NSGlobalDomain/NSQuitAlwaysKeepsWindows (false -> true)
+Would hide Desktop items
 Would change macOS setting: NSGlobalDomain/KeyRepeat (5 -> 2)
 Would change macOS setting: NSGlobalDomain/ApplePressAndHoldEnabled (false -> true)
 Would change macOS setting: NSGlobalDomain/AppleKeyboardUIMode (0 -> 3)
@@ -408,9 +410,11 @@ for entry in AppleKeyboardUIMode:int ApplePressAndHoldEnabled:bool; do
         echo 'FAIL: disabled Keyboard was inspected'; ((TEST_FAILURES++))
     fi
 done
-for entry in AppleActionOnDoubleClick:string AppleWindowTabbingMode:string; do
+for entry in AppleActionOnDoubleClick:string AppleWindowTabbingMode:string HideDesktop:bool; do
     reset_fixture
-    printf 'NSGlobalDomain|%s|%s|invalid\n' "${entry%:*}" "${entry#*:}" > "$FIXTURE/config/generated/macos/windows.conf"
+    domain=NSGlobalDomain
+    [[ "${entry%:*}" != HideDesktop ]] || domain=com.apple.WindowManager
+    printf '%s|%s|%s|invalid\n' "$domain" "${entry%:*}" "${entry#*:}" > "$FIXTURE/config/generated/macos/windows.conf"
     run_case "invalid-windows-$entry" 2
     if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
         echo 'FAIL: invalid Window Management input reached preflight/domains'; ((TEST_FAILURES++))
@@ -418,7 +422,7 @@ for entry in AppleActionOnDoubleClick:string AppleWindowTabbingMode:string; do
     write_blueprint
     sed -i '' 's/macos-windows="true"/macos-windows="false"/' "$FIXTURE/config/blueprint.conf"
     run_case "disabled-windows-$entry" 0
-    if grep -q '^defaults .*NSGlobalDomain.*AppleActionOnDoubleClick\|^defaults .*NSGlobalDomain.*AppleWindowTabbingMode' "$TEST_ROOT/observations"; then
+    if grep -q '^defaults .*NSGlobalDomain.*AppleActionOnDoubleClick\|^defaults .*NSGlobalDomain.*AppleWindowTabbingMode\|^defaults .*com.apple.WindowManager.*HideDesktop' "$TEST_ROOT/observations"; then
         echo 'FAIL: disabled Window Management was inspected'; ((TEST_FAILURES++))
     fi
 done

@@ -11,6 +11,7 @@ serialize_windows_settings() {
     macos_collect_preference "$output_file" NSGlobalDomain AppleWindowTabbingMode string || return 2
     macos_collect_preference "$output_file" NSGlobalDomain NSCloseAlwaysConfirmsChanges bool || return 2
     macos_collect_preference "$output_file" NSGlobalDomain NSQuitAlwaysKeepsWindows bool || return 2
+    macos_collect_preference "$output_file" com.apple.WindowManager HideDesktop bool || return 2
 
     return 0
 }

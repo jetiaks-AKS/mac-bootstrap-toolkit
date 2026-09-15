@@ -40,7 +40,7 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|launchanim|mru-spaces|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|Clicking|TrackpadRightClick)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|launchanim|mru-spaces|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|HideDesktop|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
         tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode)
@@ -57,7 +57,7 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|launchanim|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|Clicking)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|launchanim|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|HideDesktop|Clicking)
             echo 1
             ;;
         NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|mru-spaces|TrackpadRightClick)
@@ -215,11 +215,16 @@ fi
 reset_fixture
 export_windows_settings >/dev/null
 windows_status=$?
-expected_windows=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1'
+expected_windows=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1\ncom.apple.WindowManager|HideDesktop|bool|1'
 if [[ $windows_status -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_windows" ]]; then
-    pass "Window Management exact four-record inventory uses the scalar format"
+    pass "Window Management exact five-record inventory uses the scalar format"
 else
     fail "Window Management populated format changed"
+fi
+if grep -Eq 'EnableTiling|StageManager|StandardHideWidgets|EnableStandardClickToShowDesktop' config/generated/macos/windows.conf; then
+    fail "unsupported WindowManager setting entered the generated inventory"
+else
+    pass "Window Management inventory excludes unsupported settings"
 fi
 
 reset_fixture
@@ -479,12 +484,20 @@ for key in orientation mineffect; do
     fi
 done
 
-# Stage 9E.1: Window Management enums and category publication.
-new_windows_keys=(AppleActionOnDoubleClick AppleWindowTabbingMode NSCloseAlwaysConfirmsChanges NSQuitAlwaysKeepsWindows)
-for key in "${new_windows_keys[@]}"; do
+# Stage 9E.1/9E.6: Window Management scalars and category publication.
+windows_preferences=(
+    'NSGlobalDomain|AppleActionOnDoubleClick'
+    'NSGlobalDomain|AppleWindowTabbingMode'
+    'NSGlobalDomain|NSCloseAlwaysConfirmsChanges'
+    'NSGlobalDomain|NSQuitAlwaysKeepsWindows'
+    'com.apple.WindowManager|HideDesktop'
+)
+for preference in "${windows_preferences[@]}"; do
+    domain="${preference%%|*}"
+    key="${preference#*|}"
     reset_fixture
     MOCK_MODE=absent
-    MOCK_TARGET="NSGlobalDomain|$key"
+    MOCK_TARGET="$domain|$key"
     export_windows_settings >/dev/null
     result=$?
     expected_remaining="$(printf '%s\n' "$expected_windows" | awk -F '|' -v key="$key" '$2 != key')"
@@ -499,7 +512,7 @@ for key in "${new_windows_keys[@]}"; do
         printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
         before_checksum="$(cksum config/generated/macos/windows.conf)"
         MOCK_MODE="$mode"
-        MOCK_TARGET="NSGlobalDomain|$key"
+        MOCK_TARGET="$domain|$key"
         export_windows_settings >/dev/null
         if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" &&
               "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
@@ -509,6 +522,31 @@ for key in "${new_windows_keys[@]}"; do
         fi
     done
 done
+
+reset_fixture
+MOCK_MODE=raw_value
+MOCK_TARGET='com.apple.WindowManager|HideDesktop'
+MOCK_VALUE=0
+export_windows_settings >/dev/null
+expected_hidden_false="$(printf '%s\n' "$expected_windows" | awk -F '|' -v OFS='|' '$2 == "HideDesktop" {$4=0} {print}')"
+if [[ $? -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_hidden_false" ]]; then
+    pass "explicit false HideDesktop value is discovered"
+else
+    fail "explicit false HideDesktop value was not preserved"
+fi
+
+reset_fixture
+printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+before_checksum="$(cksum config/generated/macos/windows.conf)"
+MOCK_MODE=type_mismatch
+MOCK_TARGET='com.apple.WindowManager|HideDesktop'
+export_windows_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" &&
+      "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+    pass "HideDesktop wrong native type preserves previous Window Management snapshot"
+else
+    fail "HideDesktop wrong native type publication safety"
+fi
 
 for entry in AppleActionOnDoubleClick:Minimize AppleActionOnDoubleClick:Maximize AppleActionOnDoubleClick:Fill AppleActionOnDoubleClick:None AppleActionOnDoubleClick:invalid AppleActionOnDoubleClick: AppleWindowTabbingMode:manual AppleWindowTabbingMode:always AppleWindowTabbingMode:fullscreen AppleWindowTabbingMode:invalid AppleWindowTabbingMode:; do
     reset_fixture

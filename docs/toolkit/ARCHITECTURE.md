@@ -189,8 +189,9 @@ See [Configuration](CONFIGURATION.md) for path and compatibility rules.
 macOS Discovery and consumers share the fixed current-category scalar contract
 in `modules/settings/macos/records.sh`. Candidate files are validated before
 publication. Bootstrap validates selected categories and Screenshot path
-availability before preflight. Stage 9E.1 adds `macos-windows`; legacy Blueprint
-files omit it safely and therefore keep it disabled until explicit migration.
+availability before preflight. Legacy Blueprint files that omit
+`macos-windows` remain valid and keep that category disabled until explicit
+migration.
 
 Startup order is CLI → logger → Blueprint validation → selected-input
 validation → read-only preflight → read-only Core inspection → domain Preview

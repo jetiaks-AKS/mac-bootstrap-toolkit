@@ -161,6 +161,15 @@ preview_defaults_config() {
         [[ $record_result -ne 0 ]] || continue
 
         DEFAULTS_PREVIEW_CHANGED=true
+
+        if [[ "$domain" == com.apple.WindowManager && "$key" == HideDesktop ]]; then
+            case "$desired" in
+                1|true) preview_action "Would hide Desktop items" ;;
+                0|false) preview_action "Would show Desktop items" ;;
+            esac
+            continue
+        fi
+
         desired_display="$(defaults_preview_display_value "$type" "$desired")" || {
             preview_action "Would change macOS setting: $domain/$key"
             continue
