@@ -27,7 +27,7 @@ blueprint_exists() {
 blueprint_category_supported() {
 
     case "$1" in
-        git-configuration|vscode-settings|macos-finder|macos-dock|macos-windows|macos-keyboard|macos-trackpad|macos-screenshots)
+        git-configuration|vscode-settings|shell-zsh|macos-finder|macos-dock|macos-windows|macos-keyboard|macos-trackpad|macos-screenshots)
             return 0
             ;;
         *)
@@ -93,7 +93,7 @@ blueprint_category_enabled() {
             return 1
             ;;
         "")
-            [[ "$category" == macos-windows ]] && return 1
+            [[ "$category" == macos-windows || "$category" == shell-zsh ]] && return 1
             return 2
             ;;
         *)
@@ -172,6 +172,7 @@ blueprint_validate_syntax() {
 
             categories["git-configuration"] = 1
             categories["vscode-settings"] = 1
+            categories["shell-zsh"] = 1
             categories["macos-finder"] = 1
             categories["macos-dock"] = 1
             categories["macos-windows"] = 1
@@ -272,7 +273,7 @@ blueprint_validate_syntax() {
             }
 
             for (category in categories) {
-                if (category == "macos-windows" && category_count[category] == 0) {
+                if ((category == "macos-windows" || category == "shell-zsh") && category_count[category] == 0) {
                     continue
                 }
                 if (category_count[category] != 1) {
@@ -584,6 +585,7 @@ blueprint_show_bootstrap_summary() {
     log "Settings"
     blueprint_summary_category "Git Configuration" git-configuration
     blueprint_summary_category "VS Code Settings" vscode-settings
+    blueprint_summary_category "Shell / Zsh" shell-zsh
     blueprint_summary_category "Finder" macos-finder
     blueprint_summary_category "Dock" macos-dock
     blueprint_summary_category "Window Management" macos-windows

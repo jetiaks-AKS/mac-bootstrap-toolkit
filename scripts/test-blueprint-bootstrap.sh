@@ -173,6 +173,10 @@ apply_vscode_settings() {
     record_orchestration_step vscode-settings
 }
 
+bootstrap_zsh() {
+    record_orchestration_step shell-zsh
+}
+
 apply_macos_settings() {
     record_orchestration_step macos-settings
 }
@@ -375,7 +379,7 @@ install_vscode_extensions() {
 rm -f "$BLUEPRINT_FILE"
 reset_orchestration
 run_bootstrap_orchestration >/dev/null
-expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings macos-settings"
+expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings shell-zsh macos-settings"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "missing Blueprint keeps category consumers in Bootstrap orchestration"

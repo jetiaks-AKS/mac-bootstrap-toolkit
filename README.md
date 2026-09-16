@@ -35,6 +35,7 @@ Without a Blueprint, the full supported generated scope is processed.
 - App Store applications;
 - global Git configuration;
 - VS Code extensions and settings;
+- limited standalone Zsh `.zshrc` restoration;
 - Workspace folders and Git repositories;
 - macOS settings for Finder, Dock, Window Management, Keyboard, Trackpad, and
   Screenshots.

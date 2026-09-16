@@ -314,6 +314,7 @@ blueprint_selector_write() {
         echo '[categories]'
         echo "git-configuration=\"$BLUEPRINT_GIT_CONFIGURATION\""
         echo "vscode-settings=\"$BLUEPRINT_VSCODE_SETTINGS\""
+        echo "shell-zsh=\"$BLUEPRINT_SHELL_ZSH\""
         echo "macos-finder=\"$BLUEPRINT_MACOS_FINDER\""
         echo "macos-dock=\"$BLUEPRINT_MACOS_DOCK\""
         echo "macos-windows=\"$BLUEPRINT_MACOS_WINDOWS\""
@@ -404,6 +405,23 @@ blueprint_selector_edit() {
     echo "Settings"
     blueprint_selector_prompt_category git-configuration "Git Configuration" BLUEPRINT_GIT_CONFIGURATION || return $?
     blueprint_selector_prompt_category vscode-settings "VS Code Settings" BLUEPRINT_VSCODE_SETTINGS || return $?
+    local zsh_status
+    zsh_snapshot_validate
+    zsh_status=$?
+    if [[ $zsh_status -eq 2 ]]; then
+        error "Generated Zsh snapshot is invalid"
+        return 2
+    fi
+    if [[ $zsh_status -eq 0 && "$ZSH_SNAPSHOT_STATUS" == eligible ]]; then
+        blueprint_selector_prompt_category shell-zsh "Shell / Zsh configuration" BLUEPRINT_SHELL_ZSH || return $?
+    else
+        BLUEPRINT_SHELL_ZSH=false
+        if [[ $zsh_status -eq 1 || "$ZSH_SNAPSHOT_STATUS" == absent ]]; then
+            info "Shell / Zsh configuration: unavailable"
+        else
+            info "Shell / Zsh configuration: excluded ($ZSH_SNAPSHOT_REASON)"
+        fi
+    fi
     blueprint_selector_prompt_category macos-finder "Finder" BLUEPRINT_MACOS_FINDER || return $?
     blueprint_selector_prompt_category macos-dock "Dock" BLUEPRINT_MACOS_DOCK || return $?
     blueprint_selector_prompt_category macos-windows "Window Management" BLUEPRINT_MACOS_WINDOWS || return $?
@@ -437,6 +455,7 @@ blueprint_selector_edit() {
     echo "Settings"
     printf '  Git Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_GIT_CONFIGURATION")"
     printf '  VS Code Settings       %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_VSCODE_SETTINGS")"
+    printf '  Shell / Zsh            %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_SHELL_ZSH")"
     printf '  Finder                 %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_FINDER")"
     printf '  Dock                   %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_DOCK")"
     printf '  Window Management      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_WINDOWS")"

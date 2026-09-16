@@ -37,6 +37,12 @@ source modules/vscode/extensions.sh
 source modules/vscode/settings.sh
 
 # ==========================================
+# Shell
+# ==========================================
+
+source modules/shell/zsh.sh
+
+# ==========================================
 # macOS Settings
 # ==========================================
 
@@ -272,6 +278,16 @@ bootstrap_validate_selected_inputs() {
         [[ $source_result -ne 2 ]] || return 2
     fi
 
+    if blueprint_category_enabled shell-zsh; then
+        zsh_snapshot_validate
+        source_result=$?
+        [[ $source_result -ne 2 ]] || return 2
+        if [[ $source_result -eq 1 ]] && blueprint_exists; then
+            error "Selected Zsh snapshot is missing"
+            return 2
+        fi
+    fi
+
     if blueprint_category_enabled macos-finder; then
         validate_defaults_config "$FINDER_CONFIG" finder || return 2
     fi
@@ -346,6 +362,10 @@ run_preview() {
 
     if blueprint_category_enabled vscode-settings; then
         run_inspection "VS Code Settings Preview" preview_vscode_settings
+    fi
+
+    if blueprint_category_enabled shell-zsh; then
+        run_inspection "Zsh Configuration Preview" preview_zsh
     fi
 
     run_inspection "Workspace Folders Preview" preview_workspace_folders
@@ -549,6 +569,10 @@ case "$MODE" in
 
         if blueprint_category_enabled vscode-settings; then
             run_module "VS Code Settings" apply_vscode_settings
+        fi
+
+        if blueprint_category_enabled shell-zsh; then
+            run_module "Zsh Configuration" bootstrap_zsh
         fi
 
         if blueprint_category_enabled macos-finder ||

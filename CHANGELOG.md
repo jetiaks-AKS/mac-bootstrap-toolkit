@@ -11,6 +11,11 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 10A: added a limited `.zshrc` snapshot with conservative Discovery
+  exclusions, one Blueprint category, read-only Preview, and restore only when
+  the target is absent. Generated shell data remains private and is never
+  executed during inspection or verification.
+
 * Stage 9E.6: completed Stage 9 macOS settings expansion by adding the stored
   `HideDesktop` bool preference to `macos-windows`. Preview describes whether
   Desktop items would be hidden or shown; Apply uses the existing typed Windows

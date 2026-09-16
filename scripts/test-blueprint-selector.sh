@@ -12,6 +12,7 @@ trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 
 BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
+ZSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/shell/zshrc.snapshot"
 TEST_FAILURES=0
 TOOLKIT_VERSION="test"
 MODE="--blueprint"
@@ -25,6 +26,7 @@ success() { echo "[ OK ] $1"; }
 source "$PROJECT_ROOT/modules/core/logger/logger.sh"
 source "$PROJECT_ROOT/modules/core/config/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
+source "$PROJECT_ROOT/modules/shell/zsh.sh"
 source "$PROJECT_ROOT/modules/blueprint/selector.sh"
 
 pass() { echo "PASS: $1"; }
@@ -343,6 +345,7 @@ if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
    [[ "$(blueprint_selected_items workspace-folders "$BLUEPRINT_FILE")" == $'Projects\nScreenshots\nSources\nNewFolder' ]] &&
    grep -q 'Git Configuration.*Yes' <<< "$summary_output" &&
    grep -q 'git-configuration="true"' "$BLUEPRINT_FILE" &&
+   grep -q 'shell-zsh="false"' "$BLUEPRINT_FILE" &&
    grep -q '\[BLUEPRINT\] START' "$LOG_FILE" &&
    grep -q '\[BLUEPRINT\] Generated configuration: Ready' "$LOG_FILE" &&
    grep -q '\[BLUEPRINT\] RESULT: SAVED' "$LOG_FILE"; then

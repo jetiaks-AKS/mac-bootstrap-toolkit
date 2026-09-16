@@ -38,6 +38,7 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 - приложения App Store;
 - глобальная конфигурация Git;
 - расширения и настройки VS Code;
+- ограниченное восстановление самостоятельного Zsh `.zshrc`;
 - папки рабочего пространства и репозитории Git;
 - настройки macOS для Finder, Dock, управления окнами, клавиатуры, трекпада и
   снимков экрана.

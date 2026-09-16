@@ -308,7 +308,7 @@ if ! cmp -s "$TEST_ROOT/first-plan" "$TEST_ROOT/expected-plan"; then
     diff -u "$TEST_ROOT/expected-plan" "$TEST_ROOT/first-plan"
     ((TEST_FAILURES++))
 fi
-for line in 'Modules Inspected : 13' 'Warnings          : 0' 'Errors            : 0'; do
+for line in 'Modules Inspected : 14' 'Warnings          : 0' 'Errors            : 0'; do
     assert_contains "$TEST_ROOT/output" "$line"
     assert_contains "$FIXTURE/logs/latest.log" "$line"
 done
