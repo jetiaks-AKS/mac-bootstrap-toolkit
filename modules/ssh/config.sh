@@ -22,17 +22,18 @@ ssh_config_parse() {
     : > "$output" || return 2
     LC_ALL=C awk -v output="$output" -v mode="$mode" '
         function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
-        function bad_value(k, v) {
+        function bad_value(k, v, n) {
             if (k == "hostname") return v !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/
             if (k == "user") return v !~ /^[A-Za-z_][A-Za-z0-9._-]*$/
             if (k == "tcpkeepalive") return v != "yes" && v != "no"
             if (k == "port" || k == "serveraliveinterval" ||
                 k == "serveralivecountmax" || k == "connecttimeout") {
                 if (v !~ /^(0|[1-9][0-9]*)$/ || length(v) > 5) return 1
-                if (k == "port") return v < 1 || v > 65535
-                if (k == "serveraliveinterval") return v > 3600
-                if (k == "serveralivecountmax") return v > 20
-                return v < 1 || v > 300
+                n = v + 0
+                if (k == "port") return n < 1 || n > 65535
+                if (k == "serveraliveinterval") return n > 3600
+                if (k == "serveralivecountmax") return n > 20
+                return n < 1 || n > 300
             }
             return 1
         }
@@ -60,11 +61,17 @@ ssh_config_parse() {
                 if (NR == 4 && line != "") fatal = 1
                 next
             }
-            if (line ~ /[^\t\r -~]/) { fatal = 1; next }
             sub(/\r$/, "", line)
             if (index(line, "\r")) { fatal = 1; next }
+
             line = trim(line)
+
+            # Blank lines and full-line comments are semantically inert.
+            # Their contents are never serialized into the generated snapshot.
             if (line == "" || line ~ /^#/) next
+
+            # Configuration syntax itself remains deliberately ASCII-only in v1.
+            if (line ~ /[^\t -~]/) { fatal = 1; next }
             if (line ~ /^[A-Za-z][A-Za-z0-9]*=/) {
                 key = line; sub(/=.*/, "", key); key = tolower(key)
                 if (key == "host" || key == "include" || key == "match" || !in_block) structural = 1

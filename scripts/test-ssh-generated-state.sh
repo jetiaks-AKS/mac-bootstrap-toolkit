@@ -65,7 +65,23 @@ source_config $'# comment\n\n HOST example  \r\n hostname example.invalid\r\n Us
 expect 'all allowed directives, CRLF and missing final newline' 0 discover_ssh_configuration
 snapshot_status ready 1 && pass 'canonical allowed profile' || fail 'canonical allowed profile'
 
-for directive in 'IdentityFile ~/.ssh/id_test' 'IdentitiesOnly yes' 'UseKeychain yes' 'AddKeysToAgent yes' 'Compression yes' 'ProxyJump jump' 'ProxyCommand command' 'LocalForward 1 2' 'RemoteForward 1 2' 'DynamicForward 1' 'ForwardAgent yes' 'RemoteCommand command' 'LocalCommand command' 'SetEnv X=Y' 'SendEnv X' 'UnknownDirective value' 'Port 0' 'ConnectTimeout 301' 'Port 22 # note' 'User "admin"' 'User admin\path' 'User=admin' 'Port 22' ; do
+reset_fixture
+source_config $'# Русский комментарий — допустим и не экспортируется\n\nHost example\n HostName example.invalid\n User admin\n'
+expect 'Unicode SSH comment Discovery' 0 discover_ssh_configuration
+snapshot_status ready 1 && pass 'Unicode SSH comment accepted' || fail 'Unicode SSH comment rejected'
+
+if grep -q 'Русский' "$SSH_SNAPSHOT_FILE"; then
+    fail 'Unicode SSH comment leaked into snapshot'
+else
+    pass 'Unicode SSH comment not serialized'
+fi
+
+reset_fixture
+source_config $'Host first\n HostName first.invalid\n Port 9\n ServerAliveInterval 9\n ServerAliveCountMax 9\n ConnectTimeout 9\n\nHost second\n HostName second.invalid\n User admin\n\nHost excluded\n HostName excluded.invalid\n IdentityFile unsupported\n'
+expect 'numeric values and unsupported profile Discovery' 1 discover_ssh_configuration
+snapshot_status partial 2 && [[ "$SSH_SNAPSHOT_EXCLUDED" == 1 ]] && pass 'numeric comparisons retain both eligible profiles' || fail 'numeric comparisons excluded an eligible profile'
+
+for directive in 'IdentityFile ~/.ssh/id_test' 'IdentitiesOnly yes' 'UseKeychain yes' 'AddKeysToAgent yes' 'Compression yes' 'ProxyJump jump' 'ProxyCommand command' 'LocalForward 1 2' 'RemoteForward 1 2' 'DynamicForward 1' 'ForwardAgent yes' 'RemoteCommand command' 'LocalCommand command' 'SetEnv X=Y' 'SendEnv X' 'UnknownDirective value' 'Port 0' 'ServerAliveCountMax 100' 'ConnectTimeout 301' 'Port 22 # note' 'User "admin"' 'User admin\path' 'User=admin' 'Port 22' ; do
     reset_fixture
     source_config "$valid_profile"" $directive"$'\n'
     [[ "$directive" != 'Port 22' ]] || source_config "$valid_profile"$' Port 22\n Port 22\n'
