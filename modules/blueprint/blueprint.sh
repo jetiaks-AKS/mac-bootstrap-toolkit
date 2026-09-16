@@ -27,7 +27,7 @@ blueprint_exists() {
 blueprint_category_supported() {
 
     case "$1" in
-        git-configuration|vscode-settings|shell-zsh|macos-finder|macos-dock|macos-windows|macos-keyboard|macos-trackpad|macos-screenshots)
+        git-configuration|ssh-configuration|vscode-settings|shell-zsh|macos-finder|macos-dock|macos-windows|macos-keyboard|macos-trackpad|macos-screenshots)
             return 0
             ;;
         *)
@@ -93,7 +93,7 @@ blueprint_category_enabled() {
             return 1
             ;;
         "")
-            [[ "$category" == macos-windows || "$category" == shell-zsh ]] && return 1
+            [[ "$category" == macos-windows || "$category" == shell-zsh || "$category" == ssh-configuration ]] && return 1
             return 2
             ;;
         *)
@@ -185,6 +185,7 @@ blueprint_validate_syntax() {
             sections["git-configuration"] = 1
 
             categories["git-configuration"] = 1
+            categories["ssh-configuration"] = 1
             categories["vscode-settings"] = 1
             categories["shell-zsh"] = 1
             categories["macos-finder"] = 1
@@ -298,7 +299,7 @@ blueprint_validate_syntax() {
             }
 
             for (category in categories) {
-                if ((category == "macos-windows" || category == "shell-zsh") && category_count[category] == 0) {
+                if ((category == "macos-windows" || category == "shell-zsh" || category == "ssh-configuration") && category_count[category] == 0) {
                     continue
                 }
                 if (category_count[category] != 1) {

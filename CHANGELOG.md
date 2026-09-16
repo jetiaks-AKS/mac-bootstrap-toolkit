@@ -11,6 +11,11 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* SSH configuration restoration now supports a private snapshot of simple,
+  independent Host profiles. Blueprint, Preview and Bootstrap preserve existing
+  target configuration, while clean-target Apply verifies a `0700` directory
+  and `0600` config. Keys, credentials and learned trust are excluded.
+
 * Global Git configuration now supports seven selected scalar settings,
   including `user.useConfigOnly` and `pull.ff`. Direct global provenance,
   conservative include/XDG ownership, unmanaged absent keys, conflict

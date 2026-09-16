@@ -324,6 +324,7 @@ blueprint_selector_write() {
     {
         echo '[categories]'
         echo "git-configuration=\"$BLUEPRINT_GIT_CONFIGURATION\""
+        echo "ssh-configuration=\"$BLUEPRINT_SSH_CONFIGURATION\""
         echo "vscode-settings=\"$BLUEPRINT_VSCODE_SETTINGS\""
         echo "shell-zsh=\"$BLUEPRINT_SHELL_ZSH\""
         echo "macos-finder=\"$BLUEPRINT_MACOS_FINDER\""
@@ -421,6 +422,22 @@ blueprint_selector_edit() {
         blueprint_selector_choose_items git-configuration "Git settings" || return $?
         blueprint_selector_store_items BLUEPRINT_GIT_CONFIGURATION_ITEMS
     fi
+    local ssh_payload ssh_result
+    ssh_payload="$(mktemp)" || return 2
+    ssh_snapshot_validate "$ssh_payload"
+    ssh_result=$?
+    rm -f "$ssh_payload"
+    if [[ $ssh_result -eq 2 ]]; then
+        error "Generated SSH snapshot is invalid"
+        return 2
+    fi
+    if [[ $ssh_result -eq 0 && ( "$SSH_SNAPSHOT_STATUS" == ready || "$SSH_SNAPSHOT_STATUS" == partial ) ]]; then
+        info "SSH configuration: $SSH_SNAPSHOT_COUNT eligible profiles"
+        blueprint_selector_prompt_category ssh-configuration "SSH Configuration" BLUEPRINT_SSH_CONFIGURATION || return $?
+    else
+        BLUEPRINT_SSH_CONFIGURATION=false
+        info "SSH configuration: unavailable"
+    fi
     blueprint_selector_prompt_category vscode-settings "VS Code Settings" BLUEPRINT_VSCODE_SETTINGS || return $?
     local zsh_status
     zsh_snapshot_validate
@@ -471,6 +488,7 @@ blueprint_selector_edit() {
     echo
     echo "Settings"
     printf '  Git Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_GIT_CONFIGURATION")"
+    printf '  SSH Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_SSH_CONFIGURATION")"
     printf '  VS Code Settings       %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_VSCODE_SETTINGS")"
     printf '  Shell / Zsh            %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_SHELL_ZSH")"
     printf '  Finder                 %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_FINDER")"

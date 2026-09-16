@@ -170,6 +170,7 @@ configure_git() {
 }
 
 git_configuration_scope_selected() { return 0; }
+ssh_configuration_scope_selected() { return 1; }
 
 apply_vscode_settings() {
     record_orchestration_step vscode-settings

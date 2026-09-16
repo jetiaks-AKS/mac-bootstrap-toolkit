@@ -14,6 +14,7 @@ BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 GIT_CONFIGURATION_FILE="$BLUEPRINT_GENERATED_DIR/git.conf"
 ZSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/shell/zshrc.snapshot"
+SSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/ssh/config.snapshot"
 TEST_FAILURES=0
 TOOLKIT_VERSION="test"
 MODE="--blueprint"
@@ -29,6 +30,7 @@ source "$PROJECT_ROOT/modules/core/config/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
 source "$PROJECT_ROOT/modules/core/git/git.sh"
 source "$PROJECT_ROOT/modules/shell/zsh.sh"
+source "$PROJECT_ROOT/modules/ssh/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/selector.sh"
 
 pass() { echo "PASS: $1"; }

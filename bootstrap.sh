@@ -41,6 +41,7 @@ source modules/vscode/settings.sh
 # ==========================================
 
 source modules/shell/zsh.sh
+source modules/ssh/config.sh
 
 # ==========================================
 # macOS Settings
@@ -55,6 +56,7 @@ source modules/settings/macos/macos.sh
 source modules/discovery/discovery.sh
 source modules/discovery/homebrew.sh
 source modules/discovery/git.sh
+source modules/discovery/ssh.sh
 source modules/discovery/vscode.sh
 source modules/discovery/macos/macos.sh
 source modules/discovery/appstore.sh
@@ -289,6 +291,22 @@ bootstrap_validate_selected_inputs() {
         fi
     fi
 
+    if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+        local ssh_payload ssh_result
+        ssh_payload="$(mktemp)" || return 2
+        ssh_snapshot_validate "$ssh_payload"
+        ssh_result=$?
+        rm -f "$ssh_payload"
+        if [[ $ssh_result -eq 2 ]]; then
+            error "Invalid selected SSH snapshot"
+            return 2
+        fi
+        if [[ $ssh_result -eq 1 ]] && blueprint_exists; then
+            error "Selected SSH snapshot is missing"
+            return 2
+        fi
+    fi
+
     if blueprint_category_enabled macos-finder; then
         validate_defaults_config "$FINDER_CONFIG" finder || return 2
     fi
@@ -368,6 +386,10 @@ run_preview() {
 
     if blueprint_category_enabled shell-zsh; then
         run_inspection "Zsh Configuration Preview" preview_zsh
+    fi
+
+    if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+        run_inspection "SSH Configuration Preview" preview_ssh_configuration
     fi
 
     run_inspection "Workspace Folders Preview" preview_workspace_folders
@@ -576,6 +598,10 @@ case "$MODE" in
 
         if blueprint_category_enabled shell-zsh; then
             run_module "Zsh Configuration" bootstrap_zsh
+        fi
+
+        if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+            run_module "SSH Configuration" bootstrap_ssh_configuration
         fi
 
         if blueprint_category_enabled macos-finder ||

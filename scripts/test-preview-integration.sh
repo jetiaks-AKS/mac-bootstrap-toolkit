@@ -549,5 +549,16 @@ for mode in --blueprint --workflow; do
         done
     done
 done
+reset_fixture
+rm -f "$TEST_ROOT/home/.ssh/config"
+chmod 700 "$TEST_ROOT/home/.ssh"
+mkdir -p "$FIXTURE/config/generated/ssh"
+printf '# toolkit-ssh-snapshot: 1\n# status: ready\n# excluded-profiles: 0\n\nHost fixture\n    HostName fixture.invalid\n' > "$FIXTURE/config/generated/ssh/config.snapshot"
+chmod 600 "$FIXTURE/config/generated/ssh/config.snapshot"
+run_case ssh-plan 1
+assert_contains "$TEST_ROOT/output" 'Would restore SSH configuration: 1 eligible profiles'
+if grep -q 'fixture.invalid\|Host fixture' "$TEST_ROOT/output"; then
+    echo 'FAIL: SSH Preview leaked profile values'; ((TEST_FAILURES++))
+fi
 [[ $TEST_FAILURES -eq 0 ]] || exit 1
 echo 'All production Preview integration tests passed'
