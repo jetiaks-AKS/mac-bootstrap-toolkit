@@ -72,7 +72,7 @@ git() {
     if [[ "${1:-}" == config ]]; then
         case "$*" in
             *--file*--no-includes*) "$REAL_GIT" "$@" ;;
-            'config --global --null --get-all '* )
+            'config --global --no-includes --null --list --show-origin --show-scope' )
                 [[ "$TEST_CASE" != git-error ]] || return 2
                 "$REAL_GIT" "$@" ;;
             *) mutation "git $*" ;;
@@ -134,7 +134,7 @@ reset_fixture() {
     printf '111|Present\n222|Absent\n' > "$generated/appstore.conf"
     printf 'publisher.present\npublisher.absent\n' > "$generated/vscode-extensions.conf"
     printf '[user]\n name = Desired\n' > "$generated/git.conf"
-    : > "$TEST_ROOT/global.gitconfig"
+    : > "$TEST_ROOT/home/.gitconfig"
     printf '{}\n' > "$generated/vscode/settings.json"
     printf '{"current":true}\n' > "$TEST_ROOT/home/Library/Application Support/Code/User/settings.json"
     printf 'Projects|workspace\nNewFolder|workspace\n' > "$generated/workspace/folders.conf"
@@ -217,7 +217,7 @@ run_case() {
     (
         cd "$FIXTURE" || exit 2
         env HOME="$TEST_ROOT/home" SHELL=/bin/zsh TMPDIR="$TEST_ROOT/tmp" \
-            GIT_CONFIG_GLOBAL="$TEST_ROOT/global.gitconfig" GIT_CONFIG_NOSYSTEM=1 \
+            GIT_CONFIG_NOSYSTEM=1 \
             BASH_ENV="$TEST_ROOT/spies.sh" TEST_CASE="$scenario" \
             BS_INSTALL_DIR="$TEST_ROOT/launcher-bin" \
             TEST_MODE="${TEST_MODE:---dry-run}" TEST_MUTATIONS="$TEST_ROOT/mutations" TEST_OBSERVATIONS="$TEST_ROOT/observations" \
@@ -263,7 +263,7 @@ Would install Homebrew formula: absent
 Would install Homebrew cask: example-cask
 Would install App Store app: Absent (222)
 Would install VS Code extension: publisher.absent
-Would configure Git setting: user.name
+Would set Git setting: user.name
 Would update VS Code settings
 Would create workspace folder: $TEST_ROOT/home/NewFolder
 Would switch repository branch: existing -> main
@@ -449,13 +449,13 @@ if grep -q '^preflight\|^brew\|^defaults' "$TEST_ROOT/observations"; then
     echo 'FAIL: invalid input reached preflight/domains'; ((TEST_FAILURES++))
 fi
 reset_fixture
-workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\nn'
 TEST_MODE=--workflow run_case workflow-save-preview 0 <<< "$workflow_input"
 assert_contains "$TEST_ROOT/output" 'Blueprint saved'
 assert_contains "$TEST_ROOT/output" 'Modules Inspected'
 assert_contains "$TEST_ROOT/output" 'Apply these changes'
 cp "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint"
-workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
 TEST_MODE=--workflow run_case workflow-save-cancel 0 <<< "$workflow_input"
 cmp -s "$FIXTURE/config/blueprint.conf" "$TEST_ROOT/saved-blueprint" || {
     echo 'FAIL: cancelled selector changed old Blueprint'; ((TEST_FAILURES++));

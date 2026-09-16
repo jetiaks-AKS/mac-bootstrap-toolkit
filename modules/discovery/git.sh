@@ -1,105 +1,77 @@
 #!/bin/bash
 
-# ==========================================
-# Git Discovery
-# ==========================================
-
 serialize_git_configuration() {
-
-    local output_file="$1"
-    local collection_dir="$2"
-    local keys=(user.name user.email init.defaultBranch pull.rebase core.editor)
-    local index
-    local key
-    local value
-
-    for index in 0 1 2 3 4; do
-
-        [[ -f "$collection_dir/$index.value" ]] || continue
-
-        IFS= read -r -d '' value < "$collection_dir/$index.value" || return 2
-        key="${keys[$index]}"
-
-        git config --file "$output_file" "$key" "$value" || return 2
-
+    local output_file="$1" index
+    : > "$output_file" || return 2
+    for index in 0 1 2 3 4 5 6; do
+        [[ "${GIT_DISCOVERY_SET[$index]}" == true ]] || continue
+        git config --file "$output_file" "${GIT_CONFIGURATION_KEYS[$index]}" \
+            "${GIT_DISCOVERY_VALUES[$index]}" || return 2
     done
-
     git config --file "$output_file" --no-includes --list >/dev/null 2>&1 || return 2
-
-    return 0
-
 }
 
-# ==========================================
-
 discover_git() {
-
+    local output_file="config/generated/git.conf"
+    local index key value result warning_result=0
     if ! command -v git >/dev/null 2>&1; then
         error "Git is not installed"
         return 2
     fi
-
-    local output_file="config/generated/git.conf"
-    local collection_dir
-    local keys=(user.name user.email init.defaultBranch pull.rebase core.editor)
-    local index
-    local key
-    local value_file
-    local collection_status
-    local value_count
-    local value
-
     action "Exporting Git configuration..."
-
-    collection_dir="$(mktemp -d)" || {
-        error "Failed to prepare Git configuration collection"
-        return 2
-    }
-
-    for index in 0 1 2 3 4; do
-
-        key="${keys[$index]}"
-        value_file="$collection_dir/$index.value"
-
-        git config --global --null --get-all "$key" > "$value_file" 2>/dev/null
-        collection_status=$?
-
-        case $collection_status in
-            0)
-                value_count=0
-                while IFS= read -r -d '' value; do
-                    ((value_count++))
-                done < "$value_file"
-
-                if [[ $value_count -ne 1 ]]; then
-                    error "Multiple global Git values found for $key"
-                    rm -rf "$collection_dir"
-                    return 2
-                fi
-                ;;
-            1)
-                rm -f "$value_file"
-                ;;
-            *)
-                error "Failed to read global Git configuration: $key"
-                rm -rf "$collection_dir"
-                return 2
-                ;;
-        esac
-
-    done
-
-    if ! discovery_publish_file "$output_file" serialize_git_configuration "$collection_dir"; then
-        error "Failed to publish Git configuration"
-        rm -rf "$collection_dir"
+    git_global_observe source
+    result=$?
+    if [[ $result -eq 2 ]]; then
+        error "Failed to inspect direct global Git configuration"
         return 2
     fi
-
-    rm -rf "$collection_dir"
-
+    GIT_DISCOVERY_SET=(false false false false false false false)
+    GIT_DISCOVERY_VALUES=("" "" "" "" "" "" "")
+    if [[ $result -eq 1 ]]; then
+        warning "Global Git configuration is externally managed; exporting empty snapshot"
+        warning_result=1
+    else
+        for index in 0 1 2 3 4 5 6; do
+            [[ ${GIT_GLOBAL_COUNTS[$index]} -gt 0 ]] || continue
+            key="${GIT_CONFIGURATION_KEYS[$index]}"
+            if [[ ${GIT_GLOBAL_COUNTS[$index]} -ne 1 ]]; then
+                warning "Multiple direct global Git values excluded: $key"
+                warning_result=1
+                continue
+            fi
+            value="${GIT_GLOBAL_VALUES[$index]}"
+            case "$key" in
+                pull.rebase)
+                    if [[ "$value" != merges && "$value" != interactive ]]; then
+                        value="$(git_configuration_normalize_boolean "$value")" || value=""
+                    fi
+                    ;;
+                user.useConfigOnly)
+                    value="$(git_configuration_normalize_boolean "$value")" || value=""
+                    ;;
+                pull.ff)
+                    if [[ "$value" != only ]]; then
+                        value="$(git_configuration_normalize_boolean "$value")" || value=""
+                    fi
+                    ;;
+            esac
+            if ! git_configuration_validate_value "$key" "$value" ||
+               { [[ "$key" == core.editor ]] &&
+                 ! git_configuration_editor_available "$value"; }; then
+                warning "Unsupported direct global Git setting excluded: $key"
+                warning_result=1
+                continue
+            fi
+            GIT_DISCOVERY_SET[$index]=true
+            GIT_DISCOVERY_VALUES[$index]="$value"
+        done
+    fi
+    if ! discovery_publish_file "$output_file" serialize_git_configuration; then
+        error "Failed to publish Git configuration"
+        return 2
+    fi
+    [[ $warning_result -eq 0 ]] || return 1
     success "Git configuration exported"
-    detail "Configuration saved to:"
-    detail "$output_file"
-
+    detail "Configuration saved to: $output_file"
     return 0
 }

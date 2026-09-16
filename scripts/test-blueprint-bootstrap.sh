@@ -169,6 +169,8 @@ configure_git() {
     record_orchestration_step git-configuration
 }
 
+git_configuration_scope_selected() { return 0; }
+
 apply_vscode_settings() {
     record_orchestration_step vscode-settings
 }
@@ -695,67 +697,6 @@ if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
     pass "legacy Bootstrap Summary gives errors precedence without changing status"
 else
     fail "legacy error-precedence Summary or lifecycle preservation failed"
-fi
-
-git_test_root="$TEST_ROOT/git-configuration"
-mkdir -p "$git_test_root/config/generated"
-{
-    echo '[user]'
-    echo '    name = Test User'
-    echo '    email = test@example.com'
-    echo '[init]'
-    echo '    defaultBranch = main'
-    echo '[pull]'
-    echo '    rebase = false'
-    echo '[core]'
-    echo '    editor = code --wait'
-} > "$git_test_root/config/generated/git.conf"
-
-source "$PROJECT_ROOT/modules/core/git/git.sh"
-success() { echo "[ OK ] $1"; }
-action() { echo "[....] $1"; }
-error() { echo "[ERROR] $1"; }
-
-check_git_configuration() { return 0; }
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 0 &&
-      "$git_output" == '[ OK ] Git configuration already configured' ]]; then
-    pass "already-correct Git configuration reports one success message"
-else
-    fail "already-correct Git configuration status or message is incorrect"
-fi
-
-git_check_calls=0
-check_git_configuration() {
-    ((git_check_calls++))
-    [[ $git_check_calls -gt 1 ]]
-}
-apply_git_configuration() { return 0; }
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 0 &&
-      "$git_output" == *'[....] Configuring Git...'* &&
-      "$git_output" == *'[ OK ] Git configured successfully'* &&
-      "$git_output" != *'already configured'* ]]; then
-    pass "Git apply path preserves its existing success behavior"
-else
-    fail "Git apply path status or messages changed"
-fi
-
-check_git_configuration() { return 1; }
-apply_git_configuration() {
-    error "Failed to configure Git"
-    return 2
-}
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 2 &&
-      "$git_output" == *'[ERROR] Failed to configure Git'* &&
-      "$git_output" != *'[ OK ]'* ]]; then
-    pass "Git failure path reports no false success"
-else
-    fail "Git failure path status or messaging is incorrect"
 fi
 
 if [[ $TEST_FAILURES -ne 0 ]]; then

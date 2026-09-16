@@ -20,7 +20,6 @@ MUTATION_LOG="$TEST_ROOT/mutations.log"
 trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 
 export HOME="$TEST_ROOT/home"
-export GIT_CONFIG_GLOBAL="$TEST_ROOT/global.gitconfig"
 export GIT_CONFIG_NOSYSTEM=1
 export TMPDIR="$TEST_ROOT/tmp"
 
@@ -46,12 +45,12 @@ detail() { :; }
 
 git() {
     if [[ -n "$GIT_READ_FAILURE_KEY" &&
-          "$*" == "config --global --null --get-all $GIT_READ_FAILURE_KEY" ]]; then
+          "$*" == "config --global --no-includes --null --list --show-origin --show-scope" ]]; then
         return 2
     fi
 
     if [[ "${1:-}" == config && "${2:-}" == --global &&
-          "${3:-}" != --null ]]; then
+          "${3:-}" == --add ]]; then
         printf '%s\n' "git $*" >> "$MUTATION_LOG"
     fi
 
@@ -97,7 +96,7 @@ reset_messages() {
 }
 
 reset_git_fixture() {
-    /bin/rm -f "$GIT_CONFIG_GLOBAL"
+    /bin/rm -f "$HOME/.gitconfig"
     /bin/rm -rf "$TEST_ROOT/generated-git"
     /bin/mkdir -p "$TEST_ROOT/generated-git"
     GIT_CONFIGURATION_FILE="$TEST_ROOT/generated-git/git.conf"
@@ -134,10 +133,11 @@ reset_git_fixture
 write_generated_git user.name Desired
 "$REAL_GIT" config --global user.name Current
 preview_git_configuration
-if [[ $? -eq 0 && "$ACTION_MESSAGES" == 'Would configure Git setting: user.name' ]]; then
-    pass "one Git mismatch reports its planned setting"
+if [[ $? -eq 1 && -z "$ACTION_MESSAGES" &&
+      "$WARNING_MESSAGES" == *'Existing Git setting differs; preserving: user.name'* ]]; then
+    pass "one Git conflict warns without a plan"
 else
-    fail "one Git mismatch produced incorrect Preview output"
+    fail "one Git conflict produced incorrect Preview output"
 fi
 assert_no_mutation "mismatched Git Preview performs no write"
 
@@ -145,9 +145,9 @@ reset_git_fixture
 write_generated_git user.name Desired
 write_generated_git user.email desired@example.com
 preview_git_configuration
-if [[ $? -eq 0 && "$ACTION_MESSAGES" == *'Would configure Git setting: user.name'* &&
-      "$ACTION_MESSAGES" == *'Would configure Git setting: user.email'* ]]; then
-    pass "multiple Git mismatches are all reported"
+if [[ $? -eq 0 && "$ACTION_MESSAGES" == *'Would set Git setting: user.name'* &&
+      "$ACTION_MESSAGES" == *'Would set Git setting: user.email'* ]]; then
+    pass "multiple missing Git settings are all planned"
 else
     fail "multiple Git mismatches were not all reported"
 fi
@@ -164,6 +164,7 @@ assert_no_mutation "repeated Git Preview performs no write"
 reset_git_fixture
 write_generated_git user.name Desired
 GIT_READ_FAILURE_KEY=core.editor
+"$REAL_GIT" config --global pull.ff only
 preview_git_configuration
 if [[ $? -eq 2 && -z "$ACTION_MESSAGES" ]]; then
     pass "late Git observation error overrides earlier mismatch"

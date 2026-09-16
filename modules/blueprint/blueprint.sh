@@ -40,7 +40,7 @@ blueprint_category_supported() {
 blueprint_item_section_supported() {
 
     case "$1" in
-        homebrew-packages|homebrew-casks|app-store|vscode-extensions|workspace-folders|git-repositories)
+        homebrew-packages|homebrew-casks|app-store|vscode-extensions|workspace-folders|git-repositories|git-configuration)
             return 0
             ;;
         *)
@@ -128,6 +128,14 @@ blueprint_selected_items() {
 
 }
 
+blueprint_item_section_exists() {
+    local section="$1"
+    local blueprint_file="${2:-$BLUEPRINT_FILE}"
+    blueprint_item_section_supported "$section" || return 2
+    blueprint_exists "$blueprint_file" || return 1
+    grep -Fxq -- "[$section]" "$blueprint_file"
+}
+
 blueprint_item_selected() {
 
     local section="$1"
@@ -137,6 +145,11 @@ blueprint_item_selected() {
     blueprint_item_section_supported "$section" || return 2
 
     if ! blueprint_exists "$blueprint_file"; then
+        return 0
+    fi
+
+    if [[ "$section" == git-configuration ]] &&
+       ! blueprint_item_section_exists "$section" "$blueprint_file"; then
         return 0
     fi
 
@@ -169,6 +182,7 @@ blueprint_validate_syntax() {
             sections["vscode-extensions"] = 1
             sections["workspace-folders"] = 1
             sections["git-repositories"] = 1
+            sections["git-configuration"] = 1
 
             categories["git-configuration"] = 1
             categories["vscode-settings"] = 1
@@ -258,6 +272,14 @@ blueprint_validate_syntax() {
             }
 
             item_key = current_section SUBSEP $0
+            if (current_section == "git-configuration" &&
+                $0 != "user.name" && $0 != "user.email" &&
+                $0 != "init.defaultBranch" && $0 != "pull.rebase" &&
+                $0 != "core.editor" && $0 != "user.useConfigOnly" &&
+                $0 != "pull.ff") {
+                invalid("Unsupported Git Blueprint item: " $0)
+                next
+            }
             item_count[item_key]++
 
             if (item_count[item_key] > 1) {
@@ -267,6 +289,9 @@ blueprint_validate_syntax() {
 
         END {
             for (section in sections) {
+                if (section == "git-configuration" && section_count[section] == 0) {
+                    continue
+                }
                 if (section_count[section] != 1) {
                     invalid("Missing Blueprint section: " section)
                 }
@@ -321,6 +346,9 @@ blueprint_generated_file() {
         git-repositories)
             echo "$BLUEPRINT_GENERATED_DIR/workspace/repositories.conf"
             ;;
+        git-configuration)
+            echo "$BLUEPRINT_GENERATED_DIR/git.conf"
+            ;;
         *)
             return 1
             ;;
@@ -372,6 +400,10 @@ blueprint_generated_has_item() {
         git-repositories)
             grep -Fxq -- "[$item]" "$generated_file"
             ;;
+        git-configuration)
+            git config --file "$generated_file" --no-includes --name-only --list 2>/dev/null |
+                grep -Fxiq -- "$item"
+            ;;
     esac
 
 }
@@ -420,7 +452,8 @@ blueprint_validate_selected_items() {
         app-store \
         vscode-extensions \
         workspace-folders \
-        git-repositories; do
+        git-repositories \
+        git-configuration; do
 
         while IFS= read -r item; do
             [[ -z "$item" ]] && continue

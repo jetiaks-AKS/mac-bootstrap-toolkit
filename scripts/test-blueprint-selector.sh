@@ -12,6 +12,7 @@ trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 
 BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
+GIT_CONFIGURATION_FILE="$BLUEPRINT_GENERATED_DIR/git.conf"
 ZSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/shell/zshrc.snapshot"
 TEST_FAILURES=0
 TOOLKIT_VERSION="test"
@@ -26,6 +27,7 @@ success() { echo "[ OK ] $1"; }
 source "$PROJECT_ROOT/modules/core/logger/logger.sh"
 source "$PROJECT_ROOT/modules/core/config/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
+source "$PROJECT_ROOT/modules/core/git/git.sh"
 source "$PROJECT_ROOT/modules/shell/zsh.sh"
 source "$PROJECT_ROOT/modules/blueprint/selector.sh"
 
@@ -70,6 +72,7 @@ expect_parse() {
 
 write_generated() {
     mkdir -p "$BLUEPRINT_GENERATED_DIR/workspace"
+    : > "$GIT_CONFIGURATION_FILE"
     printf '%s\n' package-{1..12} > "$BLUEPRINT_GENERATED_DIR/brew-packages.conf"
     echo cask-one > "$BLUEPRINT_GENERATED_DIR/brew-casks.conf"
     echo '111|Example App' > "$BLUEPRINT_GENERATED_DIR/appstore.conf"
@@ -468,6 +471,17 @@ for existing in yes no; do
         done
     done
 done
+
+write_generated
+git config --file "$GIT_CONFIGURATION_FILE" pull.ff only
+rm -f "$BLUEPRINT_FILE"
+blueprint_selector_load_items git-configuration
+if [[ $? -eq 0 && "${BLUEPRINT_SELECTOR_ITEMS[*]}" == pull.ff &&
+      "${BLUEPRINT_SELECTOR_SELECTED[*]}" == true ]]; then
+    pass "Git selector offers present generated keys"
+else
+    fail "Git selector inventory or initial selection"
+fi
 
 if grep -q -- '--blueprint)' "$PROJECT_ROOT/bootstrap.sh" &&
    "$PROJECT_ROOT/bootstrap.sh" --help | grep -q -- '--blueprint'; then

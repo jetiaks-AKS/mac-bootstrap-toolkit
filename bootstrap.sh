@@ -248,7 +248,8 @@ bootstrap_validate_selected_inputs() {
 
     workspace_validate_bootstrap_inputs || return 2
 
-    if blueprint_category_enabled git-configuration; then
+    if blueprint_category_enabled git-configuration &&
+       git_configuration_scope_selected; then
         load_git_configuration || return 2
     fi
 
@@ -356,7 +357,8 @@ run_preview() {
     run_inspection "App Store Preview" preview_appstore_apps
     run_inspection "VS Code Extensions Preview" preview_vscode_extensions
 
-    if blueprint_category_enabled git-configuration; then
+    if blueprint_category_enabled git-configuration &&
+       git_configuration_scope_selected; then
         run_inspection "Git Configuration Preview" preview_git_configuration
     fi
 
@@ -555,7 +557,8 @@ case "$MODE" in
 
         echo
 
-        if blueprint_category_enabled git-configuration; then
+        if blueprint_category_enabled git-configuration &&
+           git_configuration_scope_selected; then
             run_module "Git Configuration" configure_git
         fi
 

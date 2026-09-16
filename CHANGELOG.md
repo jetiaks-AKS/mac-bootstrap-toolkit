@@ -11,6 +11,12 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Global Git configuration now supports seven selected scalar settings,
+  including `user.useConfigOnly` and `pull.ff`. Direct global provenance,
+  conservative include/XDG ownership, unmanaged absent keys, conflict
+  preservation, editor dependency checks, and precise Check → Apply → Verify
+  keep unrelated target settings intact.
+
 * Stage 10A: added a limited `.zshrc` snapshot with conservative Discovery
   exclusions, one Blueprint category, read-only Preview, and restore only when
   the target is absent. Generated shell data remains private and is never

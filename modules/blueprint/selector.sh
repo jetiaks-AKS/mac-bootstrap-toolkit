@@ -72,11 +72,22 @@ blueprint_selector_load_items() {
                 BLUEPRINT_SELECTOR_LABELS+=("$first")
             done < <(config_sections "$file")
             ;;
+        git-configuration)
+            load_git_configuration || return 2
+            local index
+            for index in 0 1 2 3 4 5 6; do
+                [[ "${GIT_CONFIGURATION_SET[$index]}" == true ]] || continue
+                BLUEPRINT_SELECTOR_ITEMS+=("${GIT_CONFIGURATION_KEYS[$index]}")
+                BLUEPRINT_SELECTOR_LABELS+=("${GIT_CONFIGURATION_KEYS[$index]}")
+            done
+            ;;
     esac
 
     local index
     for ((index = 0; index < ${#BLUEPRINT_SELECTOR_ITEMS[@]}; index++)); do
-        if blueprint_exists; then
+        if blueprint_exists &&
+           { [[ "$section" != git-configuration ]] ||
+             blueprint_item_section_exists git-configuration; }; then
             if blueprint_item_selected "$section" "${BLUEPRINT_SELECTOR_ITEMS[$index]}"; then
                 BLUEPRINT_SELECTOR_SELECTED+=(true)
             else
@@ -322,7 +333,7 @@ blueprint_selector_write() {
         echo "macos-trackpad=\"$BLUEPRINT_MACOS_TRACKPAD\""
         echo "macos-screenshots=\"$BLUEPRINT_MACOS_SCREENSHOTS\""
         echo
-        for section in homebrew-packages homebrew-casks app-store vscode-extensions workspace-folders git-repositories; do
+        for section in homebrew-packages homebrew-casks app-store vscode-extensions workspace-folders git-repositories git-configuration; do
             echo "[$section]"
             case "$section" in
                 homebrew-packages) printf '%s\n' "$BLUEPRINT_HOME_BREW_PACKAGES" ;;
@@ -331,6 +342,7 @@ blueprint_selector_write() {
                 vscode-extensions) printf '%s\n' "$BLUEPRINT_VSCODE_EXTENSIONS" ;;
                 workspace-folders) printf '%s\n' "$BLUEPRINT_WORKSPACE_FOLDERS" ;;
                 git-repositories) printf '%s\n' "$BLUEPRINT_GIT_REPOSITORIES" ;;
+                git-configuration) printf '%s\n' "$BLUEPRINT_GIT_CONFIGURATION_ITEMS" ;;
             esac
             echo
         done
@@ -404,6 +416,11 @@ blueprint_selector_edit() {
     echo
     echo "Settings"
     blueprint_selector_prompt_category git-configuration "Git Configuration" BLUEPRINT_GIT_CONFIGURATION || return $?
+    BLUEPRINT_GIT_CONFIGURATION_ITEMS=""
+    if [[ "$BLUEPRINT_GIT_CONFIGURATION" == true ]]; then
+        blueprint_selector_choose_items git-configuration "Git settings" || return $?
+        blueprint_selector_store_items BLUEPRINT_GIT_CONFIGURATION_ITEMS
+    fi
     blueprint_selector_prompt_category vscode-settings "VS Code Settings" BLUEPRINT_VSCODE_SETTINGS || return $?
     local zsh_status
     zsh_snapshot_validate
