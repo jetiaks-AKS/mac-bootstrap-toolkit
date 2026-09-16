@@ -31,6 +31,10 @@ VS Code, Workspace и macOS. Discovery различает отсутствие �
 Discovery с последующим выбором и восстановлением. Производные данные исключены
 из Git, публикуются безопасно и обрабатываются как данные, а не выполняемый код.
 
+Generated Configuration предназначен для воспроизводимого состояния и не
+является хранилищем секретов или credential material. Секретные данные не должны
+попадать в обычную цепочку Generated Configuration и Bootstrap.
+
 ## Этап 4 — Bootstrap Engine
 
 **Статус: Completed**
@@ -93,17 +97,35 @@ Management, Keyboard, Trackpad и Screenshots. Поддерживаемые на
 повторная оценка приватных и зависящих от версии настроек ожидается при переходе
 на macOS 27.
 
-## Этап 10 — Расширение рабочего окружения
+## Этап 10 — Shell & Developer Environment
 
 **Статус: In Progress**
 
-Ограниченное восстановление самостоятельного Zsh `.zshrc` и безопасное
-восстановление выбранных прямых global-настроек Git реализованы.
-Следующее направление — расширение высокоценного восстановления VS Code:
+Этап расширяет воспроизводимое рабочее окружение разработчика без превращения
+Toolkit в универсальный менеджер dotfiles, credentials или состояния
+приложений.
 
-- восстановление `.code-workspace` на основе уже обнаруживаемых метаданных;
-- сочетания клавиш;
-- snippets при подтверждённой практической ценности.
+Реализованы:
+
+- ограниченное и безопасное восстановление самостоятельного Zsh `.zshrc`;
+- восстановление выбранных прямых global-настроек Git с сохранением конфликтующего
+  состояния целевой машины.
+
+Текущее направление:
+
+- SSH Configuration — безопасное восстановление переносимой SSH-конфигурации и
+  топологии без переноса credential material через обычный Bootstrap;
+- CLI Tools Inventory — оценка и восстановление полезного состояния CLI-экосистем,
+  не покрываемых Homebrew.
+
+Apple Terminal после отдельной оценки отложен до Application Configuration
+Modules: app-specific конфигурация терминалов имеет меньшую универсальную
+ценность и должна рассматриваться вместе с другими terminal applications.
+
+Дополнительное расширение VS Code, включая восстановление `.code-workspace`,
+сочетаний клавиш и snippets, остаётся кандидатом после основных компонентов
+developer environment и реализуется только при подтверждённой практической
+ценности и безопасном контракте.
 
 ## Этап 11 — Application Configuration Modules
 
@@ -113,7 +135,74 @@ Management, Keyboard, Trackpad и Screenshots. Поддерживаемые на
 источник состояния, безопасное применение и проверяемый результат. Приоритет
 получают функции, заметно сокращающие ручную подготовку нового Mac.
 
-## Этап 12 — Optional / Future Evolution
+В этот этап может входить конфигурация Apple Terminal и других terminal
+applications, если для них будет подтверждён устойчивый и достаточно ценный
+контракт восстановления.
+
+## Этап 12 — Secure Migration Engine
+
+**Статус: Planned / Future**
+
+Планируется отдельный защищённый механизм переноса состояния, которое не должно
+проходить через обычную цепочку:
+
+```text
+Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
+```
+
+Toolkit разделяет два класса состояния:
+
+```text
+Reconstructable State                 Secret / Credential State
+        │                                      │
+     Discovery                           Secure Migration
+        │                                      │
+Generated Configuration                Protected Transfer
+        │                                      │
+     Blueprint                           Explicit Import
+        │
+     Preview
+        │
+    Bootstrap
+```
+
+Обычный Bootstrap предназначен для воспроизводимого несекретного состояния:
+настроек macOS, приложений, Shell, Git, SSH configuration/topology, Workspace и
+других поддерживаемых областей.
+
+Secret и credential material не должен сериализоваться в `config/generated/`.
+Для такого состояния Secure Migration Engine должен предоставлять отдельный
+защищённый канал переноса с явным выбором пользователя.
+
+Потенциальная область Secure Migration Engine:
+
+- SSH private keys и связанные public keys, когда их перенос имеет смысл;
+- выбранные сертификаты и другое явно выбранное credential material;
+- в дальнейшем — отдельная оценка возможности переноса выбранных
+  Keychain-backed или application/API credentials;
+- опциональная миграция `known_hosts` только как явно выбранного learned trust
+  state, а не как обычной SSH-конфигурации.
+
+Private SSH keys поэтому исключены из обычного Stage 10 SSH Bootstrap, но их
+перенос не отвергается как продуктовая возможность: он переносится в Secure
+Migration Engine.
+
+Будущий механизм должен исходить как минимум из следующих принципов:
+
+- явный выбор и согласие пользователя;
+- защищённый и зашифрованный migration package или канал;
+- отсутствие секретов в обычной Generated Configuration;
+- отсутствие секретов в Git;
+- отсутствие plaintext secret logging;
+- проверка входных данных до мутации;
+- строгие ownership и permissions на целевой машине;
+- безопасное разрешение конфликтов без молчаливой замены credentials.
+
+Конкретные криптографические алгоритмы, формат migration package, управление
+ключами шифрования и CLI-контракт должны определяться отдельным аудитом и
+проектированием перед реализацией.
+
+## Этап 13 — Optional / Future Evolution
 
 **Статус: Optional**
 
@@ -121,11 +210,12 @@ Management, Keyboard, Trackpad и Screenshots. Поддерживаемые на
 
 - сводная глобальная проверка после Bootstrap;
 - отчёт Discovery;
-- настройки Energy / `pmset`, Login Items, Shell, Terminal и SSH после
-  отдельной оценки безопасности и ценности;
+- дополнительные настройки Energy / `pmset`, Login Items и другие области macOS
+  после отдельной оценки безопасности и ценности;
 - Restore Engine только при появлении ответственности, которую нельзя чисто
   выразить существующей цепочкой;
-- профили, сравнение машин, интеграции секретов, плагины и GUI;
+- профили и сравнение машин;
+- плагины и GUI;
 - единый запуск тестов, ShellCheck и CI.
 
 Эти идеи не являются утверждёнными обязательствами или этапами реализации.
@@ -153,9 +243,11 @@ Release 3.1.0
   ↓
 macOS Coverage Expansion
   ↓
-VS Code Feature Expansion
+Shell & Developer Environment
   ↓
 Application Configuration Modules
+  ↓
+Secure Migration Engine
   ↓
 Optional / Future Evolution
 ```
