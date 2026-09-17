@@ -11,6 +11,11 @@ The format is based on the principles of **Keep a Changelog**.
 
 ### Added
 
+* Stage 10 is complete. Limited Zsh, global Git and SSH restoration are
+  implemented; Apple Terminal is deferred to Stage 11. Existing Homebrew
+  restoration covers the core CLI scope. Additional tool managers remain
+  deferred, and generic PATH/binary restoration is rejected.
+
 * SSH configuration restoration now supports a private snapshot of simple,
   independent Host profiles. Blueprint, Preview and Bootstrap preserve existing
   target configuration, while clean-target Apply verifies a `0700` directory
