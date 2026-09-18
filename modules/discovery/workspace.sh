@@ -10,6 +10,16 @@ source modules/discovery/workspace/repositories.sh
 source modules/discovery/workspace/vscode.sh
 source modules/discovery/workspace/inventory.sh
 
+workspace_prepare_generated_dir() {
+
+    local output_dir="$1"
+    mkdir -p "$output_dir" || return 2
+    [[ -d "$output_dir" && ! -L "$output_dir" &&
+       "$(stat -f '%u' "$output_dir" 2>/dev/null)" == "$(id -u)" ]] || return 2
+    chmod 700 "$output_dir" || return 2
+
+}
+
 # ==========================================
 # Workspace Snapshot Validation
 # ==========================================
@@ -113,12 +123,28 @@ workspace_publish_snapshot() {
     )
     local -a existed_before=()
 
-    backup_dir="$(mktemp -d "$output_dir/.snapshot-backup.XXXXXX")" || return 2
+    if ! workspace_prepare_generated_dir "$output_dir"; then
+        rm -rf "$staging_dir"
+        return 2
+    fi
+
+    for file in "${snapshot_files[@]}"; do
+        if ! chmod 600 "$staging_dir/$file"; then
+            rm -rf "$staging_dir"
+            return 2
+        fi
+    done
+
+    backup_dir="$(mktemp -d "$output_dir/.snapshot-backup.XXXXXX")" || {
+        rm -rf "$staging_dir"
+        return 2
+    }
 
     for file in "${snapshot_files[@]}"; do
         if [[ -e "$output_dir/$file" ]]; then
             existed_before+=(true)
-            if ! cp -p "$output_dir/$file" "$backup_dir/$file"; then
+            if ! cp -p "$output_dir/$file" "$backup_dir/$file" ||
+               ! chmod 600 "$backup_dir/$file"; then
                 rm -rf "$backup_dir" "$staging_dir"
                 return 2
             fi
@@ -163,6 +189,16 @@ workspace_publish_snapshot() {
 # ==========================================
 
 export_workspace_snapshot() {
+    local previous_umask result
+    previous_umask="$(umask)" || return 2
+    umask 077
+    workspace_export_snapshot_private
+    result=$?
+    umask "$previous_umask" || return 2
+    return "$result"
+}
+
+workspace_export_snapshot_private() {
 
     local output_dir="config/generated/workspace"
     local staging_dir
@@ -171,7 +207,7 @@ export_workspace_snapshot() {
     local vscode_workspace_count
     local publication_result
 
-    if ! mkdir -p "$output_dir"; then
+    if ! workspace_prepare_generated_dir "$output_dir"; then
         error "Failed to prepare Workspace generated directory"
         return 2
     fi
@@ -245,6 +281,7 @@ export_workspace_snapshot() {
     success "$vscode_workspace_count VS Code workspace(s) exported"
     success "Workspace inventory generated"
 
+    [[ "$publication_result" -ne 0 || "$WORKSPACE_REMOTE_WARNING" != true ]] || return 1
     return "$publication_result"
 
 }

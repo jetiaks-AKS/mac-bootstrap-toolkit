@@ -81,6 +81,8 @@ metadata; it does not copy user documents or repository contents.
 `config/generated/` contains private, local, machine-specific derived state and
 is excluded from Git. Producer and consumer formats must remain compatible,
 and generated content must always be parsed as data rather than executed.
+It is not a credential vault: producers must not knowingly publish passwords,
+tokens, private keys, or embedded URL credentials there.
 
 Most generated files publish independently. `workspace.conf` also publishes
 independently, while `folders.conf`, `repositories.conf`,
@@ -88,7 +90,9 @@ independently, while `folders.conf`, `repositories.conf`,
 publish as a single Workspace snapshot.
 
 Generated state can contain personal paths, Git identity, repository URLs, and
-editor settings, so it must be reviewed and transferred privately. Exact file
+editor settings. Opaque VS Code and Zsh snapshots may still contain sensitive
+content; no general secret-free guarantee is implied. Generated state must be
+reviewed and protected before external transfer. Exact file
 formats and portability rules are defined in [Configuration](CONFIGURATION.md).
 
 ### Blueprint

@@ -40,6 +40,11 @@ Blueprint не владеет обнаруженными значениями, �
 `config/generated/` — локальное приватное machine-specific производное
 состояние, создаваемое Discovery. Каталог исключён из Git и может содержать
 личные пути, Git identity, repository URLs и настройки приложений.
+Это не хранилище credentials: producers не должны сознательно публиковать здесь
+пароли, токены, приватные ключи или credentials внутри URL. Непрозрачные snapshots
+VS Code и Zsh могут содержать чувствительные данные; их текущие проверки не
+доказывают отсутствие всех секретов. Перед внешним переносом generated-файлы
+нужно просматривать и защищать.
 
 Generated Configuration является источником обнаруженного inventory для Blueprint и источником применяемых значений для Bootstrap. Форматы producers и consumers должны оставаться совместимыми, а пользовательские значения не должны без необходимости дублироваться в
 Bootstrap-коде.
@@ -436,6 +441,11 @@ Selected `NAME`, `REMOTE`, `CURRENT_BRANCH` не могут быть пусты�
 backslash не поддерживаются существующим Configuration Engine и отклоняются.
 REMOTE сохраняет SSH/scp, URL и local-path формы; пустые/option-like значения,
 крайние пробелы и пустые части URL/scp отвергаются без сетевых запросов.
+Discovery удаляет userinfo из HTTP(S) URL перед публикацией, не восстанавливая
+credentials. URL с query/fragment или неподдерживаемым userinfo исключает
+репозиторий из snapshot с предупреждением. Обычное имя пользователя в SSH URL
+и scp-форме сохраняется. Workspace generated-каталог имеет режим `0700`, а
+файлы группового snapshot — `0600`.
 CURRENT_BRANCH проверяется локальным `git check-ref-format --branch`; option-like
 значения и сокращения, требующие расширения Git, не допускаются.
 

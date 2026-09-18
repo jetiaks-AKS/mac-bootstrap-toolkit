@@ -34,7 +34,8 @@ export_workspace() {
         return 2
     fi
 
-    if ! discovery_publish_file \
+    if ! workspace_prepare_generated_dir "$output_dir" ||
+       ! discovery_publish_file \
         "$output_file" serialize_workspace "$HOME" "$workspace_name" "$scan_date"; then
         error "Failed to publish Workspace metadata"
         return 2
