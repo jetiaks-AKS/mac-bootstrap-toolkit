@@ -60,12 +60,19 @@ write_fixture_file modules/blueprint/blueprint.sh \
 
 write_fixture_file modules/core/git/git.sh \
     'load_git_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'git_configuration_scope_selected() { return 0; }' \
     'check_git() { return 0; }' \
     'preview_git_configuration() { printf "%s\n" git-config-preview >> "$TEST_SPY_FILE"; }' \
     'configure_git() { printf "%s\n" git-config-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/core/ssh/ssh.sh \
     'check_ssh() { return 0; }'
+
+write_fixture_file modules/ssh/config.sh \
+    'ssh_configuration_scope_selected() { return 0; }' \
+    'ssh_snapshot_validate() { : > "$1"; return 0; }' \
+    'preview_ssh_configuration() { printf "%s\n" ssh-preview >> "$TEST_SPY_FILE"; }' \
+    'bootstrap_ssh_configuration() { printf "%s\n" ssh-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/core/terminal/terminal.sh \
     'check_terminal() { return 0; }'
@@ -97,6 +104,11 @@ write_fixture_file modules/vscode/settings.sh \
     'validate_vscode_settings_source() { return 1; }' \
     'preview_vscode_settings() { printf "%s\n" vscode-settings-preview >> "$TEST_SPY_FILE"; }' \
     'apply_vscode_settings() { printf "%s\n" vscode-write >> "$TEST_SPY_FILE"; }'
+
+write_fixture_file modules/shell/zsh.sh \
+    'zsh_snapshot_validate() { ZSH_SNAPSHOT_STATUS=eligible; return 0; }' \
+    'preview_zsh() { printf "%s\n" zsh-preview >> "$TEST_SPY_FILE"; }' \
+    'bootstrap_zsh() { printf "%s\n" zsh-write >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/settings/macos/macos.sh \
     'FINDER_CONFIG=finder' \
@@ -134,7 +146,11 @@ write_mock ping 'exit 0'
 write_mock xcode-select 'exit 0'
 write_mock sw_vers 'printf "%s\n" 14'
 write_mock sudo 'printf "%s\n" sudo >> "$TEST_SPY_FILE"; exit 0'
-write_mock curl 'printf "%s\n" homebrew-installer >> "$TEST_SPY_FILE"; exit 2'
+write_mock curl \
+    'case "$*" in' \
+    '    *-fsSI*) exit 0 ;;' \
+    '    *) printf "%s\n" homebrew-installer >> "$TEST_SPY_FILE"; exit 2 ;;' \
+    'esac'
 write_mock mas 'printf "%s\n" mas-command >> "$TEST_SPY_FILE"; exit 2'
 write_mock code 'printf "%s\n" code-command >> "$TEST_SPY_FILE"; exit 2'
 write_mock defaults 'printf "%s\n" defaults-command >> "$TEST_SPY_FILE"; exit 2'
@@ -187,12 +203,14 @@ else
 fi
 if [[ "$ENTRYPOINT_SPY" == *git-config-preview* &&
       "$ENTRYPOINT_SPY" == *vscode-settings-preview* &&
+      "$ENTRYPOINT_SPY" == *zsh-preview* &&
+      "$ENTRYPOINT_SPY" == *ssh-preview* &&
       "$ENTRYPOINT_SPY" == *workspace-folders-preview* &&
       "$ENTRYPOINT_SPY" == *workspace-repositories-preview* &&
       "$ENTRYPOINT_SPY" == *macos-preview* ]]; then
     pass "Preview dispatch includes all implemented domains"
 else
-    fail "Preview dispatch omitted a completed domain"
+    fail "Preview dispatch omitted a completed domain: $ENTRYPOINT_SPY"
 fi
 
 run_entrypoint --check --discover

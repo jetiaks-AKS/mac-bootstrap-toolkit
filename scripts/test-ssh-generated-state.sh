@@ -174,6 +174,7 @@ cp "$TEST_ROOT/real-snapshot" "$SSH_SNAPSHOT_FILE"
 rm -f "$BLUEPRINT_FILE"
 expect 'no Blueprint enables SSH category' 0 blueprint_category_enabled ssh-configuration
 cp "$PROJECT_ROOT/config/blueprint.example.conf" "$BLUEPRINT_FILE"
+sed -i '' '/^ssh-configuration=/d' "$BLUEPRINT_FILE"
 expect 'old Blueprint disables SSH category' 1 blueprint_category_enabled ssh-configuration
 sed -i '' '/^git-configuration=/a\
 ssh-configuration="true"\

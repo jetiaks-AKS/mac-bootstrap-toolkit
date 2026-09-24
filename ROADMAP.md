@@ -85,7 +85,7 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 
 ## Этап 9 — macOS Coverage Expansion
 
-**Статус: Completed (Unreleased)**
+**Статус: Completed (Release 3.2.0)**
 
 Расширено и укреплено воспроизводимое покрытие настроек Finder, Dock, Window
 Management, Keyboard, Trackpad и Screenshots. Поддерживаемые настройки проходят
@@ -99,7 +99,7 @@ Management, Keyboard, Trackpad и Screenshots. Поддерживаемые на
 
 ## Этап 10 — Shell & Developer Environment
 
-**Статус: Completed (Unreleased)**
+**Статус: Completed (Release 3.2.0)**
 
 Этап расширил воспроизводимое рабочее окружение разработчика без превращения
 Toolkit в универсальный менеджер dotfiles, credentials или состояния
@@ -243,6 +243,8 @@ macOS Coverage Expansion
 Shell & Developer Environment
   ↓
 Application Configuration Modules
+  ↓
+Release 3.2.0
   ↓
 Secure Migration Engine
   ↓

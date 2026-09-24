@@ -49,13 +49,15 @@ Blueprint normalizes legacy `user` and `system` selections away; cancelling
 preserves the original file. Without Blueprint, Bootstrap retains its broad
 legacy behavior.
 
-The `[categories]` section independently controls Git Configuration, VS Code
-Settings, and the Finder, Dock, Window Management, Keyboard, Trackpad, and Screenshots macOS
-modules. VS Code extensions remain controlled separately by their item section.
+The `[categories]` section independently controls Git Configuration, SSH
+Configuration, VS Code Settings, Shell / Zsh, and the Finder, Dock, Window
+Management, Keyboard, Trackpad, and Screenshots macOS modules. VS Code
+extensions remain controlled separately by their item section.
 
-Blueprints created before `macos-windows` remain valid and keep that category
-disabled until explicitly migrated. Saving through the selector writes the new
-category explicitly. Without Blueprint, supported categories remain all-inclusive.
+Blueprints created before `macos-windows`, `shell-zsh`, or `ssh-configuration`
+remain valid and keep those categories disabled until explicitly migrated.
+Saving through the selector writes the new categories explicitly. Without
+Blueprint, supported categories remain all-inclusive.
 
 Create or edit the local Blueprint with:
 

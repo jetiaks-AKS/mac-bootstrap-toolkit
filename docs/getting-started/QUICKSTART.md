@@ -1,7 +1,7 @@
 # Quick Start
 
-This guide covers the Mac Bootstrap Toolkit workflow. The standalone 3.1.0
-modes remain available, and the unreleased Guided Workflow orchestrates them:
+This guide covers the current Mac Bootstrap Toolkit 3.2.0 workflow. Guided
+Workflow orchestrates the same modes that remain available individually:
 
 ```text
 Discovery
@@ -113,7 +113,9 @@ Discovery observes supported areas including:
 - Homebrew packages and casks
 - Mac App Store applications
 - Git configuration
+- SSH client configuration
 - VS Code extensions and settings
+- standalone Zsh `.zshrc`
 - Workspace folders and Git repositories
 - VS Code Workspace metadata
 - supported macOS settings
@@ -196,9 +198,9 @@ Inspect the selected target state before Bootstrap:
 
 Preview uses the same Blueprint selection, generated-input validation, and
 production inspection logic as Bootstrap. It reports planned actions for
-Applications, Git configuration, VS Code settings, Workspace, and macOS without
-mutating target state. Toolkit logging and temporary validation files may still
-be written.
+Applications, Git configuration, SSH client configuration, VS Code settings,
+Zsh, Workspace, and macOS without mutating target state. Toolkit logging and
+temporary validation files may still be written.
 
 Planned changes do not count as warnings. The Preview Summary reports Modules
 Inspected, Warnings, Errors, and Duration, and the process uses the common
@@ -228,10 +230,13 @@ Depending on the selected scope, this can include:
 - Homebrew packages and casks
 - Mac App Store applications
 - global Git configuration
+- restricted SSH client configuration
 - VS Code extensions and settings
+- limited standalone Zsh `.zshrc` restoration
 - Workspace folders
 - Git repositories and configured branches
-- supported Finder, Dock, keyboard, trackpad, and screenshot settings
+- supported Finder, Dock, Window Management, keyboard, trackpad, and screenshot
+  settings
 
 Bootstrap is designed to be idempotent: state that already matches the desired
 configuration should not be changed unnecessarily.

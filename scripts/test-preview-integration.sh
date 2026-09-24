@@ -19,7 +19,12 @@ cat > "$TEST_ROOT/spies.sh" <<'SPIES'
 mutation() { printf '%s\n' "$*" >> "$TEST_MUTATIONS"; return 99; }
 observe() { printf '%s\n' "$*" >> "$TEST_OBSERVATIONS"; }
 sudo() { mutation "sudo $*"; }
-curl() { mutation "curl $*"; }
+curl() {
+    case "$*" in
+        *-fsSI*) observe "curl $*"; [[ "$TEST_CASE" != preflight-error ]] ;;
+        *) mutation "curl $*" ;;
+    esac
+}
 killall() { mutation "killall $*"; }
 mkdir() {
     [[ "$*" == '-p logs/history' ]] || { mutation "mkdir $*"; return 99; }

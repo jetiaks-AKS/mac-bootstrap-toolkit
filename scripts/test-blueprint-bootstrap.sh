@@ -191,6 +191,7 @@ write_blueprint() {
     {
         echo '[categories]'
         echo 'git-configuration="true"'
+        echo 'ssh-configuration="true"'
         echo 'vscode-settings="true"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
@@ -561,6 +562,7 @@ if [[ "$summary_output" == *'Bootstrap completed successfully'* &&
       "$summary_output" == *'VS Code extensions     2 / 2 selected'* &&
       "$summary_output" == *'Folders                2 / 2 selected'* &&
       "$summary_output" == *'Git repositories       2 / 2 selected'* &&
+      "$summary_output" == *'SSH Configuration      Enabled'* &&
       $WARNING_COUNT -eq $before_warnings &&
       $ERROR_COUNT -eq $before_errors &&
       $before_status -eq 0 && $after_status -eq 0 ]]; then
@@ -570,6 +572,7 @@ else
 fi
 
 write_blueprint
+set_blueprint_category ssh-configuration false
 set_blueprint_category vscode-settings false
 set_blueprint_category macos-dock false
 set_blueprint_category macos-trackpad false
@@ -595,6 +598,7 @@ if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
       "$summary_output" == *'Folders                1 / 2 selected'* &&
       "$summary_output" == *'Git repositories       1 / 2 selected'* &&
       "$summary_output" == *'Git Configuration      Enabled'* &&
+      "$summary_output" == *'SSH Configuration      Skipped'* &&
       "$summary_output" == *'VS Code Settings       Skipped'* &&
       "$summary_output" == *'Finder                 Enabled'* &&
       "$summary_output" == *'Dock                   Skipped'* &&

@@ -192,13 +192,13 @@ Duration        : 15s
 Discovery использует отдельный набор полей:
 
 ```text
-Modules Processed : 10
+Modules Processed : 12
 Warnings          : 0
 Errors            : 0
 ```
 
 `Modules Processed` — существующий счётчик вызовов `run_module()`, включая
-четыре общих Core-модуля и шесть Discovery-модулей при полном проходе.
+четыре общих Core-модуля и восемь Discovery-модулей при полном проходе.
 Это не число обнаруженных компонентов или опубликованных файлов. `Warnings`
 и `Errors` сохраняют существующий учёт результатов lifecycle, включая ошибку
 preflight; они не считают каждое отдельное сообщение. При остановке на
@@ -385,8 +385,8 @@ CLI parse → Logger → Blueprint validation → selected input validation
 ```
 
 Он не вызывает `sudo -v`, не устанавливает Homebrew и не запускает Bootstrap
-mutations. Applications, Git configuration, VS Code settings, Workspace и macOS
-Preview используют
+mutations. Applications, Git configuration, SSH configuration, VS Code settings,
+Zsh, Workspace и macOS Preview используют
 существующие validators, Blueprint selection и inspection helpers и могут
 вывести:
 
@@ -398,6 +398,8 @@ Would install App Store app: <name> (<id>)
 Would install VS Code extension: <id>
 Would configure Git setting: <key>
 Would update VS Code settings
+Would restore Zsh configuration
+Would restore SSH configuration: <count> eligible profiles
 Would create workspace folder: <path>
 Would clone repository: <id>
 Would switch repository branch: <id> -> <branch>
@@ -425,8 +427,9 @@ preference → restart; unsafe destination возвращает `2` до actiona
 Guided Workflow предлагает Bootstrap confirmation и для directory-only change.
 
 Порядок domain inspections: Homebrew formulae → casks → App Store → VS Code
-extensions → Git configuration → VS Code settings → Workspace folders →
-repositories → macOS. Disabled selections сохраняют существующую фильтрацию.
+extensions → Git configuration → VS Code settings → Zsh → SSH configuration →
+Workspace folders → repositories → macOS. Disabled selections сохраняют
+существующую фильтрацию.
 
 Ошибки startup validation и preflight останавливают запуск. После ошибки Core
 или domain inspection последующие read-only inspections продолжаются;
@@ -463,6 +466,7 @@ Discovery
 Blueprint
 Bootstrap
 Preview (`--dry-run`)
+Guided Workflow (`--workflow`)
 ```
 
 Global Verification относится к Future / Optional.

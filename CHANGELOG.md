@@ -7,7 +7,13 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
-## [Unreleased]
+## [3.2.0] - 2026-09-24
+
+Minor release completing the supported macOS settings expansion, adding
+restricted Zsh, global Git and SSH client configuration restoration, and
+strengthening Guided Workflow, launcher, Generated Configuration and Workspace
+security contracts. Stage 11 was closed as Audited / Deferred; Secure Migration
+remains planned future work and is not part of this release.
 
 ### Added
 

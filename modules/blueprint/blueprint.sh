@@ -618,6 +618,7 @@ blueprint_show_bootstrap_summary() {
     echo "Settings"
     log "Settings"
     blueprint_summary_category "Git Configuration" git-configuration
+    blueprint_summary_category "SSH Configuration" ssh-configuration
     blueprint_summary_category "VS Code Settings" vscode-settings
     blueprint_summary_category "Shell / Zsh" shell-zsh
     blueprint_summary_category "Finder" macos-finder

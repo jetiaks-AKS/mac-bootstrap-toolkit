@@ -5,7 +5,7 @@ English | [Русский](README.ru.md)
 A modular Bash toolkit for reproducibly preparing and restoring a macOS
 working environment.
 
-**Current version: 3.1.0 Stable**
+**Current version: 3.2.0 Stable**
 
 ## Overview
 
@@ -34,6 +34,7 @@ Without a Blueprint, the full supported generated scope is processed.
 - Homebrew formulae and casks;
 - App Store applications;
 - global Git configuration;
+- restricted SSH client configuration;
 - VS Code extensions and settings;
 - limited standalone Zsh `.zshrc` restoration;
 - Workspace folders and Git repositories;
@@ -80,7 +81,7 @@ output, logging, exit statuses, and launcher behavior are described in
 
 ## Project Status
 
-Version 3.1.0 is stable. Preview is implemented; aggregate Global Verification
+Version 3.2.0 is stable. Preview is implemented; aggregate Global Verification
 remains an optional future capability and is not required by the current
 architecture.
 

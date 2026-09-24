@@ -24,7 +24,9 @@ module_changed() { MODULE_CHANGED=true; return 0; }
 discover_homebrew() { return "$DISCOVERY_STATUS"; }
 discover_appstore() { return 0; }
 discover_git() { return 0; }
+discover_ssh_configuration() { return 0; }
 discover_vscode() { return 0; }
+discover_zsh() { return 0; }
 discover_macos() { return 0; }
 discover_workspace() { return 0; }
 
@@ -93,13 +95,13 @@ for DISCOVERY_STATUS in 0 1 2; do
     SKIPPED_COUNT=0
     WARNING_COUNT=0
     ERROR_COUNT=0
-    # Four shared Core calls followed by the real six-module controller.
+    # Four shared Core calls followed by the real eight-module controller.
     run_module Core module_changed >/dev/null
     for core_module in Git SSH Terminal; do
         run_module "$core_module" module_success >/dev/null
     done
     run_discovery >/dev/null
-    [[ $MODULES_CHECKED -eq 10 && $INSTALLED_COUNT -eq 1 && $SKIPPED_COUNT -eq 9 ]] ||
+    [[ $MODULES_CHECKED -eq 12 && $INSTALLED_COUNT -eq 1 && $SKIPPED_COUNT -eq 11 ]] ||
         fail "controller accounting changed"
     [[ $WARNING_COUNT -eq $((DISCOVERY_STATUS == 1 ? 1 : 0)) &&
        $ERROR_COUNT -eq $((DISCOVERY_STATUS == 2 ? 1 : 0)) ]] ||

@@ -50,13 +50,15 @@ Workspace Discovery сохраняет в `folders.conf` наблюдаемые 
 сохраняет исходный файл. Без Blueprint Bootstrap сохраняет широкое
 legacy-поведение.
 
-Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
-и модулями macOS Finder, Dock, Window Management, Keyboard, Trackpad и Screenshots. Расширения
-VS Code по-прежнему управляются отдельно своей item-секцией.
+Секция `[categories]` независимо управляет Git Configuration, SSH Configuration,
+VS Code Settings, Shell / Zsh и модулями macOS Finder, Dock, Window Management,
+Keyboard, Trackpad и Screenshots. Расширения VS Code по-прежнему управляются
+отдельно своей item-секцией.
 
-Blueprint до появления `macos-windows` остаётся валидным и сохраняет новую
-категорию выключенной до явной миграции. Selector при сохранении добавляет её
-явно. Без Blueprint все поддерживаемые категории остаются включёнными.
+Blueprint до появления `macos-windows`, `shell-zsh` или `ssh-configuration`
+остаётся валидным и сохраняет новые категории выключенными до явной миграции.
+Selector при сохранении добавляет их явно. Без Blueprint все поддерживаемые
+категории остаются включёнными.
 
 Создать или изменить локальный Blueprint можно командами:
 
