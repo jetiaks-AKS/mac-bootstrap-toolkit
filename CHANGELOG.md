@@ -7,6 +7,11 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
+## Unreleased
+
+* Added Stage 12 v1 secure SSH identity list, encrypted export and validated
+  no-clobber import as a separate CLI.
+
 ## [3.2.0] - 2026-09-24
 
 Minor release completing the supported macOS settings expansion, adding

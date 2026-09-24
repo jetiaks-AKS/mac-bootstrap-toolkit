@@ -545,3 +545,10 @@ Installer выбирает `$(brew --prefix)/bin`, если Homebrew досту�
 Bootstrap error `2`; sudo автоматически не вызывается. Перемещение репозитория
 нарушает PATH symlink, поэтому старую ссылку нужно удалить и запустить installer
 из нового расположения.
+
+# Secure SSH Identity Migration
+
+Отдельная команда `scripts/ssh-identity-migrate.sh` поддерживает `list`,
+`export --output /absolute/path/package.age` и
+`import --input /absolute/path/package.age`. Контракт и ограничения описаны в
+[Secure SSH Identity Migration](SSH-IDENTITY-MIGRATION.md).

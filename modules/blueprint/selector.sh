@@ -532,4 +532,5 @@ blueprint_selector_edit() {
     BLUEPRINT_SELECTOR_SAVED=true
     log "[BLUEPRINT] RESULT: SAVED"
     success "Blueprint saved to $BLUEPRINT_FILE"
+    info "For SSH identity migration, export separately on the source Mac after preparing Toolkit state: ./scripts/ssh-identity-migrate.sh export --output /absolute/path/package.age"
 }

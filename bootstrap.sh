@@ -633,6 +633,9 @@ show_summary
 
 toolkit_exit_code
 result=$?
+if [[ "$MODE" == --bootstrap && $result -le 1 ]]; then
+    info "For SSH identity migration, after age is available, import separately: ./scripts/ssh-identity-migrate.sh import --input /absolute/path/package.age"
+fi
 if [[ "$MODE" == --dry-run && "${WORKFLOW_ACTIVE:-false}" == true &&
       $result -le 1 && "$PREVIEW_HAS_CHANGES" == false ]]; then
     success "No changes to apply"

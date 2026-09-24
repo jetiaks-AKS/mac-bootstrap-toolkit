@@ -248,6 +248,32 @@ silently resolved through destructive operations.
 VS Code Workspace metadata is discovered, but `.code-workspace` restoration is
 not currently performed by Bootstrap.
 
+### Optional protected SSH identity transfer
+
+On the source Mac, run Discovery and save a Blueprint that selects the Homebrew
+`age` formula. If `age` was installed after the last Discovery, refresh Discovery
+first. Prepare and privately transfer `config/generated/` and the Blueprint as
+above. Then explicitly export the SSH identities you choose:
+
+```bash
+./scripts/ssh-identity-migrate.sh export --output /absolute/path/package.age
+```
+
+Transfer the encrypted package separately. On the target Mac, run Preview and
+Bootstrap with the transferred local state. Bootstrap installs `age` if it is
+selected and missing. Once Bootstrap has made `age` available, explicitly
+import the package:
+
+```bash
+./scripts/ssh-identity-migrate.sh import --input /absolute/path/package.age
+```
+
+SSH private identities never enter Generated Configuration, Blueprint, or
+normal Bootstrap. Import is separate and requires review and confirmation;
+Toolkit does not run it automatically. See
+[Secure SSH Identity Migration](../toolkit/SSH-IDENTITY-MIGRATION.md) for the
+package, passphrase, conflict, and verification behavior.
+
 ---
 
 ## Logs and exit status
