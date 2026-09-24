@@ -8,12 +8,13 @@ Mac Bootstrap Toolkit — Bash-инструмент для воспроизво�
 Текущий контракт ветки `develop`:
 
 ```text
-Discovery → Generated Configuration → Blueprint → Bootstrap
+Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 ```
 
 - **Discovery** фиксирует фактически обнаруженное состояние Mac.
 - **Generated Configuration** сохраняет это состояние локально.
 - **Blueprint** выбирает целевой scope из обнаруженного состояния.
+- **Preview** проверяет и показывает выбранные изменения без их применения.
 - **Bootstrap** использует сформированную конфигурацию для восстановления
   поддерживаемых частей рабочего окружения.
 
@@ -111,6 +112,8 @@ Discovery анализирует систему и сохраняет резул
 - Homebrew formulae и casks;
 - приложения App Store;
 - глобальная Git-конфигурация;
+- конфигурация SSH client;
+- конфигурация Zsh;
 - расширения и настройки VS Code;
 - Finder, Dock, Keyboard, Trackpad и Screenshots;
 - Workspace: папки, Git-репозитории, метаданные, `.code-workspace`,
