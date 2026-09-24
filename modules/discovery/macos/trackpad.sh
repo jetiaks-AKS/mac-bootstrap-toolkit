@@ -11,7 +11,6 @@ serialize_trackpad_settings() {
     : > "$output_file" || return 2
 
     macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad Clicking bool || return 2
-    macos_collect_preference "$output_file" NSGlobalDomain com.apple.trackpad.scaling int || return 2
     macos_collect_preference "$output_file" com.apple.AppleMultitouchTrackpad TrackpadRightClick bool || return 2
 
     return 0
@@ -24,7 +23,7 @@ export_trackpad_settings() {
 
     action "Exporting Trackpad configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_trackpad_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate trackpad serialize_trackpad_settings; then
         error "Failed to export Trackpad configuration"
         return 2
     fi

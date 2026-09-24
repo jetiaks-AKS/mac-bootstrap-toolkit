@@ -50,9 +50,15 @@ Workspace Discovery сохраняет в `folders.conf` наблюдаемые 
 сохраняет исходный файл. Без Blueprint Bootstrap сохраняет широкое
 legacy-поведение.
 
-Секция `[categories]` независимо управляет Git Configuration, VS Code Settings
-и модулями macOS Finder, Dock, Keyboard, Trackpad и Screenshots. Расширения
-VS Code по-прежнему управляются отдельно своей item-секцией.
+Секция `[categories]` независимо управляет Git Configuration, SSH Configuration,
+VS Code Settings, Shell / Zsh и модулями macOS Finder, Dock, Window Management,
+Keyboard, Trackpad и Screenshots. Расширения VS Code по-прежнему управляются
+отдельно своей item-секцией.
+
+Blueprint до появления `macos-windows`, `shell-zsh` или `ssh-configuration`
+остаётся валидным и сохраняет новые категории выключенными до явной миграции.
+Selector при сохранении добавляет их явно. Без Blueprint все поддерживаемые
+категории остаются включёнными.
 
 Создать или изменить локальный Blueprint можно командами:
 
@@ -63,16 +69,18 @@ VS Code по-прежнему управляются отдельно своей
 ```
 
 Для каждой области обнаруженных компонентов selector предлагает All, None или
-Edit. Режим Edit показывает текущее состояние checkbox на страницах по 10
+Edit. Режим Edit показывает текущее состояние checkbox на страницах по 20
 компонентов. Введённые номера переключают checkbox; их можно разделять запятыми
 или пробелами, а также вводить диапазоны `5-9` и смешанные выражения
 `1,3,7-10`. Повторный запуск `--blueprint` загружает текущий выбор для
 редактирования.
 
-Selector записывает файл только после подтверждения. Отмена не изменяет
-существующий Blueprint и не создаёт новый.
+Selector записывает файл только после подтверждения. `q` или `Q` в любом
+prompt, включая Edit, немедленно отменяет редактирование. Отмена не изменяет
+существующий Blueprint и не создаёт новый; в `--workflow` она также останавливает
+Workflow до Preview.
 
-Blueprint остаётся локальным, приватным и исключённым из Git. Dry-run пока не
+Blueprint остаётся локальным, приватным и исключённым из Git. Dry-run / Preview
 реализован.
 
 При активном Blueprint итоговый Bootstrap Summary показывает selected/total

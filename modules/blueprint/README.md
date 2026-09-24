@@ -49,9 +49,15 @@ Blueprint normalizes legacy `user` and `system` selections away; cancelling
 preserves the original file. Without Blueprint, Bootstrap retains its broad
 legacy behavior.
 
-The `[categories]` section independently controls Git Configuration, VS Code
-Settings, and the Finder, Dock, Keyboard, Trackpad, and Screenshots macOS
-modules. VS Code extensions remain controlled separately by their item section.
+The `[categories]` section independently controls Git Configuration, SSH
+Configuration, VS Code Settings, Shell / Zsh, and the Finder, Dock, Window
+Management, Keyboard, Trackpad, and Screenshots macOS modules. VS Code
+extensions remain controlled separately by their item section.
+
+Blueprints created before `macos-windows`, `shell-zsh`, or `ssh-configuration`
+remain valid and keep those categories disabled until explicitly migrated.
+Saving through the selector writes the new categories explicitly. Without
+Blueprint, supported categories remain all-inclusive.
 
 Create or edit the local Blueprint with:
 
@@ -67,11 +73,13 @@ those checkboxes; they may be separated by commas or spaces and may include
 ranges such as `5-9` or mixed input such as `1,3,7-10`. Running `--blueprint`
 again loads the current choices for editing.
 
-The selector writes only after confirmation. Cancelling leaves an existing
-Blueprint unchanged and does not create a new one.
+The selector writes only after confirmation. Enter `q` or `Q` at any prompt,
+including Edit, to cancel immediately. Cancelling leaves an existing Blueprint
+unchanged and does not create a new one; in `--workflow` it also stops the
+workflow before Preview.
 
-The Blueprint remains local, private, and ignored by Git. Dry-run is not
-implemented yet.
+The Blueprint remains local, private, and ignored by Git. Dry-run / Preview is
+implemented.
 
 With Blueprint enabled, the final Bootstrap Summary reports selected/total
 item counts and Enabled/Skipped setting categories. Detailed item output

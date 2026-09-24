@@ -60,6 +60,7 @@ write_fixture_file modules/blueprint/blueprint.sh \
 
 write_fixture_file modules/core/git/git.sh \
     'load_git_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
+    'git_configuration_scope_selected() { return 0; }' \
     'check_git() { return 0; }' \
     'preview_git_configuration() { printf "%s\n" git-config-preview >> "$TEST_SPY_FILE"; }' \
     'configure_git() { printf "%s\n" git-config-write >> "$TEST_SPY_FILE"; }'
@@ -67,12 +68,21 @@ write_fixture_file modules/core/git/git.sh \
 write_fixture_file modules/core/ssh/ssh.sh \
     'check_ssh() { return 0; }'
 
+write_fixture_file modules/ssh/config.sh \
+    'ssh_configuration_scope_selected() { return 0; }' \
+    'ssh_snapshot_validate() { : > "$1"; return 0; }' \
+    'preview_ssh_configuration() { printf "%s\n" ssh-preview >> "$TEST_SPY_FILE"; }' \
+    'bootstrap_ssh_configuration() { printf "%s\n" ssh-write >> "$TEST_SPY_FILE"; }'
+
 write_fixture_file modules/core/terminal/terminal.sh \
     'check_terminal() { return 0; }'
 
+write_fixture_file modules/core/launcher/launcher.sh \
+    'configure_bs_launcher() { printf "%s\n" launcher-setup >> "$TEST_SPY_FILE"; }'
+
 write_fixture_file modules/apps/brew-packages.sh \
     'read_brew_packages_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
-    'preview_brew_packages() { printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
+    'preview_brew_packages() { if [[ "${TEST_HAS_PLANS:-true}" == true ]]; then preview_action "Would install fixture formula"; fi; printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
     'install_brew_packages() { printf "%s\n" brew-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/apps/brew-casks.sh \
@@ -95,12 +105,19 @@ write_fixture_file modules/vscode/settings.sh \
     'preview_vscode_settings() { printf "%s\n" vscode-settings-preview >> "$TEST_SPY_FILE"; }' \
     'apply_vscode_settings() { printf "%s\n" vscode-write >> "$TEST_SPY_FILE"; }'
 
+write_fixture_file modules/shell/zsh.sh \
+    'zsh_snapshot_validate() { ZSH_SNAPSHOT_STATUS=eligible; return 0; }' \
+    'preview_zsh() { printf "%s\n" zsh-preview >> "$TEST_SPY_FILE"; }' \
+    'bootstrap_zsh() { printf "%s\n" zsh-write >> "$TEST_SPY_FILE"; }'
+
 write_fixture_file modules/settings/macos/macos.sh \
     'FINDER_CONFIG=finder' \
     'DOCK_CONFIG=dock' \
+    'WINDOWS_CONFIG=windows' \
     'KEYBOARD_CONFIG=keyboard' \
     'TRACKPAD_CONFIG=trackpad' \
     'SCREENSHOTS_CONFIG=screenshots' \
+    'validate_screenshots_config() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'validate_defaults_config() { return "${TEST_INPUT_STATUS:-0}"; }' \
     'check_macos_settings() { return 1; }' \
     'preview_macos_settings() { printf "%s\n" macos-preview >> "$TEST_SPY_FILE"; }' \
@@ -129,7 +146,11 @@ write_mock ping 'exit 0'
 write_mock xcode-select 'exit 0'
 write_mock sw_vers 'printf "%s\n" 14'
 write_mock sudo 'printf "%s\n" sudo >> "$TEST_SPY_FILE"; exit 0'
-write_mock curl 'printf "%s\n" homebrew-installer >> "$TEST_SPY_FILE"; exit 2'
+write_mock curl \
+    'case "$*" in' \
+    '    *-fsSI*) exit 0 ;;' \
+    '    *) printf "%s\n" homebrew-installer >> "$TEST_SPY_FILE"; exit 2 ;;' \
+    'esac'
 write_mock mas 'printf "%s\n" mas-command >> "$TEST_SPY_FILE"; exit 2'
 write_mock code 'printf "%s\n" code-command >> "$TEST_SPY_FILE"; exit 2'
 write_mock defaults 'printf "%s\n" defaults-command >> "$TEST_SPY_FILE"; exit 2'
@@ -148,6 +169,7 @@ run_entrypoint() {
         TEST_BLUEPRINT_PRESENT="${TEST_BLUEPRINT_PRESENT:-false}" \
         TEST_BLUEPRINT_STATUS="${TEST_BLUEPRINT_STATUS:-0}" \
         TEST_INPUT_STATUS="${TEST_INPUT_STATUS:-0}" \
+        TEST_HAS_PLANS="${TEST_HAS_PLANS:-true}" \
         TEST_GIT_ENABLED="${TEST_GIT_ENABLED:-true}" \
         TEST_VSCODE_SETTINGS_ENABLED="${TEST_VSCODE_SETTINGS_ENABLED:-true}" \
             ./bootstrap.sh "$@"
@@ -181,12 +203,14 @@ else
 fi
 if [[ "$ENTRYPOINT_SPY" == *git-config-preview* &&
       "$ENTRYPOINT_SPY" == *vscode-settings-preview* &&
+      "$ENTRYPOINT_SPY" == *zsh-preview* &&
+      "$ENTRYPOINT_SPY" == *ssh-preview* &&
       "$ENTRYPOINT_SPY" == *workspace-folders-preview* &&
       "$ENTRYPOINT_SPY" == *workspace-repositories-preview* &&
       "$ENTRYPOINT_SPY" == *macos-preview* ]]; then
     pass "Preview dispatch includes all implemented domains"
 else
-    fail "Preview dispatch omitted a completed domain"
+    fail "Preview dispatch omitted a completed domain: $ENTRYPOINT_SPY"
 fi
 
 run_entrypoint --check --discover
@@ -284,6 +308,7 @@ TEST_BLUEPRINT_PRESENT=false TEST_BLUEPRINT_STATUS=0 TEST_INPUT_STATUS=0 \
     run_entrypoint --bootstrap
 assert_status 0 "normal Bootstrap still completes through its existing path"
 if [[ "$ENTRYPOINT_SPY" == *sudo* &&
+      "$ENTRYPOINT_SPY" == *launcher-setup* &&
       "$ENTRYPOINT_SPY" == *workspace-mutation* &&
       "$ENTRYPOINT_SPY" == *brew-install* &&
       "$ENTRYPOINT_SPY" == *mas-install* &&
@@ -293,6 +318,97 @@ if [[ "$ENTRYPOINT_SPY" == *sudo* &&
 else
     fail "normal Bootstrap path changed: $ENTRYPOINT_SPY"
 fi
+
+for mode in --check --discover --blueprint --dry-run; do
+    run_entrypoint "$mode" </dev/null
+    [[ "$ENTRYPOINT_SPY" != *launcher-setup* ]] ||
+        fail "$mode invoked launcher installation"
+done
+
+# Workflow integration uses the same entrypoint, logger and wrappers as above.
+write_fixture_file modules/blueprint/selector.sh \
+    'blueprint_selector_generated_ready() { return 0; }' \
+    'blueprint_selector_run() {' \
+    '    echo blueprint-selector >> "$TEST_SPY_FILE"' \
+    '    BLUEPRINT_SELECTOR_SAVED=true' \
+    '}'
+
+run_entrypoint --workflow --check
+assert_status 1 "workflow is an exclusive mode"
+run_entrypoint --workflow <<< $'n\nn'
+assert_status 0 "workflow reuses input and declines Apply"
+[[ "$ENTRYPOINT_SPY" == blueprint-selector$'\n'git-config-preview* ||
+   "$ENTRYPOINT_SPY" == blueprint-selector$'\n'formula-preview* ]] || fail "selector must precede Preview"
+[[ "$ENTRYPOINT_SPY" != *sudo* && "$ENTRYPOINT_SPY" != *mutation* ]] || fail "decline reached mutations"
+
+run_entrypoint --workflow --verbose <<< $'n\ny'
+assert_status 0 "workflow confirms Bootstrap after Preview"
+[[ "$ENTRYPOINT_SPY" == *macos-preview*sudo*launcher-setup*workspace-mutation* ]] || fail "Apply preceded Preview"
+[[ "$ENTRYPOINT_OUTPUT" == *'Modules Inspected :'* && "$ENTRYPOINT_OUTPUT" == *'Output: Verbose'* ]] || fail "workflow lost Preview Summary or verbose"
+
+TEST_INPUT_STATUS=2 run_entrypoint --workflow <<< n
+assert_status 0 "unusable input decline is clean cancellation"
+[[ -z "$ENTRYPOINT_SPY" ]] || fail "unusable input decline ran stages"
+TEST_INPUT_STATUS=2 run_entrypoint --workflow <<< ''
+assert_status 2 "Discovery default yes revalidates generated input"
+[[ "$ENTRYPOINT_SPY" == *discovery* && "$ENTRYPOINT_SPY" != *blueprint-selector* ]] || fail "invalid post-Discovery state reached selector"
+
+run_entrypoint --workflow <<< $'y\nn'
+assert_status 0 "explicit refresh runs Discovery"
+[[ "$ENTRYPOINT_SPY" == *discovery*blueprint-selector*formula-preview* ]] || fail "refresh order differs"
+
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<< $'n\nn'
+assert_status 1 "Preview warnings survive Apply decline"
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<< $'n\ny'
+assert_status 1 "Preview warnings survive successful Bootstrap"
+TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+assert_status 2 "Preview error blocks Bootstrap"
+[[ "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* ]] || fail "failed Preview offered Apply"
+
+for warning_status in 0 1; do
+    {
+        TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS="$warning_status" \
+            run_entrypoint --workflow
+        IFS= read -r unread_confirmation
+    } <<< $'n\ny'
+    assert_status "$warning_status" "zero plans preserves Preview status $warning_status"
+    [[ "$unread_confirmation" == y ]] || fail "zero plans read Bootstrap input"
+    [[ "$ENTRYPOINT_OUTPUT" == *'No changes to apply'* &&
+       "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* &&
+       "$ENTRYPOINT_SPY" != *launcher-setup* &&
+       "$ENTRYPOINT_SPY" != *mutation* ]] || fail "zero plans offered or executed Bootstrap"
+done
+TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+assert_status 2 "zero plans never masks Preview errors"
+[[ "$ENTRYPOINT_OUTPUT" != *'No changes to apply'* && "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* ]] || fail "Preview error treated as no changes"
+run_entrypoint --workflow <<< $'n\n'
+assert_status 0 "planned changes Enter declines Bootstrap"
+[[ "$ENTRYPOINT_SPY" != *sudo* ]] || fail "Enter ran Bootstrap"
+TEST_HAS_PLANS=false run_entrypoint --dry-run
+assert_status 0 "standalone zero-plan Preview retains success"
+[[ "$ENTRYPOINT_OUTPUT" != *'Workflow finished'* && "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* ]] || fail "standalone Preview entered workflow"
+
+write_fixture_file modules/discovery/discovery.sh \
+    'run_discovery() { ((ERROR_COUNT++)); }'
+run_entrypoint --workflow <<< y
+assert_status 2 "Discovery errors stop workflow"
+[[ "$ENTRYPOINT_SPY" != *blueprint-selector* ]] || fail "Discovery error reached selector"
+write_fixture_file modules/discovery/discovery.sh \
+    'run_discovery() { ((WARNING_COUNT++)); }'
+run_entrypoint --workflow <<< $'y\nn'
+assert_status 1 "Discovery warning continues with usable input and is preserved"
+[[ "$ENTRYPOINT_SPY" == *blueprint-selector*formula-preview* ]] || fail "Discovery warning blocked valid inventory"
+
+for selector_status in 0 1 2; do
+    write_fixture_file modules/blueprint/selector.sh \
+        'blueprint_selector_generated_ready() { return 0; }' \
+        "blueprint_selector_run() { BLUEPRINT_SELECTOR_SAVED=false; return $selector_status; }"
+    run_entrypoint --workflow <<< $'n\ny'
+    expected=0
+    [[ $selector_status -ne 2 ]] || expected=2
+    assert_status "$expected" "selector unsaved status $selector_status stops workflow"
+    [[ -z "$ENTRYPOINT_SPY" ]] || fail "unsaved selector reached Preview/Apply"
+done
 
 if [[ $TEST_FAILURES -eq 0 ]]; then
     echo "All dry-run CLI and startup tests passed"

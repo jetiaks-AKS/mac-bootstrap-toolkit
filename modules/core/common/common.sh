@@ -15,6 +15,7 @@ ERROR_COUNT=0
 # ==========================================
 
 MODULE_CHANGED=false
+PREVIEW_HAS_CHANGES=false
 
 # ==========================================
 # Information Message
@@ -50,6 +51,12 @@ action() {
     echo "[....] $1"
     log "[....] $1"
 
+}
+
+# Record an existing Preview decision without changing inspection status.
+preview_action() {
+    PREVIEW_HAS_CHANGES=true
+    action "$1"
 }
 
 # ==========================================

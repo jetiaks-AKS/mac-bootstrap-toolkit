@@ -18,6 +18,8 @@ SELECTED_ITEMS=""
 
 trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 
+source "$PROJECT_ROOT/modules/core/common/common.sh"
+
 action() { echo "[....] $*"; }
 detail() { :; }
 success() { :; }

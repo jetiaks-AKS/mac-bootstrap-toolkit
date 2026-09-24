@@ -14,6 +14,7 @@ TEST_FAILURES=0
 VERBOSE=false
 MOCK_MODE=normal
 MOCK_TARGET=""
+MOCK_VALUE=""
 SUCCESS_MESSAGES=""
 WARNING_MESSAGES=""
 ERROR_MESSAGES=""
@@ -39,13 +40,13 @@ error() {
 
 mock_native_type() {
     case "$1" in
-        AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|autohide|show-recents|magnification|Clicking|TrackpadRightClick)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticQuoteSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|AppleShowAllExtensions|ShowPathbar|ShowStatusBar|_FXSortFoldersFirst|FXRemoveOldTrashItems|AppleShowAllFiles|ShowHardDrivesOnDesktop|ShowExternalHardDrivesOnDesktop|ShowMountedServersOnDesktop|FXEnableExtensionChangeWarning|autohide|show-recents|magnification|minimize-to-application|show-process-indicators|launchanim|mru-spaces|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|HideDesktop|Clicking|TrackpadRightClick)
             echo "Type is boolean"
             ;;
-        tilesize|largesize|KeyRepeat|InitialKeyRepeat|com.apple.trackpad.scaling)
+        tilesize|largesize|KeyRepeat|InitialKeyRepeat|AppleKeyboardUIMode)
             echo "Type is integer"
             ;;
-        FXPreferredViewStyle|FXDefaultSearchScope|location)
+        FXPreferredViewStyle|FXDefaultSearchScope|NewWindowTarget|orientation|mineffect|AppleActionOnDoubleClick|AppleWindowTabbingMode|location)
             echo "Type is string"
             ;;
         *)
@@ -56,19 +57,24 @@ mock_native_type() {
 
 mock_value() {
     case "$1" in
-        AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|autohide|magnification|Clicking)
+        ApplePressAndHoldEnabled|NSAutomaticCapitalizationEnabled|NSAutomaticQuoteSubstitutionEnabled|AppleShowAllExtensions|ShowStatusBar|_FXSortFoldersFirst|AppleShowAllFiles|ShowExternalHardDrivesOnDesktop|FXEnableExtensionChangeWarning|autohide|magnification|minimize-to-application|launchanim|NSCloseAlwaysConfirmsChanges|NSQuitAlwaysKeepsWindows|HideDesktop|Clicking)
             echo 1
             ;;
-        ShowPathbar|FXRemoveOldTrashItems|show-recents|TrackpadRightClick)
+        NSAutomaticSpellingCorrectionEnabled|NSAutomaticPeriodSubstitutionEnabled|NSAutomaticDashSubstitutionEnabled|ShowPathbar|FXRemoveOldTrashItems|ShowHardDrivesOnDesktop|ShowMountedServersOnDesktop|show-recents|show-process-indicators|mru-spaces|TrackpadRightClick)
             echo 0
             ;;
         tilesize) echo 48 ;;
         largesize) echo 64 ;;
         KeyRepeat) echo 2 ;;
         InitialKeyRepeat) echo 15 ;;
-        com.apple.trackpad.scaling) echo 2 ;;
+        AppleKeyboardUIMode) echo 3 ;;
         FXPreferredViewStyle) echo Nlsv ;;
         FXDefaultSearchScope) echo SCcf ;;
+        NewWindowTarget) echo PfHm ;;
+        orientation) echo bottom ;;
+        mineffect) echo genie ;;
+        AppleActionOnDoubleClick) echo Minimize ;;
+        AppleWindowTabbingMode) echo fullscreen ;;
         location) echo "/Users/test/Screen Shots" ;;
         *) return 2 ;;
     esac
@@ -104,6 +110,12 @@ defaults() {
                     return 1
                 fi
                 ;;
+            raw_value)
+                if [[ "$operation" == read ]]; then
+                    printf '%b' "$MOCK_VALUE"
+                    return 0
+                fi
+                ;;
             empty_string)
                 if [[ "$operation" == read ]]; then
                     return 0
@@ -121,9 +133,13 @@ defaults() {
 
 source "$PROJECT_ROOT/modules/discovery/macos/macos.sh"
 
+ORIGINAL_SERIALIZE_KEYBOARD="$(declare -f serialize_keyboard_settings)"
+ORIGINAL_SERIALIZE_DOCK="$(declare -f serialize_dock_settings)"
+ORIGINAL_SERIALIZE_WINDOWS="$(declare -f serialize_windows_settings)"
 ORIGINAL_SERIALIZE_FINDER="$(declare -f serialize_finder_settings)"
 ORIGINAL_EXPORT_FINDER="$(declare -f export_finder_settings)"
 ORIGINAL_EXPORT_DOCK="$(declare -f export_dock_settings)"
+ORIGINAL_EXPORT_WINDOWS="$(declare -f export_windows_settings)"
 ORIGINAL_EXPORT_KEYBOARD="$(declare -f export_keyboard_settings)"
 ORIGINAL_EXPORT_TRACKPAD="$(declare -f export_trackpad_settings)"
 ORIGINAL_EXPORT_SCREENSHOTS="$(declare -f export_screenshots_settings)"
@@ -135,9 +151,13 @@ fail() {
 }
 
 reset_functions() {
+    eval "$ORIGINAL_SERIALIZE_KEYBOARD"
+    eval "$ORIGINAL_SERIALIZE_DOCK"
+    eval "$ORIGINAL_SERIALIZE_WINDOWS"
     eval "$ORIGINAL_SERIALIZE_FINDER"
     eval "$ORIGINAL_EXPORT_FINDER"
     eval "$ORIGINAL_EXPORT_DOCK"
+    eval "$ORIGINAL_EXPORT_WINDOWS"
     eval "$ORIGINAL_EXPORT_KEYBOARD"
     eval "$ORIGINAL_EXPORT_TRACKPAD"
     eval "$ORIGINAL_EXPORT_SCREENSHOTS"
@@ -175,9 +195,9 @@ cd "$TEST_ROOT" || exit 1
 reset_fixture
 export_finder_settings >/dev/null
 finder_status=$?
-expected_finder=$'NSGlobalDomain|AppleShowAllExtensions|bool|1\ncom.apple.finder|ShowPathbar|bool|0\ncom.apple.finder|ShowStatusBar|bool|1\ncom.apple.finder|FXPreferredViewStyle|string|Nlsv\ncom.apple.finder|FXDefaultSearchScope|string|SCcf\ncom.apple.finder|_FXSortFoldersFirst|bool|1\ncom.apple.finder|FXRemoveOldTrashItems|bool|0'
+expected_finder=$'NSGlobalDomain|AppleShowAllExtensions|bool|1\ncom.apple.finder|ShowPathbar|bool|0\ncom.apple.finder|ShowStatusBar|bool|1\ncom.apple.finder|FXPreferredViewStyle|string|Nlsv\ncom.apple.finder|FXDefaultSearchScope|string|SCcf\ncom.apple.finder|_FXSortFoldersFirst|bool|1\ncom.apple.finder|FXRemoveOldTrashItems|bool|0\ncom.apple.finder|AppleShowAllFiles|bool|1\ncom.apple.finder|NewWindowTarget|string|PfHm\ncom.apple.finder|ShowHardDrivesOnDesktop|bool|0\ncom.apple.finder|ShowExternalHardDrivesOnDesktop|bool|1\ncom.apple.finder|ShowMountedServersOnDesktop|bool|0\ncom.apple.finder|FXEnableExtensionChangeWarning|bool|1'
 if [[ $finder_status -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_finder" ]]; then
-    pass "Finder present bool and string preferences preserve the existing format"
+    pass "Finder exact 13-record inventory preserves the existing format"
 else
     fail "Finder populated format changed"
 fi
@@ -185,28 +205,74 @@ fi
 reset_fixture
 export_dock_settings >/dev/null
 dock_status=$?
-expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64'
+expected_dock=$'com.apple.dock|autohide|bool|1\ncom.apple.dock|show-recents|bool|0\ncom.apple.dock|tilesize|int|48\ncom.apple.dock|magnification|bool|1\ncom.apple.dock|largesize|int|64\ncom.apple.dock|orientation|string|bottom\ncom.apple.dock|mineffect|string|genie\ncom.apple.dock|minimize-to-application|bool|1\ncom.apple.dock|show-process-indicators|bool|0\ncom.apple.dock|launchanim|bool|1\ncom.apple.dock|mru-spaces|bool|0'
 if [[ $dock_status -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_dock" ]]; then
-    pass "Dock present bool and int preferences preserve the existing format"
+    pass "Dock exact eleven-record inventory preserves the existing format"
 else
     fail "Dock populated format changed"
 fi
 
 reset_fixture
+export_windows_settings >/dev/null
+windows_status=$?
+expected_windows=$'NSGlobalDomain|AppleActionOnDoubleClick|string|Minimize\nNSGlobalDomain|AppleWindowTabbingMode|string|fullscreen\nNSGlobalDomain|NSCloseAlwaysConfirmsChanges|bool|1\nNSGlobalDomain|NSQuitAlwaysKeepsWindows|bool|1\ncom.apple.WindowManager|HideDesktop|bool|1'
+if [[ $windows_status -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_windows" ]]; then
+    pass "Window Management exact five-record inventory uses the scalar format"
+else
+    fail "Window Management populated format changed"
+fi
+if grep -Eq 'EnableTiling|StageManager|StandardHideWidgets|EnableStandardClickToShowDesktop' config/generated/macos/windows.conf; then
+    fail "unsupported WindowManager setting entered the generated inventory"
+else
+    pass "Window Management inventory excludes unsupported settings"
+fi
+
+reset_fixture
 export_keyboard_settings >/dev/null
-if [[ $? -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == $'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15' ]]; then
-    pass "Keyboard present integer preferences preserve the existing format"
+keyboard_status=$?
+expected_keyboard=$'NSGlobalDomain|KeyRepeat|int|2\nNSGlobalDomain|InitialKeyRepeat|int|15\nNSGlobalDomain|ApplePressAndHoldEnabled|bool|1\nNSGlobalDomain|AppleKeyboardUIMode|int|3\nNSGlobalDomain|NSAutomaticCapitalizationEnabled|bool|1\nNSGlobalDomain|NSAutomaticSpellingCorrectionEnabled|bool|0\nNSGlobalDomain|NSAutomaticPeriodSubstitutionEnabled|bool|0\nNSGlobalDomain|NSAutomaticQuoteSubstitutionEnabled|bool|1\nNSGlobalDomain|NSAutomaticDashSubstitutionEnabled|bool|0'
+if [[ $keyboard_status -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == "$expected_keyboard" ]]; then
+    pass "Keyboard exact nine-record inventory preserves the existing format"
 else
     fail "Keyboard populated format changed"
 fi
 
 reset_fixture
 export_trackpad_settings >/dev/null
-if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == $'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\nNSGlobalDomain|com.apple.trackpad.scaling|int|2\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|0' ]]; then
-    pass "Trackpad present preferences preserve the existing format"
+expected_trackpad=$'com.apple.AppleMultitouchTrackpad|Clicking|bool|1\ncom.apple.AppleMultitouchTrackpad|TrackpadRightClick|bool|0'
+if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == "$expected_trackpad" ]]; then
+    pass "Trackpad exact two-record inventory uses the scalar format"
 else
     fail "Trackpad populated format changed"
 fi
+
+for key in Clicking TrackpadRightClick; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.AppleMultitouchTrackpad|$key"
+    export_trackpad_settings >/dev/null
+    expected_remaining="$(printf '%s\n' "$expected_trackpad" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $? -eq 0 && "$(cat config/generated/macos/trackpad.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key remains unmanaged"
+    else
+        fail "absent $key changed Trackpad inventory incorrectly"
+    fi
+
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_trackpad" > config/generated/macos/trackpad.conf
+        before_checksum="$(cksum config/generated/macos/trackpad.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.AppleMultitouchTrackpad|$key"
+        export_trackpad_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/trackpad.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Trackpad snapshot"
+        else
+            fail "$key $mode Trackpad publication safety"
+        fi
+    done
+done
 
 reset_fixture
 export_screenshots_settings >/dev/null
@@ -216,20 +282,426 @@ else
     fail "Screenshots populated format changed"
 fi
 
+
+# Stage 9B: each new key is independently observed; absence remains unmanaged.
+new_finder_keys=(AppleShowAllFiles NewWindowTarget ShowHardDrivesOnDesktop ShowExternalHardDrivesOnDesktop ShowMountedServersOnDesktop FXEnableExtensionChangeWarning)
+for key in "${new_finder_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.finder|$key"
+    export_finder_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_finder" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other 12 records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+        before_checksum="$(cksum config/generated/macos/finder.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.finder|$key"
+        export_finder_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Finder snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+for target in PfCm PfVo PfHm PfDe PfDo PfAF PfLo unknown ''; do
+    reset_fixture
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.finder|NewWindowTarget'
+    MOCK_VALUE="$target"
+    export_finder_settings >/dev/null
+    result=$?
+    case "$target" in
+        PfLo|unknown|'')
+            expected_remaining="$(printf '%s\n' "$expected_finder" | awk -F '|' '$2 != "NewWindowTarget"')"
+            if [[ $result -eq 1 && "$(cat config/generated/macos/finder.conf)" == "$expected_remaining" &&
+                  "$WARNING_MESSAGES" == *'Skipping unsupported Finder NewWindowTarget'* && -z "$(temporary_files)" ]]; then
+                pass "unsupported target '$target' omitted with warning and valid publication"
+            else
+                fail "unsupported target '$target' handling"
+            fi ;;
+        *)
+            expected_target="$(printf '%s\n' "$expected_finder" | sed "s/NewWindowTarget|string|PfHm/NewWindowTarget|string|$target/")"
+            if [[ $result -eq 0 && "$(cat config/generated/macos/finder.conf)" == "$expected_target" ]]; then
+                pass "supported target $target exported exactly"
+            else
+                fail "supported target $target export"
+            fi ;;
+    esac
+    MOCK_MODE=normal
+    export_finder_settings >/dev/null
+    [[ $? -eq 0 ]] || fail 'Finder warning leaked into next export'
+done
+
+for raw in 'PfHm|extra\n' 'PfHm\t\n' 'PfHm\nextra\n' 'PfHm\000\n'; do
+    reset_fixture
+    printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+    before_checksum="$(cksum config/generated/macos/finder.conf)"
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.finder|NewWindowTarget'
+    MOCK_VALUE="$raw"
+    export_finder_settings >/dev/null
+    if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" &&
+          -z "$WARNING_MESSAGES" && -z "$(temporary_files)" ]]; then
+        pass 'unsafe target scalar fails instead of being downgraded to unsupported'
+    else
+        fail 'unsafe target scalar weakened publication safety'
+    fi
+done
+
+reset_fixture
+printf '%s\n' "$expected_finder" > config/generated/macos/finder.conf
+before_checksum="$(cksum config/generated/macos/finder.conf)"
+serialize_finder_settings() { printf 'com.apple.finder|NewWindowTarget|string|PfLo\n' > "$1"; }
+export_finder_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'unsupported enum candidate cannot bypass shared validation'
+else
+    fail 'unsupported enum candidate published'
+fi
+
+reset_fixture
+reset_counters
+MOCK_MODE=raw_value
+MOCK_TARGET='com.apple.finder|NewWindowTarget'
+MOCK_VALUE=PfLo
+run_module 'macOS Discovery' discover_macos >/dev/null
+if [[ $? -eq 1 && $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
+      "$WARNING_MESSAGES" == *'macOS Discovery completed with warnings'* ]]; then
+    pass 'real unsupported Finder target propagates warning through controller and lifecycle'
+else
+    fail 'unsupported Finder warning lost by orchestration'
+fi
+
+# Stage 9C: each new key is independently observed; absence remains unmanaged.
+new_dock_keys=(orientation mineffect minimize-to-application show-process-indicators launchanim mru-spaces)
+for key in "${new_dock_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="com.apple.dock|$key"
+    export_dock_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_dock" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other ten records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+        before_checksum="$(cksum config/generated/macos/dock.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="com.apple.dock|$key"
+        export_dock_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Dock snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+
+for entry in orientation:left orientation:bottom orientation:right orientation:unknown orientation: mineffect:genie mineffect:scale mineffect:unknown mineffect:; do
+    reset_fixture
+    key="${entry%%:*}"
+    value="${entry#*:}"
+    MOCK_MODE=raw_value
+    MOCK_TARGET="com.apple.dock|$key"
+    MOCK_VALUE="$value"
+    export_dock_settings >/dev/null
+    result=$?
+    case "$value" in
+        unknown|'')
+            expected_remaining="$(printf '%s\n' "$expected_dock" | awk -F '|' -v key="$key" '$2 != key')"
+            if [[ $result -eq 1 && "$(cat config/generated/macos/dock.conf)" == "$expected_remaining" &&
+                  "$WARNING_MESSAGES" == *"Skipping unsupported Dock $key:"* && -z "$(temporary_files)" ]]; then
+                pass "unsupported $key '$value' omitted with warning; other records intact"
+            else
+                fail "unsupported Dock $key handling"
+            fi ;;
+        *)
+            expected_enum="$(printf '%s\n' "$expected_dock" | awk -F '|' -v OFS='|' -v key="$key" -v value="$value" '$2 == key {$4=value} {print}')"
+            if [[ $result -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expected_enum" ]]; then
+                pass "supported Dock $key $value exported exactly"
+            else
+                fail "supported Dock $key export"
+            fi ;;
+    esac
+    MOCK_MODE=normal
+    export_dock_settings >/dev/null
+    [[ $? -eq 0 ]] || fail 'Dock warning leaked into next export'
+done
+
+for key in orientation mineffect; do
+    for raw in 'bad|extra\n' 'bad\t\n' 'bad\nextra\n' 'bad\000\n'; do
+        reset_fixture
+        printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+        before_checksum="$(cksum config/generated/macos/dock.conf)"
+        MOCK_MODE=raw_value
+        MOCK_TARGET="com.apple.dock|$key"
+        MOCK_VALUE="$raw"
+        export_dock_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" &&
+              -z "$WARNING_MESSAGES" && -z "$(temporary_files)" ]]; then
+            pass "unsafe Dock $key scalar fails without warning downgrade"
+        else
+            fail "unsafe Dock $key scalar publication safety"
+        fi
+    done
+    reset_fixture
+    printf '%s\n' "$expected_dock" > config/generated/macos/dock.conf
+    before_checksum="$(cksum config/generated/macos/dock.conf)"
+    serialize_dock_settings() { printf 'com.apple.dock|%s|string|unsupported\n' "$key" > "$1"; }
+    export_dock_settings >/dev/null
+    if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" && -z "$(temporary_files)" ]]; then
+        pass "invalid Dock $key candidate cannot bypass shared validation"
+    else
+        fail "invalid Dock $key candidate published"
+    fi
+    reset_fixture
+    reset_counters
+    MOCK_MODE=raw_value
+    MOCK_TARGET="com.apple.dock|$key"
+    MOCK_VALUE=unsupported
+    run_module 'macOS Discovery' discover_macos >/dev/null
+    if [[ $? -eq 1 && $WARNING_COUNT -eq 1 && $ERROR_COUNT -eq 0 &&
+          "$WARNING_MESSAGES" == *'macOS Discovery completed with warnings'* ]]; then
+        pass "Dock $key warning propagates through controller and lifecycle"
+    else
+        fail "Dock $key warning lost"
+    fi
+done
+
+# Stage 9E.1/9E.6: Window Management scalars and category publication.
+windows_preferences=(
+    'NSGlobalDomain|AppleActionOnDoubleClick'
+    'NSGlobalDomain|AppleWindowTabbingMode'
+    'NSGlobalDomain|NSCloseAlwaysConfirmsChanges'
+    'NSGlobalDomain|NSQuitAlwaysKeepsWindows'
+    'com.apple.WindowManager|HideDesktop'
+)
+for preference in "${windows_preferences[@]}"; do
+    domain="${preference%%|*}"
+    key="${preference#*|}"
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="$domain|$key"
+    export_windows_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_windows" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other Window Management records intact"
+    else
+        fail "absent $key changed the Window Management inventory"
+    fi
+
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+        before_checksum="$(cksum config/generated/macos/windows.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="$domain|$key"
+        export_windows_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Window Management snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+reset_fixture
+MOCK_MODE=raw_value
+MOCK_TARGET='com.apple.WindowManager|HideDesktop'
+MOCK_VALUE=0
+export_windows_settings >/dev/null
+expected_hidden_false="$(printf '%s\n' "$expected_windows" | awk -F '|' -v OFS='|' '$2 == "HideDesktop" {$4=0} {print}')"
+if [[ $? -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_hidden_false" ]]; then
+    pass "explicit false HideDesktop value is discovered"
+else
+    fail "explicit false HideDesktop value was not preserved"
+fi
+
+reset_fixture
+printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+before_checksum="$(cksum config/generated/macos/windows.conf)"
+MOCK_MODE=type_mismatch
+MOCK_TARGET='com.apple.WindowManager|HideDesktop'
+export_windows_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" &&
+      "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+    pass "HideDesktop wrong native type preserves previous Window Management snapshot"
+else
+    fail "HideDesktop wrong native type publication safety"
+fi
+
+for entry in AppleActionOnDoubleClick:Minimize AppleActionOnDoubleClick:Maximize AppleActionOnDoubleClick:Fill AppleActionOnDoubleClick:None AppleActionOnDoubleClick:invalid AppleActionOnDoubleClick: AppleWindowTabbingMode:manual AppleWindowTabbingMode:always AppleWindowTabbingMode:fullscreen AppleWindowTabbingMode:invalid AppleWindowTabbingMode:; do
+    reset_fixture
+    key="${entry%%:*}"
+    value="${entry#*:}"
+    MOCK_MODE=raw_value
+    MOCK_TARGET="NSGlobalDomain|$key"
+    MOCK_VALUE="$value"
+    export_windows_settings >/dev/null
+    result=$?
+    case "$key:$value" in
+        AppleActionOnDoubleClick:Minimize|AppleActionOnDoubleClick:Maximize|AppleActionOnDoubleClick:Fill|AppleActionOnDoubleClick:None|AppleWindowTabbingMode:manual|AppleWindowTabbingMode:always|AppleWindowTabbingMode:fullscreen)
+            expected_enum="$(printf '%s\n' "$expected_windows" | awk -F '|' -v OFS='|' -v key="$key" -v value="$value" '$2 == key {$4=value} {print}')"
+            [[ $result -eq 0 && "$(cat config/generated/macos/windows.conf)" == "$expected_enum" ]] &&
+                pass "supported Window Management $key $value exported" || fail "supported Window Management enum export" ;;
+        *)
+            expected_remaining="$(printf '%s\n' "$expected_windows" | awk -F '|' -v key="$key" '$2 != key')"
+            [[ $result -eq 1 && "$(cat config/generated/macos/windows.conf)" == "$expected_remaining" &&
+               "$WARNING_MESSAGES" == *"Skipping unsupported Window Management $key:"* ]] &&
+                pass "unsupported Window Management $key omitted with warning" || fail "unsupported Window Management enum handling" ;;
+    esac
+done
+
+reset_fixture
+printf '%s\n' "$expected_windows" > config/generated/macos/windows.conf
+before_checksum="$(cksum config/generated/macos/windows.conf)"
+serialize_windows_settings() { printf 'NSGlobalDomain|AppleActionOnDoubleClick|string|invalid\n' > "$1"; }
+export_windows_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/windows.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'invalid Window Management candidate preserves previous snapshot'
+else
+    fail 'invalid Window Management candidate published'
+fi
+
+# Stage 9D: each new key is independently observed; absence remains unmanaged.
+new_keyboard_keys=(ApplePressAndHoldEnabled NSAutomaticCapitalizationEnabled NSAutomaticSpellingCorrectionEnabled NSAutomaticPeriodSubstitutionEnabled NSAutomaticQuoteSubstitutionEnabled NSAutomaticDashSubstitutionEnabled AppleKeyboardUIMode)
+for key in "${new_keyboard_keys[@]}"; do
+    reset_fixture
+    MOCK_MODE=absent
+    MOCK_TARGET="NSGlobalDomain|$key"
+    export_keyboard_settings >/dev/null
+    result=$?
+    expected_remaining="$(printf '%s\n' "$expected_keyboard" | awk -F '|' -v key="$key" '$2 != key')"
+    if [[ $result -eq 0 && "$(cat config/generated/macos/keyboard.conf)" == "$expected_remaining" ]]; then
+        pass "absent $key omitted with the other eight records intact"
+    else
+        fail "absent $key changed the remaining inventory"
+    fi
+    for mode in type_failure value_failure; do
+        reset_fixture
+        printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+        before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+        MOCK_MODE="$mode"
+        MOCK_TARGET="NSGlobalDomain|$key"
+        export_keyboard_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" &&
+              "$SUCCESS_MESSAGES" != *exported* && -z "$(temporary_files)" ]]; then
+            pass "$key $mode preserves previous Keyboard snapshot"
+        else
+            fail "$key $mode publication safety"
+        fi
+    done
+done
+
+
+for key in "${new_keyboard_keys[@]}"; do
+    for raw in 'invalid\n' '1.5\n' '1|extra\n' '1\t\n' '1\nextra\n' '1\000\n'; do
+        reset_fixture
+        printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+        before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+        MOCK_MODE=raw_value
+        MOCK_TARGET="NSGlobalDomain|$key"
+        MOCK_VALUE="$raw"
+        export_keyboard_settings >/dev/null
+        if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" &&
+              -z "$(temporary_files)" && "$SUCCESS_MESSAGES" != *exported* ]]; then
+            pass "invalid Keyboard $key scalar preserves previous snapshot"
+        else
+            fail "invalid Keyboard $key scalar publication safety"
+        fi
+    done
+done
+for value in 0 -7 08 12345; do
+    reset_fixture
+    MOCK_MODE=raw_value
+    MOCK_TARGET='NSGlobalDomain|AppleKeyboardUIMode'
+    MOCK_VALUE="$value"
+    export_keyboard_settings >/dev/null
+    if [[ $? -eq 0 ]] && grep -Fxq "NSGlobalDomain|AppleKeyboardUIMode|int|$value" config/generated/macos/keyboard.conf; then
+        pass "Keyboard UI integer $value serialized without invented range/normalization"
+    else
+        fail "Keyboard UI integer $value export"
+    fi
+done
+reset_fixture
+printf '%s\n' "$expected_keyboard" > config/generated/macos/keyboard.conf
+before_checksum="$(cksum config/generated/macos/keyboard.conf)"
+serialize_keyboard_settings() { printf 'NSGlobalDomain|AppleKeyboardUIMode|int|invalid\n' > "$1"; }
+export_keyboard_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/keyboard.conf)" && -z "$(temporary_files)" ]]; then
+    pass 'invalid Keyboard candidate cannot bypass shared validation'
+else
+    fail 'invalid Keyboard candidate published'
+fi
+reset_fixture
+reset_counters
+MOCK_MODE=value_failure
+MOCK_TARGET='NSGlobalDomain|AppleKeyboardUIMode'
+run_module 'macOS Discovery' discover_macos >/dev/null
+if [[ $? -eq 2 && $ERROR_COUNT -eq 1 ]]; then
+    pass 'new Keyboard observation error propagates through controller and lifecycle'
+else
+    fail 'new Keyboard observation error masked'
+fi
+
 # ==========================================
 # Present empty string and legitimate absence
 # ==========================================
 
 reset_fixture
 MOCK_MODE=empty_string
-MOCK_TARGET='com.apple.screencapture|location'
-export_screenshots_settings >/dev/null
-empty_string_status=$?
-if [[ $empty_string_status -eq 0 &&
-      "$(cat config/generated/macos/screenshots.conf)" == 'com.apple.screencapture|location|string|' ]]; then
-    pass "configured empty string remains a present serialized preference"
+MOCK_TARGET='com.apple.finder|FXPreferredViewStyle'
+export_finder_settings >/dev/null
+if [[ $? -eq 0 ]] && grep -q 'FXPreferredViewStyle|string|$' config/generated/macos/finder.conf; then
+    pass "generic empty string remains distinct from absence"
 else
-    fail "configured empty string was conflated with absence"
+    fail "generic empty string was lost"
+fi
+
+for raw_value in '' '/tmp/a|b\n' '/tmp/a\tb\n' '/tmp/a\nb\n' '/tmp/a\n\n' '/tmp/a\000b\n' '/tmp/a\rb\n'; do
+    reset_fixture
+    printf 'com.apple.screencapture|location|string|/tmp/previous\n' > config/generated/macos/screenshots.conf
+    before_checksum="$(cksum config/generated/macos/screenshots.conf)"
+    MOCK_MODE=raw_value
+    MOCK_TARGET='com.apple.screencapture|location'
+    MOCK_VALUE="$raw_value"
+    export_screenshots_settings >/dev/null
+    result=$?
+    if [[ $result -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/screenshots.conf)" &&
+          -z "$(temporary_files)" && "$SUCCESS_MESSAGES" != *exported* ]]; then
+        pass "unsafe raw scalar is rejected before publication: $raw_value"
+    else
+        fail "unsafe raw scalar reached generated state: $raw_value"
+    fi
+done
+
+reset_fixture
+printf 'previous bytes\n' > config/generated/macos/finder.conf
+before_checksum="$(cksum config/generated/macos/finder.conf)"
+serialize_finder_settings() { printf 'com.apple.dock|autohide|bool|1\n' > "$1"; }
+export_finder_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/finder.conf)" && -z "$(temporary_files)" ]]; then
+    pass "candidate semantic validation preserves previous file"
+else
+    fail "invalid candidate was published"
 fi
 
 reset_fixture
@@ -252,11 +724,12 @@ fi
 category_functions=(
     export_finder_settings
     export_dock_settings
+    export_windows_settings
     export_keyboard_settings
     export_trackpad_settings
     export_screenshots_settings
 )
-category_files=(finder.conf dock.conf keyboard.conf trackpad.conf screenshots.conf)
+category_files=(finder.conf dock.conf windows.conf keyboard.conf trackpad.conf screenshots.conf)
 
 for ((category_index = 0; category_index < ${#category_functions[@]}; category_index++)); do
     reset_fixture
@@ -279,6 +752,7 @@ done
 category_targets=(
     'NSGlobalDomain|AppleShowAllExtensions'
     'com.apple.dock|autohide'
+    'NSGlobalDomain|AppleActionOnDoubleClick'
     'NSGlobalDomain|KeyRepeat'
     'com.apple.AppleMultitouchTrackpad|Clicking'
     'com.apple.screencapture|location'

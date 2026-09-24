@@ -72,11 +72,22 @@ blueprint_selector_load_items() {
                 BLUEPRINT_SELECTOR_LABELS+=("$first")
             done < <(config_sections "$file")
             ;;
+        git-configuration)
+            load_git_configuration || return 2
+            local index
+            for index in 0 1 2 3 4 5 6; do
+                [[ "${GIT_CONFIGURATION_SET[$index]}" == true ]] || continue
+                BLUEPRINT_SELECTOR_ITEMS+=("${GIT_CONFIGURATION_KEYS[$index]}")
+                BLUEPRINT_SELECTOR_LABELS+=("${GIT_CONFIGURATION_KEYS[$index]}")
+            done
+            ;;
     esac
 
     local index
     for ((index = 0; index < ${#BLUEPRINT_SELECTOR_ITEMS[@]}; index++)); do
-        if blueprint_exists; then
+        if blueprint_exists &&
+           { [[ "$section" != git-configuration ]] ||
+             blueprint_item_section_exists git-configuration; }; then
             if blueprint_item_selected "$section" "${BLUEPRINT_SELECTOR_ITEMS[$index]}"; then
                 BLUEPRINT_SELECTOR_SELECTED+=(true)
             else
@@ -167,10 +178,11 @@ blueprint_selector_select_items() {
         echo "Toggle items: 1,3,5   1 3 5   5-9   1,3,7-10"
         echo "[N] Next  [P] Previous  [A] All  [0] None  [D] Done"
         echo "Enter = Done"
-        printf '> '
+        printf '> (Q cancels): '
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "")
                 return 0
                 ;;
@@ -223,10 +235,11 @@ blueprint_selector_choose_items() {
         echo "[N] None"
         echo "[E] Edit"
         echo
-        printf 'Choice [A/N/E] (Enter keeps current): '
+        printf 'Choice [A/N/E] (Enter keeps current, Q cancels): '
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "")
                 return 0
                 ;;
@@ -280,10 +293,11 @@ blueprint_selector_prompt_category() {
         [[ "$current" == true ]] && prompt='[Y/n]' || prompt='[y/N]'
         echo
         echo "$title"
-        printf 'Restore? %s: ' "$prompt"
+        printf 'Restore? %s (Q cancels): ' "$prompt"
         IFS= read -r input || return 1
 
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             "") ;;
             [yY]|[yY][eE][sS]) current=true ;;
             [nN]|[nN][oO]) current=false ;;
@@ -310,14 +324,17 @@ blueprint_selector_write() {
     {
         echo '[categories]'
         echo "git-configuration=\"$BLUEPRINT_GIT_CONFIGURATION\""
+        echo "ssh-configuration=\"$BLUEPRINT_SSH_CONFIGURATION\""
         echo "vscode-settings=\"$BLUEPRINT_VSCODE_SETTINGS\""
+        echo "shell-zsh=\"$BLUEPRINT_SHELL_ZSH\""
         echo "macos-finder=\"$BLUEPRINT_MACOS_FINDER\""
         echo "macos-dock=\"$BLUEPRINT_MACOS_DOCK\""
+        echo "macos-windows=\"$BLUEPRINT_MACOS_WINDOWS\""
         echo "macos-keyboard=\"$BLUEPRINT_MACOS_KEYBOARD\""
         echo "macos-trackpad=\"$BLUEPRINT_MACOS_TRACKPAD\""
         echo "macos-screenshots=\"$BLUEPRINT_MACOS_SCREENSHOTS\""
         echo
-        for section in homebrew-packages homebrew-casks app-store vscode-extensions workspace-folders git-repositories; do
+        for section in homebrew-packages homebrew-casks app-store vscode-extensions workspace-folders git-repositories git-configuration; do
             echo "[$section]"
             case "$section" in
                 homebrew-packages) printf '%s\n' "$BLUEPRINT_HOME_BREW_PACKAGES" ;;
@@ -326,6 +343,7 @@ blueprint_selector_write() {
                 vscode-extensions) printf '%s\n' "$BLUEPRINT_VSCODE_EXTENSIONS" ;;
                 workspace-folders) printf '%s\n' "$BLUEPRINT_WORKSPACE_FOLDERS" ;;
                 git-repositories) printf '%s\n' "$BLUEPRINT_GIT_REPOSITORIES" ;;
+                git-configuration) printf '%s\n' "$BLUEPRINT_GIT_CONFIGURATION_ITEMS" ;;
             esac
             echo
         done
@@ -333,6 +351,24 @@ blueprint_selector_write() {
 }
 
 blueprint_selector_run() {
+    local result
+    blueprint_selector_edit
+    result=$?
+    if [[ $result -eq 3 ]]; then
+        if [[ -n "$BLUEPRINT_SELECTOR_TEMP_FILE" ]]; then
+            blueprint_selector_cleanup
+            BLUEPRINT_SELECTOR_TEMP_FILE=""
+            trap - INT TERM
+        fi
+        log "[BLUEPRINT] RESULT: CANCELLED"
+        success "Blueprint changes cancelled; no file changes were saved"
+        return 0
+    fi
+    return "$result"
+}
+
+blueprint_selector_edit() {
+    BLUEPRINT_SELECTOR_SAVED=false
     log "[BLUEPRINT] START"
 
     blueprint_selector_generated_ready || return 2
@@ -381,9 +417,48 @@ blueprint_selector_run() {
     echo
     echo "Settings"
     blueprint_selector_prompt_category git-configuration "Git Configuration" BLUEPRINT_GIT_CONFIGURATION || return $?
+    BLUEPRINT_GIT_CONFIGURATION_ITEMS=""
+    if [[ "$BLUEPRINT_GIT_CONFIGURATION" == true ]]; then
+        blueprint_selector_choose_items git-configuration "Git settings" || return $?
+        blueprint_selector_store_items BLUEPRINT_GIT_CONFIGURATION_ITEMS
+    fi
+    local ssh_payload ssh_result
+    ssh_payload="$(mktemp)" || return 2
+    ssh_snapshot_validate "$ssh_payload"
+    ssh_result=$?
+    rm -f "$ssh_payload"
+    if [[ $ssh_result -eq 2 ]]; then
+        error "Generated SSH snapshot is invalid"
+        return 2
+    fi
+    if [[ $ssh_result -eq 0 && ( "$SSH_SNAPSHOT_STATUS" == ready || "$SSH_SNAPSHOT_STATUS" == partial ) ]]; then
+        info "SSH configuration: $SSH_SNAPSHOT_COUNT eligible profiles"
+        blueprint_selector_prompt_category ssh-configuration "SSH Configuration" BLUEPRINT_SSH_CONFIGURATION || return $?
+    else
+        BLUEPRINT_SSH_CONFIGURATION=false
+        info "SSH configuration: unavailable"
+    fi
     blueprint_selector_prompt_category vscode-settings "VS Code Settings" BLUEPRINT_VSCODE_SETTINGS || return $?
+    local zsh_status
+    zsh_snapshot_validate
+    zsh_status=$?
+    if [[ $zsh_status -eq 2 ]]; then
+        error "Generated Zsh snapshot is invalid"
+        return 2
+    fi
+    if [[ $zsh_status -eq 0 && "$ZSH_SNAPSHOT_STATUS" == eligible ]]; then
+        blueprint_selector_prompt_category shell-zsh "Shell / Zsh configuration" BLUEPRINT_SHELL_ZSH || return $?
+    else
+        BLUEPRINT_SHELL_ZSH=false
+        if [[ $zsh_status -eq 1 || "$ZSH_SNAPSHOT_STATUS" == absent ]]; then
+            info "Shell / Zsh configuration: unavailable"
+        else
+            info "Shell / Zsh configuration: excluded ($ZSH_SNAPSHOT_REASON)"
+        fi
+    fi
     blueprint_selector_prompt_category macos-finder "Finder" BLUEPRINT_MACOS_FINDER || return $?
     blueprint_selector_prompt_category macos-dock "Dock" BLUEPRINT_MACOS_DOCK || return $?
+    blueprint_selector_prompt_category macos-windows "Window Management" BLUEPRINT_MACOS_WINDOWS || return $?
     blueprint_selector_prompt_category macos-keyboard "Keyboard" BLUEPRINT_MACOS_KEYBOARD || return $?
     blueprint_selector_prompt_category macos-trackpad "Trackpad" BLUEPRINT_MACOS_TRACKPAD || return $?
     blueprint_selector_prompt_category macos-screenshots "Screenshots" BLUEPRINT_MACOS_SCREENSHOTS || return $?
@@ -413,9 +488,12 @@ blueprint_selector_run() {
     echo
     echo "Settings"
     printf '  Git Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_GIT_CONFIGURATION")"
+    printf '  SSH Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_SSH_CONFIGURATION")"
     printf '  VS Code Settings       %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_VSCODE_SETTINGS")"
+    printf '  Shell / Zsh            %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_SHELL_ZSH")"
     printf '  Finder                 %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_FINDER")"
     printf '  Dock                   %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_DOCK")"
+    printf '  Window Management      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_WINDOWS")"
     printf '  Keyboard               %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_KEYBOARD")"
     printf '  Trackpad               %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_TRACKPAD")"
     printf '  Screenshots            %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_MACOS_SCREENSHOTS")"
@@ -423,20 +501,17 @@ blueprint_selector_run() {
 
     local input
     while true; do
-        printf 'Save Blueprint? [Y/n]: '
+        printf 'Save Blueprint? [Y/n] (Q cancels): '
         IFS= read -r input || {
             blueprint_selector_cleanup
             trap - INT TERM
             return 1
         }
         case "$input" in
+            [qQ]) return 3 ;; # Propagate cancellation to blueprint_selector_run.
             ""|[yY]|[yY][eE][sS]) break ;;
             [nN]|[nN][oO])
-                blueprint_selector_cleanup
-                trap - INT TERM
-                log "[BLUEPRINT] RESULT: CANCELLED"
-                success "Blueprint changes cancelled; no file changes were saved"
-                return 0
+                return 3
                 ;;
             *) error "Choose Y or N." ;;
         esac
@@ -454,6 +529,7 @@ blueprint_selector_run() {
     fi
     BLUEPRINT_SELECTOR_TEMP_FILE=""
     trap - INT TERM
+    BLUEPRINT_SELECTOR_SAVED=true
     log "[BLUEPRINT] RESULT: SAVED"
     success "Blueprint saved to $BLUEPRINT_FILE"
 }

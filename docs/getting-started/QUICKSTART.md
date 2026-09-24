@@ -1,6 +1,7 @@
 # Quick Start
 
-This guide covers the Mac Bootstrap Toolkit 3.1.0 workflow:
+This guide covers the current Mac Bootstrap Toolkit 3.2.0 workflow. Guided
+Workflow orchestrates the same modes that remain available individually:
 
 ```text
 Discovery
@@ -9,8 +10,25 @@ Generated Configuration
     ↓
 Blueprint
     ↓
+Preview
+    ↓
 Bootstrap
 ```
+
+For the guided path, run:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+Workflow checks Generated Configuration, offers or requires Discovery, opens
+the interactive Blueprint selector, and runs Preview automatically. Enter
+`q` or `Q` at any Blueprint prompt, including Edit, to cancel without changing
+the saved Blueprint; Guided Workflow then stops before Preview and Bootstrap.
+If Preview reports errors, Workflow stops. If planned changes exist, Workflow
+asks `Apply these changes with Bootstrap? [y/N]`. With zero planned changes it
+reports `No changes to apply` and finishes without asking for Bootstrap,
+preserving any Preview warning status.
 
 ## Requirements
 
@@ -44,6 +62,22 @@ To review the available CLI:
 ./bootstrap.sh --help
 ./bootstrap.sh --version
 ```
+
+The repository entrypoint remains canonical. The first setup run can use:
+
+```bash
+./bootstrap.sh --workflow
+```
+
+When Workflow reaches Bootstrap, or when `./bootstrap.sh --bootstrap` is run
+directly, Bootstrap installs and verifies the optional short launcher. After
+installation, `bs workflow`, `bs discover`, `bs blueprint`, `bs preview`,
+`bs bootstrap`, and `bs check` dispatch to the matching `bootstrap.sh` modes
+from any working directory. Discovery, Blueprint, Preview, and zero-change
+Workflow do not install it. `./scripts/install-bs.sh` remains available for
+manual installation or repair. It accepts an existing correct symlink and
+refuses to overwrite another `bs`. Moving the repository invalidates the
+symlink; remove it and rerun the installer from the new location.
 
 ---
 
@@ -79,7 +113,9 @@ Discovery observes supported areas including:
 - Homebrew packages and casks
 - Mac App Store applications
 - Git configuration
+- SSH client configuration
 - VS Code extensions and settings
+- standalone Zsh `.zshrc`
 - Workspace folders and Git repositories
 - VS Code Workspace metadata
 - supported macOS settings
@@ -162,9 +198,9 @@ Inspect the selected target state before Bootstrap:
 
 Preview uses the same Blueprint selection, generated-input validation, and
 production inspection logic as Bootstrap. It reports planned actions for
-Applications, Git configuration, VS Code settings, Workspace, and macOS without
-mutating target state. Toolkit logging and temporary validation files may still
-be written.
+Applications, Git configuration, SSH client configuration, VS Code settings,
+Zsh, Workspace, and macOS without mutating target state. Toolkit logging and
+temporary validation files may still be written.
 
 Planned changes do not count as warnings. The Preview Summary reports Modules
 Inspected, Warnings, Errors, and Duration, and the process uses the common
@@ -194,10 +230,13 @@ Depending on the selected scope, this can include:
 - Homebrew packages and casks
 - Mac App Store applications
 - global Git configuration
+- restricted SSH client configuration
 - VS Code extensions and settings
+- limited standalone Zsh `.zshrc` restoration
 - Workspace folders
 - Git repositories and configured branches
-- supported Finder, Dock, keyboard, trackpad, and screenshot settings
+- supported Finder, Dock, Window Management, keyboard, trackpad, and screenshot
+  settings
 
 Bootstrap is designed to be idempotent: state that already matches the desired
 configuration should not be changed unnecessarily.
@@ -235,14 +274,23 @@ Use `--verbose` when additional diagnostics are needed.
 
 ---
 
+## Screenshot destination portability
+
+Generated Screenshot `location` is the only destination source. Absolute paths
+are preserved; leading `~/` resolves to the target user HOME. Other shell
+expansions are rejected. An old `/Users/other-user/...` path is not rewritten.
+Missing directories may be created inside HOME only; an outside-HOME destination
+must already be writable and accessible. Preview also reports directory-only
+changes without a process restart. See [Configuration](../toolkit/CONFIGURATION.md)
+for the complete path policy.
+
 ## Not implemented yet
 
 The current workflow does not yet include:
 
 - aggregate post-Bootstrap Verification
 
-This remains a planned extension of the existing workflow rather than a
-separate configuration system.
+This is a Future / Optional extension of the existing workflow.
 
 Other future capabilities are tracked in the project
 [Roadmap](../../ROADMAP.md).

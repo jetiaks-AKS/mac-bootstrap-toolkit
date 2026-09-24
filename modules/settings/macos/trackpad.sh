@@ -12,7 +12,7 @@ TRACKPAD_CONFIG="config/generated/macos/trackpad.conf"
 
 check_trackpad() {
 
-    check_defaults_config "$TRACKPAD_CONFIG"
+    check_defaults_config "$TRACKPAD_CONFIG" trackpad
 
 }
 
@@ -24,12 +24,17 @@ apply_trackpad_settings() {
 
     info "Configuring Trackpad..."
 
-    if ! apply_defaults_config "$TRACKPAD_CONFIG"; then
+    if ! apply_defaults_config "$TRACKPAD_CONFIG" trackpad; then
         error "Failed to configure Trackpad"
         return 2
     fi
 
-    success "Trackpad configured successfully"
+    if ! check_trackpad; then
+        error "Failed to verify Trackpad preferences"
+        return 2
+    fi
+
+    success "Trackpad preferences configured successfully"
     return 0
 
 }

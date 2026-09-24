@@ -192,13 +192,13 @@ Duration        : 15s
 Discovery использует отдельный набор полей:
 
 ```text
-Modules Processed : 10
+Modules Processed : 12
 Warnings          : 0
 Errors            : 0
 ```
 
 `Modules Processed` — существующий счётчик вызовов `run_module()`, включая
-четыре общих Core-модуля и шесть Discovery-модулей при полном проходе.
+четыре общих Core-модуля и восемь Discovery-модулей при полном проходе.
 Это не число обнаруженных компонентов или опубликованных файлов. `Warnings`
 и `Errors` сохраняют существующий учёт результатов lifecycle, включая ошибку
 preflight; они не считают каждое отдельное сообщение. При остановке на
@@ -335,6 +335,12 @@ Blueprint использует минимальный lifecycle:
 [BLUEPRINT] RESULT: CANCELLED
 ```
 
+`q` или `Q` отменяет Blueprint из любого интерактивного prompt, включая
+nested Edit. Отмена немедленно прекращает selector, не публикует частичный
+выбор и сохраняет существующий `config/blueprint.conf` без изменений. Если
+файла не было, он не создаётся. В Guided Workflow отмена также останавливает
+весь Workflow до Preview и Bootstrap.
+
 `Existing configuration: Valid` записывается только после успешной валидации.
 При stale или malformed Blueprint сохраняются существующие warning/error
 семантики без ложной записи `Valid`.
@@ -366,8 +372,9 @@ Status   : Interrupted
 # Dry-run / Preview
 
 `--dry-run` является отдельным execution mode. Одновременно можно выбрать
-ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint` и
-`--dry-run`; отсутствие mode или конфликтующие mode-флаги возвращают `1`.
+ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint`,
+`--dry-run` и `--workflow`; отсутствие mode или конфликтующие mode-флаги
+возвращают `1`.
 
 Preview выполняет последовательность:
 
@@ -378,8 +385,8 @@ CLI parse → Logger → Blueprint validation → selected input validation
 ```
 
 Он не вызывает `sudo -v`, не устанавливает Homebrew и не запускает Bootstrap
-mutations. Applications, Git configuration, VS Code settings, Workspace и macOS
-Preview используют
+mutations. Applications, Git configuration, SSH configuration, VS Code settings,
+Zsh, Workspace и macOS Preview используют
 существующие validators, Blueprint selection и inspection helpers и могут
 вывести:
 
@@ -391,6 +398,8 @@ Would install App Store app: <name> (<id>)
 Would install VS Code extension: <id>
 Would configure Git setting: <key>
 Would update VS Code settings
+Would restore Zsh configuration
+Would restore SSH configuration: <count> eligible profiles
 Would create workspace folder: <path>
 Would clone repository: <id>
 Would switch repository branch: <id> -> <branch>
@@ -410,11 +419,17 @@ Workspace Preview сохраняет текущую warning-политику д�
 remote mismatch и существующих non-Git destinations. После clone-плана он не
 предполагает будущую branch state. macOS Preview использует typed defaults
 inspection; один restart-план выводится для изменяемой Finder, Dock или
-Screenshots category независимо от количества изменяемых settings.
+Screenshots category независимо от количества изменяемых settings. Для Screenshots
+mkdir-only plan не требует restart: проверяются generated destination и
+filesystem, даже если preference уже совпадает. Порядок планов — directory →
+preference → restart; unsafe destination возвращает `2` до actionable output.
+План создания каталога использует существующий Preview change signal, поэтому
+Guided Workflow предлагает Bootstrap confirmation и для directory-only change.
 
 Порядок domain inspections: Homebrew formulae → casks → App Store → VS Code
-extensions → Git configuration → VS Code settings → Workspace folders →
-repositories → macOS. Disabled selections сохраняют существующую фильтрацию.
+extensions → Git configuration → VS Code settings → Zsh → SSH configuration →
+Workspace folders → repositories → macOS. Disabled selections сохраняют
+существующую фильтрацию.
 
 Ошибки startup validation и preflight останавливают запуск. После ошибки Core
 или domain inspection последующие read-only inspections продолжаются;
@@ -451,6 +466,82 @@ Discovery
 Blueprint
 Bootstrap
 Preview (`--dry-run`)
+Guided Workflow (`--workflow`)
 ```
 
-Global Verification остаётся запланированной возможностью.
+Global Verification относится к Future / Optional.
+
+---
+
+# Guided Workflow
+
+`--workflow` выполняет существующие режимы последовательно: проверка Generated
+Configuration → optional/required Discovery → interactive Blueprint → automatic
+Preview → optional Bootstrap. Каждый запущенный этап сохраняет собственный
+Logger и Summary.
+
+Отмена Blueprint через `q` / `Q` или отказ от финального Save останавливает
+Workflow до Preview и Bootstrap. Ошибка Preview (`2`) также останавливает
+Workflow. При status `0` или `1` и наличии planned changes Toolkit спрашивает:
+
+```text
+Apply these changes with Bootstrap? [y/N]
+```
+
+Только явный Yes запускает существующий Bootstrap path. Если planned changes
+нет, подтверждение не показывается, Bootstrap не запускается, а Workflow
+выводит:
+
+```text
+[ OK ] No changes to apply
+[INFO] Workflow finished.
+```
+
+Warning status Preview при этом сохраняется как итоговый status `1`. Global
+Verification не входит в Guided Workflow и относится к Future / Optional.
+
+---
+
+# Короткий launcher `bs`
+
+Канонической точкой входа остаётся `./bootstrap.sh --<mode>`. Опциональный
+repository-owned launcher `bin/bs` только сопоставляет короткие команды с
+существующими production modes:
+
+```text
+bs workflow   → bootstrap.sh --workflow
+bs discover   → bootstrap.sh --discover
+bs blueprint  → bootstrap.sh --blueprint
+bs preview    → bootstrap.sh --dry-run
+bs bootstrap  → bootstrap.sh --bootstrap
+bs check      → bootstrap.sh --check
+```
+
+`bs`, `bs help`, `bs --help` и `bs -h` показывают краткую справку. Неизвестная
+команда возвращает non-zero status без dispatch. После определения реального
+расположения launcher переходит в корень Toolkit и использует `exec`, поэтому
+repository-relative paths и exit status `bootstrap.sh` сохраняются.
+
+При первом запуске пользователь по-прежнему вызывает канонический entrypoint.
+Когда `--workflow` доходит до Bootstrap или напрямую выполняется
+`./bootstrap.sh --bootstrap`, Bootstrap автоматически запускает launcher
+setup с lifecycle `Check → Apply → Verify`. Корректный `bs` остаётся unchanged;
+отсутствующий устанавливается существующим installer и проверяется повторно.
+Ошибка installer или Verify возвращает Bootstrap error без ложного success.
+
+Discovery, Blueprint и Preview не запускают installer. Workflow, завершившийся
+после zero-change Preview, также не устанавливает `bs`. Ручная установка и
+repair остаются доступны. Launcher self-setup не отображается как domain
+Preview plan: это отдельная Bootstrap self-setup операция.
+
+```bash
+./scripts/install-bs.sh
+```
+
+Installer выбирает `$(brew --prefix)/bin`, если Homebrew доступен, иначе
+архитектурно подходящий стандартный каталог. Корректная существующая ссылка
+считается успешной установкой; посторонняя команда, ссылка или файл `bs` не
+перезаписывается. Конфликт, unwritable destination и failure проверки являются
+Bootstrap error `2`; sudo автоматически не вызывается. Перемещение репозитория
+нарушает PATH symlink, поэтому старую ссылку нужно удалить и запустить installer
+из нового расположения.

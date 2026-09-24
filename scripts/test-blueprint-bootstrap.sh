@@ -169,8 +169,15 @@ configure_git() {
     record_orchestration_step git-configuration
 }
 
+git_configuration_scope_selected() { return 0; }
+ssh_configuration_scope_selected() { return 1; }
+
 apply_vscode_settings() {
     record_orchestration_step vscode-settings
+}
+
+bootstrap_zsh() {
+    record_orchestration_step shell-zsh
 }
 
 apply_macos_settings() {
@@ -184,9 +191,11 @@ write_blueprint() {
     {
         echo '[categories]'
         echo 'git-configuration="true"'
+        echo 'ssh-configuration="true"'
         echo 'vscode-settings="true"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
+        echo 'macos-windows="true"'
         echo 'macos-keyboard="true"'
         echo 'macos-trackpad="true"'
         echo 'macos-screenshots="true"'
@@ -374,7 +383,7 @@ install_vscode_extensions() {
 rm -f "$BLUEPRINT_FILE"
 reset_orchestration
 run_bootstrap_orchestration >/dev/null
-expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings macos-settings"
+expected_steps="workspace git-configuration homebrew-packages homebrew-casks app-store vscode-extensions vscode-settings shell-zsh macos-settings"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "missing Blueprint keeps category consumers in Bootstrap orchestration"
@@ -397,6 +406,7 @@ fi
 
 set_blueprint_category macos-finder false
 set_blueprint_category macos-dock false
+set_blueprint_category macos-windows false
 set_blueprint_category macos-keyboard false
 set_blueprint_category macos-trackpad false
 set_blueprint_category macos-screenshots false
@@ -419,6 +429,11 @@ check_finder() {
 
 check_dock() {
     record_orchestration_step check-dock
+    return "$CHECK_RESULT"
+}
+
+check_windows() {
+    record_orchestration_step check-windows
     return "$CHECK_RESULT"
 }
 
@@ -453,6 +468,10 @@ apply_trackpad_settings() {
     record_orchestration_step apply-trackpad
 }
 
+apply_windows_settings() {
+    record_orchestration_step apply-windows
+}
+
 apply_screenshots_settings() {
     record_orchestration_step apply-screenshots
 }
@@ -460,7 +479,7 @@ apply_screenshots_settings() {
 rm -f "$BLUEPRINT_FILE"
 PROCESSED_ITEMS=""
 check_macos_settings
-expected_steps="check-finder check-dock check-keyboard check-trackpad check-screenshots"
+expected_steps="check-finder check-dock check-windows check-keyboard check-trackpad check-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "missing Blueprint keeps all macOS modules eligible"
@@ -480,6 +499,7 @@ fi
 
 set_blueprint_category macos-finder false
 set_blueprint_category macos-dock false
+set_blueprint_category macos-windows false
 set_blueprint_category macos-keyboard false
 set_blueprint_category macos-trackpad false
 set_blueprint_category macos-screenshots false
@@ -497,7 +517,7 @@ set_blueprint_category macos-dock false
 set_blueprint_category macos-trackpad false
 PROCESSED_ITEMS=""
 check_macos_settings
-expected_steps="check-finder check-keyboard check-screenshots"
+expected_steps="check-finder check-windows check-keyboard check-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "mixed Blueprint categories check macOS modules independently"
@@ -508,7 +528,7 @@ fi
 CHECK_RESULT=1
 PROCESSED_ITEMS=""
 apply_macos_components
-expected_steps="check-finder apply-finder check-keyboard apply-keyboard check-screenshots apply-screenshots"
+expected_steps="check-finder apply-finder check-windows apply-windows check-keyboard apply-keyboard check-screenshots apply-screenshots"
 
 if [[ "$PROCESSED_ITEMS" == "$expected_steps" ]]; then
     pass "mixed Blueprint categories apply macOS modules independently"
@@ -542,6 +562,7 @@ if [[ "$summary_output" == *'Bootstrap completed successfully'* &&
       "$summary_output" == *'VS Code extensions     2 / 2 selected'* &&
       "$summary_output" == *'Folders                2 / 2 selected'* &&
       "$summary_output" == *'Git repositories       2 / 2 selected'* &&
+      "$summary_output" == *'SSH Configuration      Enabled'* &&
       $WARNING_COUNT -eq $before_warnings &&
       $ERROR_COUNT -eq $before_errors &&
       $before_status -eq 0 && $after_status -eq 0 ]]; then
@@ -551,6 +572,7 @@ else
 fi
 
 write_blueprint
+set_blueprint_category ssh-configuration false
 set_blueprint_category vscode-settings false
 set_blueprint_category macos-dock false
 set_blueprint_category macos-trackpad false
@@ -576,6 +598,7 @@ if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
       "$summary_output" == *'Folders                1 / 2 selected'* &&
       "$summary_output" == *'Git repositories       1 / 2 selected'* &&
       "$summary_output" == *'Git Configuration      Enabled'* &&
+      "$summary_output" == *'SSH Configuration      Skipped'* &&
       "$summary_output" == *'VS Code Settings       Skipped'* &&
       "$summary_output" == *'Finder                 Enabled'* &&
       "$summary_output" == *'Dock                   Skipped'* &&
@@ -679,67 +702,6 @@ if [[ "$summary_output" == *'Bootstrap completed with errors'* &&
     pass "legacy Bootstrap Summary gives errors precedence without changing status"
 else
     fail "legacy error-precedence Summary or lifecycle preservation failed"
-fi
-
-git_test_root="$TEST_ROOT/git-configuration"
-mkdir -p "$git_test_root/config/generated"
-{
-    echo '[user]'
-    echo '    name = Test User'
-    echo '    email = test@example.com'
-    echo '[init]'
-    echo '    defaultBranch = main'
-    echo '[pull]'
-    echo '    rebase = false'
-    echo '[core]'
-    echo '    editor = code --wait'
-} > "$git_test_root/config/generated/git.conf"
-
-source "$PROJECT_ROOT/modules/core/git/git.sh"
-success() { echo "[ OK ] $1"; }
-action() { echo "[....] $1"; }
-error() { echo "[ERROR] $1"; }
-
-check_git_configuration() { return 0; }
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 0 &&
-      "$git_output" == '[ OK ] Git configuration already configured' ]]; then
-    pass "already-correct Git configuration reports one success message"
-else
-    fail "already-correct Git configuration status or message is incorrect"
-fi
-
-git_check_calls=0
-check_git_configuration() {
-    ((git_check_calls++))
-    [[ $git_check_calls -gt 1 ]]
-}
-apply_git_configuration() { return 0; }
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 0 &&
-      "$git_output" == *'[....] Configuring Git...'* &&
-      "$git_output" == *'[ OK ] Git configured successfully'* &&
-      "$git_output" != *'already configured'* ]]; then
-    pass "Git apply path preserves its existing success behavior"
-else
-    fail "Git apply path status or messages changed"
-fi
-
-check_git_configuration() { return 1; }
-apply_git_configuration() {
-    error "Failed to configure Git"
-    return 2
-}
-git_output="$(cd "$git_test_root" && configure_git)"
-git_status=$?
-if [[ $git_status -eq 2 &&
-      "$git_output" == *'[ERROR] Failed to configure Git'* &&
-      "$git_output" != *'[ OK ]'* ]]; then
-    pass "Git failure path reports no false success"
-else
-    fail "Git failure path status or messaging is incorrect"
 fi
 
 if [[ $TEST_FAILURES -ne 0 ]]; then

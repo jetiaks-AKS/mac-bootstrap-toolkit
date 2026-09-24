@@ -45,16 +45,17 @@ check_internet() {
 
     detail "Checking Internet connection..."
 
-    if ping -c 1 1.1.1.1 >/dev/null 2>&1; then
+    if curl -fsSI --connect-timeout 5 --max-time 10 \
+        https://github.com >/dev/null 2>&1 ||
+       curl -fsSI --connect-timeout 5 --max-time 10 \
+        https://brew.sh >/dev/null 2>&1; then
 
         detail "Internet connection available"
         return 0
-
     fi
 
     error "Internet connection unavailable"
     return 2
-
 }
 
 # ==========================================

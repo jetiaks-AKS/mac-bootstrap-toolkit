@@ -1,0 +1,74 @@
+#!/bin/bash
+
+show_help() {
+    cat <<'EOF'
+Usage: bs <command>
+
+Commands:
+  workflow    Run guided workflow
+  discover    Discover current Mac state
+  blueprint   Configure restore selection
+  preview     Preview planned changes
+  bootstrap   Apply selected configuration
+  check       Check toolkit prerequisites
+EOF
+}
+
+resolve_launcher_path() {
+    local path="$1"
+    local directory target
+
+    while [[ -L "$path" ]]; do
+        directory="$(cd "$(dirname "$path")" && pwd -P)" || return 1
+        target="$(readlink "$path")" || return 1
+        if [[ "$target" == /* ]]; then
+            path="$target"
+        else
+            path="$directory/$target"
+        fi
+    done
+
+    directory="$(cd "$(dirname "$path")" && pwd -P)" || return 1
+    printf '%s/%s\n' "$directory" "$(basename "$path")"
+}
+
+case "${1:-}" in
+    ""|help|--help|-h)
+        show_help
+        exit 0
+        ;;
+    workflow) mode=--workflow ;;
+    discover) mode=--discover ;;
+    blueprint) mode=--blueprint ;;
+    preview) mode=--dry-run ;;
+    bootstrap) mode=--bootstrap ;;
+    check) mode=--check ;;
+    *)
+        printf 'Error: unknown command: %s\n\n' "$1" >&2
+        show_help >&2
+        exit 1
+        ;;
+esac
+
+if [[ $# -ne 1 ]]; then
+    printf 'Error: expected exactly one command\n\n' >&2
+    show_help >&2
+    exit 1
+fi
+
+launcher_path="$(resolve_launcher_path "$0")" || {
+    printf 'Error: failed to resolve the bs launcher location\n' >&2
+    exit 1
+}
+toolkit_root="$(cd "$(dirname "$launcher_path")/.." && pwd -P)" || {
+    printf 'Error: failed to resolve the Toolkit root\n' >&2
+    exit 1
+}
+
+if [[ ! -x "$toolkit_root/bootstrap.sh" ]]; then
+    printf 'Error: bootstrap.sh is unavailable at %s\n' "$toolkit_root" >&2
+    exit 1
+fi
+
+cd "$toolkit_root" || exit 1
+exec ./bootstrap.sh "$mode"

@@ -131,7 +131,7 @@ repository_preview() {
 
     case $inspection_result in
         1)
-            action "Would clone repository: $repository"
+            preview_action "Would clone repository: $repository"
             return 0
             ;;
         2)
@@ -180,7 +180,7 @@ repository_preview() {
         return 1
     fi
 
-    action "Would switch repository branch: $repository -> $expected_branch"
+    preview_action "Would switch repository branch: $repository -> $expected_branch"
     return 0
 }
 

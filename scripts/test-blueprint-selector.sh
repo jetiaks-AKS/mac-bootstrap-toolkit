@@ -12,6 +12,9 @@ trap 'rm -rf "$TEST_ROOT"' EXIT INT TERM
 
 BLUEPRINT_FILE="$TEST_ROOT/config/blueprint.conf"
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
+GIT_CONFIGURATION_FILE="$BLUEPRINT_GENERATED_DIR/git.conf"
+ZSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/shell/zshrc.snapshot"
+SSH_SNAPSHOT_FILE="$BLUEPRINT_GENERATED_DIR/ssh/config.snapshot"
 TEST_FAILURES=0
 TOOLKIT_VERSION="test"
 MODE="--blueprint"
@@ -25,6 +28,9 @@ success() { echo "[ OK ] $1"; }
 source "$PROJECT_ROOT/modules/core/logger/logger.sh"
 source "$PROJECT_ROOT/modules/core/config/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/blueprint.sh"
+source "$PROJECT_ROOT/modules/core/git/git.sh"
+source "$PROJECT_ROOT/modules/shell/zsh.sh"
+source "$PROJECT_ROOT/modules/ssh/config.sh"
 source "$PROJECT_ROOT/modules/blueprint/selector.sh"
 
 pass() { echo "PASS: $1"; }
@@ -68,6 +74,7 @@ expect_parse() {
 
 write_generated() {
     mkdir -p "$BLUEPRINT_GENERATED_DIR/workspace"
+    : > "$GIT_CONFIGURATION_FILE"
     printf '%s\n' package-{1..12} > "$BLUEPRINT_GENERATED_DIR/brew-packages.conf"
     echo cask-one > "$BLUEPRINT_GENERATED_DIR/brew-casks.conf"
     echo '111|Example App' > "$BLUEPRINT_GENERATED_DIR/appstore.conf"
@@ -87,6 +94,7 @@ write_existing_blueprint() {
         echo 'vscode-settings="true"'
         echo 'macos-finder="true"'
         echo 'macos-dock="true"'
+        echo 'macos-windows="true"'
         echo 'macos-keyboard="true"'
         echo 'macos-trackpad="true"'
         echo 'macos-screenshots="true"'
@@ -333,7 +341,7 @@ fi
 BLUEPRINT_GENERATED_DIR="$TEST_ROOT/generated"
 BLUEPRINT_FILE="$TEST_ROOT/new/blueprint.conf"
 mkdir -p "$(dirname "$BLUEPRINT_FILE")"
-wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 reset_selector_log
 summary_output="$(blueprint_selector_run <<< "$wizard_defaults")"
 if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
@@ -342,6 +350,7 @@ if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
    [[ "$(blueprint_selected_items workspace-folders "$BLUEPRINT_FILE")" == $'Projects\nScreenshots\nSources\nNewFolder' ]] &&
    grep -q 'Git Configuration.*Yes' <<< "$summary_output" &&
    grep -q 'git-configuration="true"' "$BLUEPRINT_FILE" &&
+   grep -q 'shell-zsh="false"' "$BLUEPRINT_FILE" &&
    grep -q '\[BLUEPRINT\] START' "$LOG_FILE" &&
    grep -q '\[BLUEPRINT\] Generated configuration: Ready' "$LOG_FILE" &&
    grep -q '\[BLUEPRINT\] RESULT: SAVED' "$LOG_FILE"; then
@@ -366,7 +375,7 @@ fi
 
 write_existing_blueprint
 before_checksum="$(cksum "$BLUEPRINT_FILE")"
-cancel_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\nn'
+cancel_input=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\nn'
 reset_selector_log
 cancel_output="$(blueprint_selector_run <<< "$cancel_input")"
 after_checksum="$(cksum "$BLUEPRINT_FILE")"
@@ -421,6 +430,59 @@ if [[ ! -e "$BLUEPRINT_FILE" ]] &&
     pass "declining new Blueprint leaves no file or partial temporary file"
 else
     fail "cancelled Blueprint left output behind"
+fi
+
+# Every interactive input path must cancel transactionally and stop reading.
+for existing in yes no; do
+    for quit_key in q Q; do
+        for prompt_type in choice restore edit save later-choice; do
+            case "$prompt_type" in
+                choice) prefix='' ;;
+                restore) prefix=$'\n\n\n\n\n\n' ;;
+                edit) prefix=$'e\n1\n' ;;
+                save) prefix=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n' ;;
+                later-choice) prefix=$'e\n1\nd\na\n' ;;
+            esac
+            if [[ "$existing" == yes ]]; then
+                write_existing_blueprint
+                cp "$BLUEPRINT_FILE" "$TEST_ROOT/before-blueprint"
+            else
+                rm -f "$BLUEPRINT_FILE"
+            fi
+            BLUEPRINT_SELECTOR_SAVED=true
+            reset_selector_log
+            {
+                blueprint_selector_run > "$TEST_ROOT/quit-output"
+                quit_result=$?
+                IFS= read -r remaining_input
+            } <<< "${prefix}${quit_key}"$'\nsentinel'
+            if [[ $quit_result -eq 0 && "$BLUEPRINT_SELECTOR_SAVED" == false &&
+                  "$remaining_input" == sentinel ]] &&
+               grep -q 'Q cancels' "$TEST_ROOT/quit-output" &&
+               grep -q 'RESULT: CANCELLED' "$LOG_FILE" &&
+               [[ -z "$(find "$(dirname "$BLUEPRINT_FILE")" -name 'blueprint.conf.tmp.*' -print)" ]]; then
+                pass "$quit_key at $prompt_type cancels immediately (existing=$existing)"
+            else
+                fail "$quit_key at $prompt_type cancellation lifecycle (existing=$existing)"
+            fi
+            if [[ "$existing" == yes ]]; then
+                cmp -s "$BLUEPRINT_FILE" "$TEST_ROOT/before-blueprint" || fail "quit changed existing Blueprint"
+            else
+                [[ ! -e "$BLUEPRINT_FILE" ]] || fail "quit created Blueprint"
+            fi
+        done
+    done
+done
+
+write_generated
+git config --file "$GIT_CONFIGURATION_FILE" pull.ff only
+rm -f "$BLUEPRINT_FILE"
+blueprint_selector_load_items git-configuration
+if [[ $? -eq 0 && "${BLUEPRINT_SELECTOR_ITEMS[*]}" == pull.ff &&
+      "${BLUEPRINT_SELECTOR_SELECTED[*]}" == true ]]; then
+    pass "Git selector offers present generated keys"
+else
+    fail "Git selector inventory or initial selection"
 fi
 
 if grep -q -- '--blueprint)' "$PROJECT_ROOT/bootstrap.sh" &&

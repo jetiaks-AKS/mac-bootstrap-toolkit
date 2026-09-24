@@ -4,6 +4,8 @@
 # macOS Discovery
 # ==========================================
 
+source modules/settings/macos/records.sh
+
 macos_defaults_type_name() {
 
     case "$1" in
@@ -44,11 +46,12 @@ macos_collect_preference() {
         return 2
     fi
 
-    value="$(defaults read "$domain" "$key" 2>/dev/null)"
-    if [[ $? -ne 0 ]]; then
+    if ! macos_read_scalar "$domain" "$key"; then
         error "Failed to read macOS preference: $domain $key"
         return 2
     fi
+
+    value="$MACOS_DEFAULTS_VALUE"
 
     case "$generated_type" in
         bool)
@@ -74,6 +77,30 @@ macos_collect_preference() {
             ;;
     esac
 
+    # Custom/unknown Finder targets are unmanaged; never invent a replacement.
+    if [[ "$domain" == com.apple.finder && "$key" == NewWindowTarget &&
+          ! "$value" =~ $MACOS_FINDER_WINDOW_TARGET_PATTERN ]]; then
+        warning "Skipping unsupported Finder NewWindowTarget: $value"
+        FINDER_DISCOVERY_WARNING=true
+        return 0
+    fi
+
+    if [[ "$domain" == com.apple.dock &&
+          ( ( "$key" == orientation && ! "$value" =~ $MACOS_DOCK_ORIENTATION_PATTERN ) ||
+            ( "$key" == mineffect && ! "$value" =~ $MACOS_DOCK_MINEFFECT_PATTERN ) ) ]]; then
+        warning "Skipping unsupported Dock $key: $value"
+        DOCK_DISCOVERY_WARNING=true
+        return 0
+    fi
+
+    if [[ "$domain" == NSGlobalDomain &&
+          ( ( "$key" == AppleActionOnDoubleClick && ! "$value" =~ $MACOS_WINDOW_DOUBLE_CLICK_PATTERN ) ||
+            ( "$key" == AppleWindowTabbingMode && ! "$value" =~ $MACOS_WINDOW_TABBING_PATTERN ) ) ]]; then
+        warning "Skipping unsupported Window Management $key: $value"
+        WINDOWS_DISCOVERY_WARNING=true
+        return 0
+    fi
+
     if ! printf '%s|%s|%s|%s\n' \
         "$domain" "$key" "$generated_type" "$value" >> "$output_file"; then
         error "Failed to serialize macOS preference: $domain $key"
@@ -84,8 +111,16 @@ macos_collect_preference() {
 
 }
 
+# Called inside the existing atomic publisher, before its final rename.
+macos_serialize_candidate() {
+    local output_file="$1" category="$2" serializer="$3"
+    "$serializer" "$output_file" || return 2
+    validate_defaults_config "$output_file" "$category"
+}
+
 source modules/discovery/macos/finder.sh
 source modules/discovery/macos/dock.sh
+source modules/discovery/macos/windows.sh
 source modules/discovery/macos/keyboard.sh
 source modules/discovery/macos/trackpad.sh
 source modules/discovery/macos/screenshots.sh
@@ -106,6 +141,15 @@ discover_macos() {
     echo
 
     export_dock_settings
+    exporter_result=$?
+
+    if [[ $exporter_result -gt $discovery_result ]]; then
+        discovery_result=$exporter_result
+    fi
+
+    echo
+
+    export_windows_settings
     exporter_result=$?
 
     if [[ $exporter_result -gt $discovery_result ]]; then

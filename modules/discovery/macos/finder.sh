@@ -15,6 +15,12 @@ serialize_finder_settings() {
     macos_collect_preference "$output_file" com.apple.finder FXDefaultSearchScope string || return 2
     macos_collect_preference "$output_file" com.apple.finder _FXSortFoldersFirst bool || return 2
     macos_collect_preference "$output_file" com.apple.finder FXRemoveOldTrashItems bool || return 2
+    macos_collect_preference "$output_file" com.apple.finder AppleShowAllFiles bool || return 2
+    macos_collect_preference "$output_file" com.apple.finder NewWindowTarget string || return 2
+    macos_collect_preference "$output_file" com.apple.finder ShowHardDrivesOnDesktop bool || return 2
+    macos_collect_preference "$output_file" com.apple.finder ShowExternalHardDrivesOnDesktop bool || return 2
+    macos_collect_preference "$output_file" com.apple.finder ShowMountedServersOnDesktop bool || return 2
+    macos_collect_preference "$output_file" com.apple.finder FXEnableExtensionChangeWarning bool || return 2
 
     return 0
 
@@ -23,10 +29,11 @@ serialize_finder_settings() {
 export_finder_settings() {
 
     local output_file="config/generated/macos/finder.conf"
+    FINDER_DISCOVERY_WARNING=false
 
     action "Exporting Finder configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_finder_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate finder serialize_finder_settings; then
         error "Failed to export Finder configuration"
         return 2
     fi
@@ -34,6 +41,7 @@ export_finder_settings() {
 if [[ "$VERBOSE" == true ]]; then
     detail "Configuration saved to: $output_file"
 fi
+    [[ "$FINDER_DISCOVERY_WARNING" == false ]] || return 1
     success "Finder configuration exported"
 
     return 0

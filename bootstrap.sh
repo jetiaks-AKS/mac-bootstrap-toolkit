@@ -10,6 +10,7 @@ source modules/core/homebrew/homebrew.sh
 source modules/core/git/git.sh
 source modules/core/ssh/ssh.sh
 source modules/core/terminal/terminal.sh
+source modules/core/launcher/launcher.sh
 source modules/core/preflight/preflight.sh
 source modules/core/config/config.sh
 
@@ -36,6 +37,13 @@ source modules/vscode/extensions.sh
 source modules/vscode/settings.sh
 
 # ==========================================
+# Shell
+# ==========================================
+
+source modules/shell/zsh.sh
+source modules/ssh/config.sh
+
+# ==========================================
 # macOS Settings
 # ==========================================
 
@@ -48,6 +56,7 @@ source modules/settings/macos/macos.sh
 source modules/discovery/discovery.sh
 source modules/discovery/homebrew.sh
 source modules/discovery/git.sh
+source modules/discovery/ssh.sh
 source modules/discovery/vscode.sh
 source modules/discovery/macos/macos.sh
 source modules/discovery/appstore.sh
@@ -101,6 +110,12 @@ for arg in "$@"; do
             ((EXECUTION_MODE_COUNT++))
             ;;
 
+        --workflow)
+
+            MODE="--workflow"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
         --dry-run)
 
             MODE="--dry-run"
@@ -144,6 +159,8 @@ Usage:
   ./bootstrap.sh --dry-run
       Preview selected Bootstrap changes without target mutation
 
+  ./bootstrap.sh --workflow
+      Guide Discovery, Blueprint, Preview, and confirmed Bootstrap
 
 Options:
 
@@ -233,7 +250,8 @@ bootstrap_validate_selected_inputs() {
 
     workspace_validate_bootstrap_inputs || return 2
 
-    if blueprint_category_enabled git-configuration; then
+    if blueprint_category_enabled git-configuration &&
+       git_configuration_scope_selected; then
         load_git_configuration || return 2
     fi
 
@@ -263,24 +281,54 @@ bootstrap_validate_selected_inputs() {
         [[ $source_result -ne 2 ]] || return 2
     fi
 
+    if blueprint_category_enabled shell-zsh; then
+        zsh_snapshot_validate
+        source_result=$?
+        [[ $source_result -ne 2 ]] || return 2
+        if [[ $source_result -eq 1 ]] && blueprint_exists; then
+            error "Selected Zsh snapshot is missing"
+            return 2
+        fi
+    fi
+
+    if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+        local ssh_payload ssh_result
+        ssh_payload="$(mktemp)" || return 2
+        ssh_snapshot_validate "$ssh_payload"
+        ssh_result=$?
+        rm -f "$ssh_payload"
+        if [[ $ssh_result -eq 2 ]]; then
+            error "Invalid selected SSH snapshot"
+            return 2
+        fi
+        if [[ $ssh_result -eq 1 ]] && blueprint_exists; then
+            error "Selected SSH snapshot is missing"
+            return 2
+        fi
+    fi
+
     if blueprint_category_enabled macos-finder; then
-        validate_defaults_config "$FINDER_CONFIG" || return 2
+        validate_defaults_config "$FINDER_CONFIG" finder || return 2
     fi
 
     if blueprint_category_enabled macos-dock; then
-        validate_defaults_config "$DOCK_CONFIG" || return 2
+        validate_defaults_config "$DOCK_CONFIG" dock || return 2
+    fi
+
+    if blueprint_category_enabled macos-windows; then
+        validate_defaults_config "$WINDOWS_CONFIG" windows || return 2
     fi
 
     if blueprint_category_enabled macos-keyboard; then
-        validate_defaults_config "$KEYBOARD_CONFIG" || return 2
+        validate_defaults_config "$KEYBOARD_CONFIG" keyboard || return 2
     fi
 
     if blueprint_category_enabled macos-trackpad; then
-        validate_defaults_config "$TRACKPAD_CONFIG" || return 2
+        validate_defaults_config "$TRACKPAD_CONFIG" trackpad || return 2
     fi
 
     if blueprint_category_enabled macos-screenshots; then
-        validate_defaults_config "$SCREENSHOTS_CONFIG" || return 2
+        validate_screenshots_config || return 2
     fi
 
     return 0
@@ -327,12 +375,21 @@ run_preview() {
     run_inspection "App Store Preview" preview_appstore_apps
     run_inspection "VS Code Extensions Preview" preview_vscode_extensions
 
-    if blueprint_category_enabled git-configuration; then
+    if blueprint_category_enabled git-configuration &&
+       git_configuration_scope_selected; then
         run_inspection "Git Configuration Preview" preview_git_configuration
     fi
 
     if blueprint_category_enabled vscode-settings; then
         run_inspection "VS Code Settings Preview" preview_vscode_settings
+    fi
+
+    if blueprint_category_enabled shell-zsh; then
+        run_inspection "Zsh Configuration Preview" preview_zsh
+    fi
+
+    if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+        run_inspection "SSH Configuration Preview" preview_ssh_configuration
     fi
 
     run_inspection "Workspace Folders Preview" preview_workspace_folders
@@ -341,6 +398,87 @@ run_preview() {
     return 0
 
 }
+
+# Validate the full inventory independently of an older Blueprint selection.
+workflow_generated_ready() (
+    blueprint_exists() { return 1; }
+    blueprint_selector_generated_ready || return 2
+    bootstrap_validate_selected_inputs
+)
+
+workflow_confirm() {
+    local input
+    while true; do
+        printf '%s ' "$1"
+        IFS= read -r input || return 1
+        case "$input" in
+            "") [[ "$2" == yes ]]; return $? ;;
+            [yY]|[yY][eE][sS]) return 0 ;;
+            [nN]|[nN][oO]) return 1 ;;
+            *) info "Choose Y or N." ;;
+        esac
+    done
+}
+
+run_workflow() {
+    local refresh=false result workflow_result=0
+    local WORKFLOW_ACTIVE=true
+
+    if workflow_generated_ready; then
+        workflow_confirm "Refresh generated configuration from this Mac? [y/N]" no && refresh=true
+    else
+        info "No usable generated configuration found (missing, unreadable, or invalid input)."
+        info "Discovery is required before continuing."
+        workflow_confirm "Run Discovery now? [Y/n]" yes || {
+            info "Workflow cancelled."
+            return 0
+        }
+        refresh=true
+    fi
+
+    if [[ "$refresh" == true ]]; then
+        run_mode --discover Discovery
+        result=$?
+        [[ $result -le 1 ]] || return "$result"
+        workflow_result=$result
+        workflow_generated_ready || return 2
+    fi
+
+    run_mode --blueprint Blueprint
+    result=$?
+    if [[ $result -eq 3 ]]; then
+        info "Workflow cancelled."
+        return "$workflow_result"
+    fi
+    [[ $result -eq 0 ]] || return "$result"
+
+    run_mode --dry-run Preview
+    result=$?
+    # Internal Preview signals: no plans, with success (3) or warnings (4).
+    if [[ $result -eq 3 || $result -eq 4 ]]; then
+        [[ $result -ne 4 ]] || workflow_result=1
+        info "Workflow finished."
+        return "$workflow_result"
+    fi
+    [[ $result -le 1 ]] || return "$result"
+    [[ $result -eq 0 ]] || workflow_result=1
+
+    if workflow_confirm "Apply these changes with Bootstrap? [y/N]" no; then
+        run_mode --bootstrap Bootstrap
+        result=$?
+        [[ $result -le 1 ]] || return "$result"
+        [[ $result -eq 0 ]] || workflow_result=1
+    else
+        info "Workflow finished without applying changes."
+    fi
+    return "$workflow_result"
+}
+
+# Subshells keep each production stage's logger, traps and counters independent.
+run_mode() (
+MODE="$1"
+MODE_NAME="$2"
+PREVIEW_HAS_CHANGES=false
 
 # ==========================================
 # Initialize Logger
@@ -367,6 +505,10 @@ if [[ "$MODE" == "--blueprint" ]]; then
     blueprint_selector_run
     blueprint_result=$?
     close_logger
+    if [[ "${WORKFLOW_ACTIVE:-false}" == true && $blueprint_result -le 1 &&
+          "${BLUEPRINT_SELECTOR_SAVED:-false}" != true ]]; then
+        exit 3 # Internal cancellation signal; standalone selector is unchanged.
+    fi
     exit "$blueprint_result"
 fi
 
@@ -431,11 +573,14 @@ case "$MODE" in
 
     --bootstrap)
 
+        run_module "bs Launcher" configure_bs_launcher
+
         run_module "Workspace" bootstrap_workspace
 
         echo
 
-        if blueprint_category_enabled git-configuration; then
+        if blueprint_category_enabled git-configuration &&
+           git_configuration_scope_selected; then
             run_module "Git Configuration" configure_git
         fi
 
@@ -451,8 +596,17 @@ case "$MODE" in
             run_module "VS Code Settings" apply_vscode_settings
         fi
 
+        if blueprint_category_enabled shell-zsh; then
+            run_module "Zsh Configuration" bootstrap_zsh
+        fi
+
+        if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+            run_module "SSH Configuration" bootstrap_ssh_configuration
+        fi
+
         if blueprint_category_enabled macos-finder ||
            blueprint_category_enabled macos-dock ||
+           blueprint_category_enabled macos-windows ||
            blueprint_category_enabled macos-keyboard ||
            blueprint_category_enabled macos-trackpad ||
            blueprint_category_enabled macos-screenshots; then
@@ -477,7 +631,23 @@ esac
 
 show_summary
 
-close_logger
-
 toolkit_exit_code
+result=$?
+if [[ "$MODE" == --dry-run && "${WORKFLOW_ACTIVE:-false}" == true &&
+      $result -le 1 && "$PREVIEW_HAS_CHANGES" == false ]]; then
+    success "No changes to apply"
+    close_logger
+    exit $((result + 3)) # Internal no-plan signal; public Preview stays 0/1/2.
+fi
+
+close_logger
+exit "$result"
+
+)
+
+if [[ "$MODE" == "--workflow" ]]; then
+    run_workflow
+else
+    run_mode "$MODE" "$MODE_NAME"
+fi
 exit $?

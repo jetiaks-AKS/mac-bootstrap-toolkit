@@ -43,7 +43,11 @@ run_discovery() {
 
     run_module "Git Discovery" discover_git
 
+    run_module "SSH Discovery" discover_ssh_configuration
+
     run_module "VS Code Discovery" discover_vscode
+
+    run_module "Zsh Discovery" discover_zsh
 
     run_module "macOS Discovery" discover_macos
 

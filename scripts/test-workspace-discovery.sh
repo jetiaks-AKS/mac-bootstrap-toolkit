@@ -15,10 +15,12 @@ VERBOSE=false
 SUCCESS_MESSAGES=""
 WARNING_MESSAGES=""
 ERROR_MESSAGES=""
+DETAIL_MESSAGES=""
 
 log() { :; }
 action() { :; }
-detail() { :; }
+detail() { DETAIL_MESSAGES="${DETAIL_MESSAGES}${DETAIL_MESSAGES:+
+}$1"; }
 success() {
     SUCCESS_MESSAGES="${SUCCESS_MESSAGES}${SUCCESS_MESSAGES:+
 }$1"
@@ -38,7 +40,8 @@ source "$PROJECT_ROOT/modules/discovery/workspace.sh"
 
 # common.sh defines output helpers; replace them with capture helpers.
 action() { :; }
-detail() { :; }
+detail() { DETAIL_MESSAGES="${DETAIL_MESSAGES}${DETAIL_MESSAGES:+
+}$1"; }
 success() {
     SUCCESS_MESSAGES="${SUCCESS_MESSAGES}${SUCCESS_MESSAGES:+
 }$1"
@@ -76,6 +79,7 @@ reset_messages() {
     SUCCESS_MESSAGES=""
     WARNING_MESSAGES=""
     ERROR_MESSAGES=""
+    DETAIL_MESSAGES=""
 }
 
 reset_functions() {
@@ -194,6 +198,20 @@ if grep -Fxq "WORKSPACE_ROOT=\"$HOME\"" config/generated/workspace/workspace.con
     pass "workspace.conf populated format remains unchanged"
 else
     fail "workspace.conf populated format changed"
+fi
+
+private_modes=true
+[[ "$(stat -f '%Lp' config/generated/workspace)" == 700 &&
+   "$(stat -f '%Lp' config/generated/workspace/workspace.conf)" == 600 ]] ||
+    private_modes=false
+for snapshot_file in folders.conf repositories.conf vscode-workspaces.conf inventory.conf; do
+    [[ "$(stat -f '%Lp' "config/generated/workspace/$snapshot_file")" == 600 ]] ||
+        private_modes=false
+done
+if [[ "$private_modes" == true ]]; then
+    pass "Workspace generated directory and published files have private modes"
+else
+    fail "Workspace generated output is not private"
 fi
 
 # ==========================================
@@ -335,6 +353,113 @@ fi
 # ==========================================
 # Repository traversal and metadata semantics
 # ==========================================
+
+reset_case
+prepare_simple_home
+mock_repository_metadata
+get_repository_remote() {
+    printf 'https://fixture-user:fixture-token@example.invalid/org/repo.git\n'
+}
+VERBOSE=true
+discover_workspace >/dev/null
+credential_status=$?
+VERBOSE=false
+if [[ $credential_status -eq 1 &&
+      "$(grep -F 'REMOTE=' config/generated/workspace/repositories.conf)" == 'REMOTE="https://example.invalid/org/repo.git"' &&
+      "$WARNING_MESSAGES$DETAIL_MESSAGES$ERROR_MESSAGES" != *fixture-token* &&
+      "$WARNING_MESSAGES" == *'userinfo omitted'* ]] &&
+   ! grep -R -q 'fixture-token' config/generated/workspace; then
+    pass "HTTP URL credentials are removed before snapshot and verbose detail"
+else
+    fail "HTTP URL credentials reached generated state or output"
+fi
+
+reset_case
+prepare_simple_home
+mock_repository_metadata
+get_repository_remote() {
+    printf 'https://fixture-token@example.invalid/org/repo.git\n'
+}
+export_workspace_snapshot >/dev/null
+token_status=$?
+if [[ $token_status -eq 1 ]] &&
+   grep -Fxq 'REMOTE="https://example.invalid/org/repo.git"' \
+       config/generated/workspace/repositories.conf &&
+   ! grep -R -q 'fixture-token' config/generated/workspace; then
+    pass "token-only HTTP userinfo is removed without losing repository URL"
+else
+    fail "token-only HTTP userinfo was not removed"
+fi
+
+reset_case
+prepare_simple_home
+mock_repository_metadata
+get_repository_remote() {
+    printf 'ssh://git@example.invalid/org/repo.git\n'
+}
+export_workspace_snapshot >/dev/null
+ssh_remote_status=$?
+if [[ $ssh_remote_status -eq 0 ]] &&
+   grep -Fxq 'REMOTE="ssh://git@example.invalid/org/repo.git"' \
+       config/generated/workspace/repositories.conf; then
+    pass "ordinary SSH URL username remains usable"
+else
+    fail "ordinary SSH URL was excluded or rewritten"
+fi
+
+reset_case
+prepare_simple_home
+mock_repository_metadata
+get_repository_remote() {
+    printf 'ssh://fixture-user:fixture-secret@example.invalid/org/repo.git\n'
+}
+export_workspace_snapshot >/dev/null
+unsupported_status=$?
+if [[ $unsupported_status -eq 1 &&
+      ! -s config/generated/workspace/repositories.conf &&
+      "$WARNING_MESSAGES$DETAIL_MESSAGES$ERROR_MESSAGES" != *fixture-secret* ]] &&
+   ! grep -R -q 'fixture-secret' config/generated/workspace; then
+    pass "unsupported credential-bearing SSH URL is excluded"
+else
+    fail "unsupported credential-bearing SSH URL reached snapshot or output"
+fi
+
+reset_case
+prepare_simple_home
+mock_repository_metadata
+get_repository_remote() {
+    printf 'https://example.invalid/org/repo.git?token=fixture-secret\n'
+}
+export_workspace_snapshot >/dev/null
+query_status=$?
+if [[ $query_status -eq 1 &&
+      ! -s config/generated/workspace/repositories.conf ]] &&
+   ! grep -R -q 'fixture-secret' config/generated/workspace; then
+    pass "query-bearing URL is excluded without publishing its value"
+else
+    fail "query-bearing URL reached generated state"
+fi
+
+reset_case
+mkdir -p "$HOME/Projects/keep/.git" "$HOME/Projects/skip/.git"
+mock_repository_metadata
+get_repository_remote() {
+    case "$1" in
+        */keep) printf 'git@example.invalid:org/keep.git\n' ;;
+        *) printf 'https://example.invalid/org/skip.git?token=fixture-secret\n' ;;
+    esac
+}
+export_workspace_snapshot >/dev/null
+mixed_status=$?
+if [[ $mixed_status -eq 1 ]] &&
+   grep -Fxq '[keep]' config/generated/workspace/repositories.conf &&
+   ! grep -Fq '[skip]' config/generated/workspace/repositories.conf &&
+   grep -Fxq 'TOTAL_REPOSITORIES=1' config/generated/workspace/inventory.conf &&
+   ! grep -R -q 'fixture-secret' config/generated/workspace; then
+    pass "unsafe remote exclusion preserves independent safe repositories"
+else
+    fail "unsafe remote exclusion lost safe repository or leaked credential"
+fi
 
 reset_case
 mkdir -p "$HOME/Projects"
@@ -565,6 +690,38 @@ for failure_position in 1 2 3 4; do
         fail "publication failure at member $failure_position left a partial snapshot"
     fi
 done
+
+# Inspect transient member and rollback-copy modes before publication finishes.
+reset_case
+prepare_simple_home
+mock_repository_metadata
+write_old_snapshot
+previous_umask="$(umask)"
+umask 022
+transient_private=true
+workspace_publish_member() {
+    local staged_dir="${1%/*}" generated_dir="${2%/*}" file backup_dir
+    [[ "$(stat -f '%Lp' "$staged_dir")" == 700 ]] || transient_private=false
+    for file in "$staged_dir"/*; do
+        [[ "$(stat -f '%Lp' "$file")" == 600 ]] || transient_private=false
+    done
+    for backup_dir in "$generated_dir"/.snapshot-backup.*; do
+        [[ "$(stat -f '%Lp' "$backup_dir")" == 700 ]] || transient_private=false
+        for file in "$backup_dir"/*; do
+            [[ "$(stat -f '%Lp' "$file")" == 600 ]] || transient_private=false
+        done
+    done
+    command mv "$1" "$2"
+}
+export_workspace_snapshot >/dev/null
+private_publication_status=$?
+umask "$previous_umask"
+if [[ $private_publication_status -eq 0 && "$transient_private" == true ]] &&
+   assert_no_snapshot_artifacts; then
+    pass "Workspace staging and rollback files remain private under umask 022"
+else
+    fail "Workspace staging or rollback files had nonprivate modes"
+fi
 
 # ==========================================
 # Post-publication cleanup warning semantics

@@ -7,6 +7,115 @@ The format is based on the principles of **Keep a Changelog**.
 
 ---
 
+## [3.2.0] - 2026-09-24
+
+Minor release completing the supported macOS settings expansion, adding
+restricted Zsh, global Git and SSH client configuration restoration, and
+strengthening Guided Workflow, launcher, Generated Configuration and Workspace
+security contracts. Stage 11 was closed as Audited / Deferred; Secure Migration
+remains planned future work and is not part of this release.
+
+### Added
+
+* Stage 10 is complete. Limited Zsh, global Git and SSH restoration are
+  implemented; Apple Terminal remains deferred after the Stage 11 audit.
+  Existing Homebrew restoration covers the core CLI scope. Additional tool
+  managers remain deferred, and generic PATH/binary restoration is rejected.
+
+* SSH configuration restoration now supports a private snapshot of simple,
+  independent Host profiles. Blueprint, Preview and Bootstrap preserve existing
+  target configuration, while clean-target Apply verifies a `0700` directory
+  and `0600` config. Keys, credentials and learned trust are excluded.
+
+* Global Git configuration now supports seven selected scalar settings,
+  including `user.useConfigOnly` and `pull.ff`. Direct global provenance,
+  conservative include/XDG ownership, unmanaged absent keys, conflict
+  preservation, editor dependency checks, and precise Check → Apply → Verify
+  keep unrelated target settings intact.
+
+* Stage 10A: added a limited `.zshrc` snapshot with conservative Discovery
+  exclusions, one Blueprint category, read-only Preview, and restore only when
+  the target is absent. Generated shell data remains private and is never
+  executed during inspection or verification.
+
+* Stage 9E.6: completed Stage 9 macOS settings expansion by adding the stored
+  `HideDesktop` bool preference to `macos-windows`. Preview describes whether
+  Desktop items would be hidden or shown; Apply uses the existing typed Windows
+  lifecycle without a process restart or a claim of visual-state verification.
+* Stage 9 is complete. Natural Scrolling, wallpaper-click behavior, Dock Items,
+  Menu Bar / Control Center and other private or version-sensitive candidates
+  remain deferred to a future explicit compatibility or feature project.
+
+* Stage 9E.3: narrowed `macos-trackpad` to the two reliable primary stored bool
+  preferences `Clicking` and `TrackpadRightClick`. Trackpad Apply now performs a
+  final stored-state Check without process restart or external-device writes.
+* Removed unreliable tracking-speed restoration from the supported Trackpad
+  contract. Stale generated `com.apple.trackpad.scaling` records are rejected
+  before inspection or mutation and can be refreshed through Discovery.
+
+* Stage 9E.1: expanded `macos-dock` from nine to eleven settings with
+  `launchanim` and `mru-spaces`, retaining one Dock restart only after writes.
+* Added `macos-windows` with four typed `NSGlobalDomain` preferences, strict
+  title-bar/tab enums, stored-value Preview/Verify, and no process restart.
+  Legacy Blueprints keep the new category disabled until explicitly migrated.
+
+* Stage 9D: expanded `macos-keyboard` from two to nine supported settings with
+  press-and-hold, keyboard UI mode, automatic capitalization/spelling/period
+  substitution, and smart quote/dash substitution. `AppleKeyboardUIMode` uses
+  the existing integer contract without a new range; six new keys use bool.
+* Keyboard Apply performs a final Check of all managed preferences after typed
+  writes/read-back. Preview and Bootstrap require no process restart; repeated
+  identical runs perform no writes.
+
+* Stage 9C: expanded `macos-dock` from five to nine supported settings with
+  `orientation` (`left/bottom/right`), `mineffect` (`genie/scale`),
+  `minimize-to-application`, and `show-process-indicators`. Discovery omits
+  unsupported scalar enums with a warning; consumers reject invalid generated values.
+* Dock Apply restarts Dock only after actual preference writes, then performs a
+  final managed-state Check. No-op and repeated identical runs do not restart Dock.
+
+* Stage 9B: added six Finder preferences, bringing support to 13 settings in the
+  existing `macos-finder` category: hidden files, new-window target, Desktop hard
+  disks/external disks/servers, and filename-extension change warnings.
+  `NewWindowTarget` accepts only `PfCm/PfVo/PfHm/PfDe/PfDo/PfAF`; Discovery omits
+  unsupported scalar targets with a warning, while consumers reject them.
+* Finder Apply restarts Finder only after actual writes and performs a final
+  managed-state Check after restart; no-op Apply does not restart Finder.
+
+* Added the repository-owned `bs` launcher with `workflow`, `discover`,
+  `blueprint`, `preview`, `bootstrap`, and `check` commands, plus an idempotent
+  PATH symlink installer that refuses conflicting existing `bs` entries.
+  Bootstrap now runs that installer through a `Check → Apply → Verify`
+  self-setup lifecycle; the installer remains available for manual repair.
+* Added `--workflow`: Generated Configuration readiness check, optional or
+  required Discovery, required Blueprint Save, automatic Preview, and explicit
+  Bootstrap confirmation when planned changes exist.
+* Added immediate `q` / `Q` cancellation at every Blueprint prompt, including
+  nested Edit prompts. Cancellation preserves the saved Blueprint and stops a
+  Guided Workflow before Preview and Bootstrap.
+* Guided Workflow now finishes without a Bootstrap prompt when Preview reports
+  zero planned changes, while preserving Preview warning and error semantics.
+
+### Fixed
+
+* Stage 9A: validate current macOS category/domain/key/type records and reject
+  duplicates, unsafe scalar bytes and malformed candidate files before Discovery
+  publication or Bootstrap mutation. Preserve final records without a newline.
+* Retain macOS Changed accounting after successful writes followed by failed
+  Verify or restart, without reporting false success.
+* Prepare and verify the generated Screenshot destination instead of creating
+  an unrelated hard-coded directory. Detect directory-only changes in Check,
+  Preview and Guided Workflow; restart SystemUIServer only for preference writes.
+* Validate Screenshot paths before Bootstrap startup mutations; preserve existing
+  directories, reject unsafe paths, and never create a missing outside-HOME tree.
+
+### Changed
+
+* Removed unused static `SCREENSHOTS_DIR`; generated location is the sole source.
+* Prioritized Stage 9 macOS Coverage Expansion. Global Verification is
+  Future / Optional. Trackpad
+  float support remains deferred; Stage 9A retains the existing integer contract.
+
 ## [3.1.0] - 07.09.2026
 
 Minor release adding a complete read-only Preview of the selected Bootstrap

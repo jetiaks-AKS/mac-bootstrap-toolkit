@@ -12,6 +12,13 @@ serialize_keyboard_settings() {
 
     macos_collect_preference "$output_file" NSGlobalDomain KeyRepeat int || return 2
     macos_collect_preference "$output_file" NSGlobalDomain InitialKeyRepeat int || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain ApplePressAndHoldEnabled bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain AppleKeyboardUIMode int || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain NSAutomaticCapitalizationEnabled bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain NSAutomaticSpellingCorrectionEnabled bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain NSAutomaticPeriodSubstitutionEnabled bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain NSAutomaticQuoteSubstitutionEnabled bool || return 2
+    macos_collect_preference "$output_file" NSGlobalDomain NSAutomaticDashSubstitutionEnabled bool || return 2
 
     return 0
 
@@ -23,7 +30,7 @@ export_keyboard_settings() {
 
     action "Exporting Keyboard configuration..."
 
-    if ! discovery_publish_file "$output_file" serialize_keyboard_settings; then
+    if ! discovery_publish_file "$output_file" macos_serialize_candidate keyboard serialize_keyboard_settings; then
         error "Failed to export Keyboard configuration"
         return 2
     fi

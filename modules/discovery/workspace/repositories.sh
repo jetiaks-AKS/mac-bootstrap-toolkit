@@ -19,6 +19,48 @@ get_repository_remote() {
 
 }
 
+# Remove HTTP(S) URL userinfo before it can reach generated state or logs.
+# SSH URL usernames and scp-style usernames are not authentication secrets.
+workspace_remote_for_snapshot() {
+
+    local remote="$1" scheme rest authority suffix userinfo host
+
+    if [[ "$remote" != *://* ]]; then
+        printf '%s\n' "$remote"
+        return 0
+    fi
+
+    scheme="${remote%%://*}"
+    rest="${remote#*://}"
+    authority="${rest%%[/?#]*}"
+    suffix="${rest#"$authority"}"
+
+    # Query and fragment data may carry credentials and are not needed for clone.
+    [[ -n "$authority" && "$suffix" != *\?* && "$suffix" != *\#* ]] || return 1
+
+    if [[ "$authority" != *@* ]]; then
+        printf '%s\n' "$remote"
+        return 0
+    fi
+
+    userinfo="${authority%@*}"
+    host="${authority##*@}"
+    [[ -n "$host" ]] || return 1
+
+    case "$scheme" in
+        http|https)
+            printf '%s://%s%s\n' "$scheme" "$host" "$suffix"
+            ;;
+        ssh)
+            # A single ordinary SSH username is useful and carries no password.
+            [[ "$userinfo" =~ ^[A-Za-z0-9._-]+$ ]] || return 1
+            printf '%s\n' "$remote"
+            ;;
+        *) return 1 ;;
+    esac
+
+}
+
 get_repository_current_branch() {
 
     git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null
@@ -84,6 +126,7 @@ export_workspace_repositories() {
 
     local repo_count=0
     local identifiers_file="$working_dir/repository-identifiers"
+    WORKSPACE_REMOTE_WARNING=false
 
     : > "$identifiers_file" || return 2
 
@@ -107,7 +150,7 @@ export_workspace_repositories() {
             [[ -z "$git_dir" ]] && continue
 
             local repo_path repo_name
-            local remote current_branch default_branch has_changes
+            local remote reviewed_remote current_branch default_branch has_changes
             local has_vscode_folder has_settings has_tasks has_launch has_extensions
 
             if ! repo_path="$(dirname "$git_dir")" ||
@@ -131,6 +174,17 @@ export_workspace_repositories() {
                 error "Failed to read Git repository origin: $repo_name"
                 return 2
             fi
+
+            if ! reviewed_remote="$(workspace_remote_for_snapshot "$remote")"; then
+                warning "Repository origin has unsupported URL metadata; repository excluded"
+                WORKSPACE_REMOTE_WARNING=true
+                continue
+            fi
+            if [[ "$reviewed_remote" != "$remote" ]]; then
+                warning "Repository origin URL userinfo omitted from generated snapshot"
+                WORKSPACE_REMOTE_WARNING=true
+            fi
+            remote="$reviewed_remote"
 
             current_branch="$(get_repository_current_branch "$repo_path")"
             metadata_result=$?

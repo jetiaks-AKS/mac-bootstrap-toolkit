@@ -82,7 +82,7 @@ preview_vscode_extensions() {
 
         case $inspection_result in
             0) detail "$extension is already installed" ;;
-            1) action "Would install VS Code extension: $extension" ;;
+            1) preview_action "Would install VS Code extension: $extension" ;;
             *)
                 error "Failed to inspect VS Code extension: $extension"
                 return 2

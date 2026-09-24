@@ -12,7 +12,7 @@ DOCK_CONFIG="config/generated/macos/dock.conf"
 
 check_dock() {
 
-    check_defaults_config "$DOCK_CONFIG"
+    check_defaults_config "$DOCK_CONFIG" dock
 
 }
 
@@ -24,13 +24,18 @@ apply_dock_settings() {
 
     info "Configuring Dock..."
 
-    if ! apply_defaults_config "$DOCK_CONFIG"; then
+    if ! apply_defaults_config "$DOCK_CONFIG" dock; then
         error "Failed to configure Dock"
         return 2
     fi
 
-    if ! killall Dock >/dev/null 2>&1; then
+    if [[ "$DEFAULTS_CONFIG_CHANGED" == true ]] && ! killall Dock >/dev/null 2>&1; then
         error "Failed to restart Dock"
+        return 2
+    fi
+
+    if ! check_dock; then
+        error "Failed to verify Dock"
         return 2
     fi
 
