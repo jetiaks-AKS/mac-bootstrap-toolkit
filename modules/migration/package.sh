@@ -36,6 +36,9 @@ signal.signal(signal.SIGTERM, interrupted)
 class Invalid(Exception):
     pass
 
+class UnlockFailed(Invalid):
+    pass
+
 class Conflict(Exception):
     pass
 
@@ -164,42 +167,54 @@ def validate_pair(private, public):
             with os.fdopen(fd, 'wb') as staged:
                 os.fchmod(staged.fileno(), 0o600)
                 staged.write(raw_private)
-            child = subprocess.Popen(['ssh-keygen', '-y', '-f', validated_private], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            def prompt_filter():
-                seen = b''
-                try:
-                    while True:
-                        chunk = child.stderr.read(1)
-                        if not chunk:
-                            break
-                        seen = (seen + chunk)[-96:]
-                        if seen.endswith(b'Enter passphrase'):
-                            say('SSH key passphrase: ')
-                except OSError:
-                    pass
-            reader = threading.Thread(target=prompt_filter, daemon=True)
-            reader.start()
-            try:
-                public_output = child.stdout.read(MAX_KEY + 1)
-                if len(public_output) > MAX_KEY and child.poll() is None:
-                    child.kill()
-                child.wait()
-                reader.join()
-            finally:
-                if child.poll() is None:
-                    child.terminate()
+            for attempt in range(1, 4):
+                wrong_passphrase = False
+                child = subprocess.Popen(['ssh-keygen', '-y', '-f', validated_private], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                def prompt_filter():
+                    nonlocal wrong_passphrase
+                    seen = b''
                     try:
-                        child.wait(timeout=2)
-                    except subprocess.TimeoutExpired:
+                        while True:
+                            chunk = child.stderr.read(1)
+                            if not chunk:
+                                break
+                            seen = (seen + chunk)[-96:]
+                            if b'incorrect passphrase' in seen:
+                                wrong_passphrase = True
+                            if seen.endswith(b'Enter passphrase'):
+                                say('SSH key passphrase: ')
+                    except OSError:
+                        pass
+                reader = threading.Thread(target=prompt_filter, daemon=True)
+                reader.start()
+                try:
+                    public_output = child.stdout.read(MAX_KEY + 1)
+                    if len(public_output) > MAX_KEY and child.poll() is None:
                         child.kill()
-                        child.wait()
-                child.stdout.close()
-                child.stderr.close()
+                    child.wait()
+                    reader.join()
+                finally:
+                    if child.poll() is None:
+                        child.terminate()
+                        try:
+                            child.wait(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait()
+                    child.stdout.close()
+                    child.stderr.close()
+                if child.returncode == 0 and len(public_output) <= MAX_KEY:
+                    break
+                if not wrong_passphrase or len(public_output) > MAX_KEY:
+                    raise Invalid('private key validation failed')
+                if not os.isatty(0):
+                    raise UnlockFailed('SSH key could not be unlocked')
+                if attempt == 3:
+                    raise UnlockFailed('SSH key could not be unlocked after 3 attempts')
+                say('SSH key passphrase was not accepted; try again')
     finally:
         if tty_settings is not None:
             termios.tcsetattr(0, termios.TCSANOW, tty_settings)
-    if child.returncode or len(public_output) > MAX_KEY:
-        raise Invalid('private key validation failed')
     derived_kind, derived_blob = public_fields(public_output)
     if (kind, blob) != (derived_kind, derived_blob):
         raise Invalid('public/private mismatch')
@@ -219,6 +234,8 @@ def candidates():
         try:
             kind, fp, _, _ = validate_pair(private, public)
             found.append((name, kind, fp))
+        except UnlockFailed as exc:
+            say('Excluded: ' + str(exc))
         except (Invalid, OSError):
             say('Excluded: unsuitable identity')
     return found

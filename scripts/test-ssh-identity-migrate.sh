@@ -345,6 +345,55 @@ if execute(['ssh-keygen', '-q', '-t', 'ed25519', '-f', protected],
     print('FAIL protected fixture generation'); sys.exit(1)
 if invoke(['list'], [(b'SSH key passphrase', phrase)], protected_home):
     print('FAIL protected identity validation'); sys.exit(1)
+wrong_ssh_phrase = b'wrong-fixture-only-passphrase'
+if invoke(['list'], [(b'SSH key passphrase', wrong_ssh_phrase),
+                     (b'SSH key passphrase', phrase)], protected_home) or \
+        b'id_protected ssh-ed25519 SHA256:' not in last_output or \
+        last_output.count(b'SSH key passphrase was not accepted') != 1:
+    print('FAIL protected identity retry recovery'); sys.exit(1)
+print('PASS protected identity unlock retry recovers')
+if invoke(['list'], [(b'SSH key passphrase', wrong_ssh_phrase)] * 3, protected_home) or \
+        b'id_protected ssh-ed25519 SHA256:' in last_output or \
+        b'Excluded: SSH key could not be unlocked after 3 attempts' not in last_output or \
+        last_output.count(b'SSH key passphrase:') != 3:
+    print('FAIL protected identity retry exhaustion'); sys.exit(1)
+print('PASS protected identity unlock retry exhaustion')
+failed_keygen_dir = os.path.join(root, 'failed-keygen-bin')
+os.mkdir(failed_keygen_dir, 0o700)
+failed_keygen = os.path.join(failed_keygen_dir, 'ssh-keygen')
+with open(failed_keygen, 'w') as stub:
+    stub.write('#!/bin/sh\nprintf x >> "$MIGRATION_TEST_COUNTER"\nexit 255\n')
+os.chmod(failed_keygen, 0o700)
+counter = os.path.join(root, 'failed-keygen-count')
+original_path = os.environ['PATH']
+os.environ['PATH'] = failed_keygen_dir + os.pathsep + original_path
+os.environ['MIGRATION_TEST_COUNTER'] = counter
+generic_failure_status = invoke(['list'], [], protected_home)
+os.environ['PATH'] = original_path
+os.environ.pop('MIGRATION_TEST_COUNTER')
+if generic_failure_status or open(counter, 'rb').read() != b'x' or \
+        b'id_protected ssh-ed25519 SHA256:' in last_output or \
+        b'SSH key passphrase was not accepted' in last_output:
+    print('FAIL non-passphrase validation retried'); sys.exit(1)
+print('PASS non-passphrase validation fails closed without retry')
+if invoke(['export', '--output', os.path.join(root, 'retry-protected.age')],
+          [(b'SSH key passphrase', wrong_ssh_phrase), (b'SSH key passphrase', phrase),
+           (b'Select numbers', b'')], protected_home) != 1 or \
+        b'id_protected ssh-ed25519 SHA256:' not in last_output or \
+        os.path.lexists(os.path.join(root, 'retry-protected.age')):
+    print('FAIL protected export candidate retry'); sys.exit(1)
+print('PASS protected export candidate unlock retry')
+for attempt in range(10):
+    if invoke(['list'], [(b'SSH key passphrase', phrase)], protected_home) or \
+            b'id_protected ssh-ed25519 SHA256:' not in last_output:
+        print('FAIL repeated protected identity validation'); sys.exit(1)
+    if invoke(['export', '--output', os.path.join(root, 'cancelled-protected.age')],
+              [(b'SSH key passphrase', phrase), (b'Select numbers', b'')], protected_home) != 1 or \
+            b'id_protected ssh-ed25519 SHA256:' not in last_output:
+        print('FAIL repeated protected export candidate validation'); sys.exit(1)
+if os.path.lexists(os.path.join(root, 'cancelled-protected.age')):
+    print('FAIL cancelled protected export published'); sys.exit(1)
+print('PASS repeated protected list/export candidate validation')
 protected_package = os.path.join(root, 'protected.age')
 if invoke(['export', '--output', protected_package],
           [(b'SSH key passphrase', phrase), (b'Select numbers', b'1'),
