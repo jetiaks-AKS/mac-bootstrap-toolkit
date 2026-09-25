@@ -14,6 +14,7 @@ defaults_native_type() {
     case "$1" in
         bool) echo "Type is boolean" ;;
         int) echo "Type is integer" ;;
+        float) echo "Type is float" ;;
         string) echo "Type is string" ;;
         *) return 2 ;;
     esac
@@ -38,6 +39,19 @@ normalize_defaults_integer() {
     printf '%s%s\n' "$sign" "$value"
 }
 
+normalize_defaults_float() {
+    local value="$1"
+    [[ "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]] || return 2
+    local negative=false
+    if [[ "$value" == -* ]]; then negative=true; value="${value#-}"; fi
+    local whole="${value%%.*}" fraction=""
+    [[ "$value" != *.* ]] || fraction="${value#*.}"
+    whole="$(normalize_defaults_integer "$whole")" || return 2
+    while [[ "$fraction" == *0 && -n "$fraction" ]]; do fraction="${fraction%0}"; done
+    if [[ "$negative" == true && ( "$whole" != 0 || -n "$fraction" ) ]]; then whole="-$whole"; fi
+    printf '%s%s\n' "$whole" "${fraction:+.$fraction}"
+}
+
 defaults_values_match() {
     local type="$1"
     local expected="$2"
@@ -59,6 +73,10 @@ defaults_values_match() {
         int)
             expected="$(normalize_defaults_integer "$expected")" || return 2
             actual="$(normalize_defaults_integer "$actual")" || return 2
+            ;;
+        float)
+            expected="$(normalize_defaults_float "$expected")" || return 2
+            actual="$(normalize_defaults_float "$actual")" || return 2
             ;;
         string)
             [[ "$actual" != *$'\n'* ]] || return 2
@@ -92,7 +110,13 @@ check_defaults_record() {
         return 2
     fi
 
-    if [[ "$native_type" != "$expected_native_type" ]]; then
+    if [[ "$type" == float || ( "$type" == int && "$domain" == com.apple.dock &&
+          ( "$key" == tilesize || "$key" == largesize ) ) ]]; then
+        if [[ "$native_type" != 'Type is float' && "$native_type" != 'Type is integer' ]]; then
+            error "Incompatible macOS preference type: $domain $key"
+            return 2
+        fi
+    elif [[ "$native_type" != "$expected_native_type" ]]; then
         error "Incompatible macOS preference type: $domain $key"
         return 2
     fi
@@ -107,7 +131,12 @@ check_defaults_record() {
     DEFAULTS_OBSERVED_PRESENT=true
     DEFAULTS_OBSERVED_VALUE="$actual"
 
-    defaults_values_match "$type" "$expected" "$actual"
+    if [[ "$type" == int && "$domain" == com.apple.dock &&
+          ( "$key" == tilesize || "$key" == largesize ) ]]; then
+        defaults_values_match float "$expected" "$actual"
+    else
+        defaults_values_match "$type" "$expected" "$actual"
+    fi
     local comparison_result=$?
 
     if [[ $comparison_result -eq 2 ]]; then
@@ -131,6 +160,9 @@ defaults_preview_display_value() {
             ;;
         int)
             normalize_defaults_integer "$value"
+            ;;
+        float)
+            normalize_defaults_float "$value"
             ;;
         string)
             [[ "$value" != *[[:cntrl:]]* ]] || return 2

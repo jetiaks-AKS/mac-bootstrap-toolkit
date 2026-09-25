@@ -12,7 +12,7 @@ serialize_git_configuration() {
 }
 
 discover_git() {
-    local output_file="config/generated/git.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/git.conf"
     local index key value result warning_result=0
     if ! command -v git >/dev/null 2>&1; then
         error "Git is not installed"

@@ -104,6 +104,16 @@ defaults() {
                     return 0
                 fi
                 ;;
+            float_type)
+                if [[ "$operation" == read-type ]]; then
+                    echo "Type is float"
+                    return 0
+                fi
+                if [[ "$operation" == read ]]; then
+                    printf '%s\n' "$MOCK_VALUE"
+                    return 0
+                fi
+                ;;
             value_failure)
                 if [[ "$operation" == read ]]; then
                     echo "Preferences read failed" >&2
@@ -210,6 +220,39 @@ if [[ $dock_status -eq 0 && "$(cat config/generated/macos/dock.conf)" == "$expec
     pass "Dock exact eleven-record inventory preserves the existing format"
 else
     fail "Dock populated format changed"
+fi
+
+reset_fixture
+MOCK_TARGET='com.apple.dock|tilesize'
+MOCK_MODE=float_type
+MOCK_VALUE='65.000000'
+export_dock_settings >/dev/null
+if [[ $? -eq 0 ]] && grep -Fxq 'com.apple.dock|tilesize|float|65.000000' config/generated/macos/dock.conf; then
+    pass 'Dock tilesize float survives Discovery and generated validation'
+else
+    fail 'Dock tilesize float Discovery'
+fi
+MOCK_VALUE='65.5'
+export_dock_settings >/dev/null
+if [[ $? -eq 0 ]] && grep -Fxq 'com.apple.dock|tilesize|float|65.5' config/generated/macos/dock.conf; then
+    pass 'Dock fractional tilesize survives Discovery'
+else
+    fail 'Dock fractional tilesize Discovery'
+fi
+before_checksum="$(cksum config/generated/macos/dock.conf)"
+MOCK_VALUE='not-a-number'
+export_dock_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" ]]; then
+    pass 'Invalid Dock float value preserves published snapshot'
+else
+    fail 'Invalid Dock float value publication guard'
+fi
+MOCK_MODE=type_mismatch
+export_dock_settings >/dev/null
+if [[ $? -eq 2 && "$before_checksum" == "$(cksum config/generated/macos/dock.conf)" ]]; then
+    pass 'Incompatible Dock plist type preserves published snapshot'
+else
+    fail 'Incompatible Dock plist type publication guard'
 fi
 
 reset_fixture

@@ -1,0 +1,585 @@
+#!/usr/bin/env python3
+"""Fixed Bootstrap Bundle v1 format and local publication. No code is loaded from a bundle."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+CONFIG = ROOT / "config"
+RECOVERY = CONFIG / ".bundle-publication"
+ITEMS = {
+    "homebrew-packages": "brew-packages.conf",
+    "homebrew-casks": "brew-casks.conf",
+    "app-store": "appstore.conf",
+    "vscode-extensions": "vscode-extensions.conf",
+    "workspace-folders": "workspace/folders.conf",
+    "git-repositories": "workspace/repositories.conf",
+    "git-configuration": "git.conf",
+}
+CATEGORIES = {
+    "ssh-configuration": "ssh/config.snapshot",
+    "vscode-settings": "vscode/settings.json",
+    "shell-zsh": "shell/zshrc.snapshot",
+    "macos-finder": "macos/finder.conf",
+    "macos-dock": "macos/dock.conf",
+    "macos-windows": "macos/windows.conf",
+    "macos-keyboard": "macos/keyboard.conf",
+    "macos-trackpad": "macos/trackpad.conf",
+    "macos-screenshots": "macos/screenshots.conf",
+}
+CATEGORY_FLAGS = set(CATEGORIES) | {"git-configuration"}
+GROUPS = {
+    "Applications": ("homebrew-casks", "app-store", "vscode-extensions"),
+    "Homebrew": ("homebrew-packages",),
+    "macOS Settings": tuple(k for k in CATEGORIES if k.startswith("macos-")),
+    "Shell": ("shell-zsh",),
+    "Git": ("git-configuration",),
+    "SSH Configuration": ("ssh-configuration",),
+    "Workspace": ("workspace-folders", "git-repositories"),
+}
+MAX_ARCHIVE = 48 * 1024 * 1024
+MAX_MEMBER = 33 * 1024 * 1024
+MAX_ENTRIES = 32
+
+
+class Invalid(Exception):
+    pass
+
+
+def checked_file(path, limit=MAX_MEMBER):
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > limit:
+        raise Invalid("unsafe or oversized input file")
+    return path.read_bytes()
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def parse_blueprint(data):
+    try:
+        lines = data.decode("utf-8").splitlines()
+    except UnicodeDecodeError as exc:
+        raise Invalid("Blueprint is not UTF-8") from exc
+    sections = {}
+    current = None
+    for line in lines:
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1]
+            if current in sections or current not in ("categories", *ITEMS):
+                raise Invalid("invalid Blueprint section")
+            sections[current] = []
+        elif current is None:
+            raise Invalid("Blueprint data outside section")
+        else:
+            sections[current].append(line)
+    if set(sections) != {"categories", *ITEMS}:
+        raise Invalid("incomplete Blueprint")
+    categories = {}
+    for line in sections["categories"]:
+        match = re.fullmatch(r'([a-z-]+)="(true|false)"', line)
+        if not match or match[1] not in CATEGORY_FLAGS or match[1] in categories:
+            raise Invalid("invalid Blueprint category")
+        categories[match[1]] = match[2] == "true"
+    if set(categories) != CATEGORY_FLAGS:
+        raise Invalid("incomplete Bundle Blueprint categories")
+    if not categories["git-configuration"] and sections["git-configuration"]:
+        raise Invalid("disabled Git category contains selected items")
+    return sections, categories
+
+
+def required_paths(blueprint):
+    sections, categories = parse_blueprint(blueprint)
+    result = {"blueprint.conf"}
+    for section, relative in ITEMS.items():
+        if sections[section]:
+            result.add("generated/" + relative)
+    for category, relative in CATEGORIES.items():
+        if categories.get(category, False):
+            result.add("generated/" + relative)
+    return result
+
+
+def safe_relative_home(value, home):
+    home = home.rstrip("/")
+    if not value.startswith(home + "/"):
+        raise Invalid("selected path is outside source HOME")
+    suffix = value[len(home) + 1:]
+    if not suffix or any(part in ("", ".", "..") for part in suffix.split("/")):
+        raise Invalid("unsafe HOME-relative path")
+    return "~/" + suffix
+
+
+def portable_paths(files, home):
+    repo = "generated/workspace/repositories.conf"
+    if repo in files:
+        try:
+            content = files[repo].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise Invalid("invalid repository encoding") from exc
+        lines = []
+        for line in content.splitlines(keepends=True):
+            if line.startswith('PATH="') and line.endswith('"\n'):
+                value = line[6:-2]
+                line = 'PATH="' + safe_relative_home(value, home) + '"\n'
+            lines.append(line)
+        files[repo] = "".join(lines).encode()
+    screenshot = "generated/macos/screenshots.conf"
+    if screenshot in files:
+        try:
+            content = files[screenshot].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise Invalid("invalid screenshot encoding") from exc
+        lines = []
+        for line in content.splitlines(keepends=True):
+            if line.startswith("com.apple.screencapture|location|string|"):
+                value = line.rstrip("\n").split("|", 3)[3]
+                if value.startswith("/"):
+                    value = safe_relative_home(value, home)
+                elif not value.startswith("~/"):
+                    raise Invalid("unsupported screenshot destination")
+                line = "com.apple.screencapture|location|string|" + value + "\n"
+            lines.append(line)
+        files[screenshot] = "".join(lines).encode()
+
+
+def selected_payload(files, blueprint):
+    sections, _ = parse_blueprint(blueprint)
+    for section in ("homebrew-packages", "homebrew-casks", "app-store",
+                    "vscode-extensions", "workspace-folders"):
+        name = "generated/" + ITEMS[section]
+        if name not in files:
+            continue
+        selected = set(sections[section])
+        lines = files[name].decode("utf-8").splitlines()
+        files[name] = ("".join(line + "\n" for line in lines
+                               if (line.split("|", 1)[0] if section in
+                                   ("app-store", "workspace-folders") else line) in selected)).encode()
+    name = "generated/workspace/repositories.conf"
+    if name in files:
+        selected = set(sections["git-repositories"])
+        current = None
+        output = []
+        for line in files[name].decode("utf-8").splitlines(keepends=True):
+            if line.startswith("[") and line.rstrip().endswith("]"):
+                current = line.strip()[1:-1]
+            if current in selected:
+                output.append(line)
+        files[name] = "".join(output).encode()
+    name = "generated/git.conf"
+    if name in files:
+        with tempfile.TemporaryDirectory(prefix="mbt-git-") as directory:
+            source = Path(directory) / "source"
+            target = Path(directory) / "selected"
+            write_file(source, files[name])
+            result = subprocess.run(["git", "config", "--file", str(source),
+                                     "--no-includes", "--null", "--list"],
+                                    capture_output=True, check=False)
+            if result.returncode:
+                raise Invalid("invalid selected Git configuration")
+            selected = {key.lower() for key in sections["git-configuration"]}
+            for record in result.stdout.split(b"\0"):
+                if not record:
+                    continue
+                key, separator, value = record.partition(b"\n")
+                if not separator:
+                    raise Invalid("invalid Git configuration record")
+                if key.decode("ascii").lower() not in selected:
+                    continue
+                written = subprocess.run(["git", "config", "--file", str(target),
+                                          key.decode("ascii"), value.decode("utf-8")],
+                                         capture_output=True, check=False)
+                if written.returncode:
+                    raise Invalid("failed to select Git configuration")
+            files[name] = target.read_bytes() if target.exists() else b""
+
+
+def target_paths(files, home):
+    home = home.rstrip("/")
+    repo = "generated/workspace/repositories.conf"
+    if repo in files:
+        lines = []
+        for line in files[repo].decode().splitlines(keepends=True):
+            if line.startswith('PATH="'):
+                if not line.endswith('"\n') or not line[6:-2].startswith("~/"):
+                    raise Invalid("nonportable repository path")
+                value = line[8:-2]
+                if not value or any(part in ("", ".", "..") for part in value.split("/")):
+                    raise Invalid("unsafe repository path")
+                line = 'PATH="' + home + "/" + value + '"\n'
+            lines.append(line)
+        files[repo] = "".join(lines).encode()
+    screenshot = "generated/macos/screenshots.conf"
+    if screenshot in files:
+        for line in files[screenshot].decode().splitlines():
+            if line.startswith("com.apple.screencapture|location|string|"):
+                value = line.split("|", 3)[3]
+                if not value.startswith("~/"):
+                    raise Invalid("nonportable screenshot path")
+                suffix = value[2:]
+                if not suffix or any(part in ("", ".", "..") for part in suffix.split("/")):
+                    raise Invalid("unsafe screenshot path")
+
+
+def write_file(path, data):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with path.open("xb") as out:
+        os.fchmod(out.fileno(), 0o600)
+        out.write(data)
+
+
+def pack(stage, output, home):
+    blueprint = checked_file(stage / "blueprint.conf", 65536)
+    paths = required_paths(blueprint)
+    files = {path: checked_file(stage / path) for path in paths}
+    selected_payload(files, blueprint)
+    zsh = files.get("generated/shell/zshrc.snapshot")
+    if zsh is not None and not zsh.startswith(b"MBT-ZSHRC-1\nstatus=eligible\n"):
+        raise Invalid("selected Zsh snapshot is not eligible")
+    portable_paths(files, home)
+    secure = stage / "secure.age"
+    if secure.exists() or secure.is_symlink():
+        files["secure.age"] = checked_file(secure, 33 * 1024 * 1024)
+    manifest = {
+        "format": "mac-bootstrap-bundle",
+        "version": 1,
+        "files": {name: {"size": len(data), "sha256": digest(data)}
+                  for name, data in sorted(files.items())},
+    }
+    files["manifest.json"] = (json.dumps(manifest, sort_keys=True) + "\n").encode()
+    if output.exists() or output.is_symlink():
+        raise Invalid("Bundle destination exists")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if output.parent.is_symlink():
+        raise Invalid("unsafe Bundle destination parent")
+    fd, temporary = tempfile.mkstemp(prefix=".bundle-", dir=output.parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            with tarfile.open(fileobj=stream, mode="w", format=tarfile.USTAR_FORMAT) as tar:
+                for name, data in sorted(files.items()):
+                    header = tarfile.TarInfo(name)
+                    header.size = len(data)
+                    header.mode = 0o600
+                    import io
+                    tar.addfile(header, io.BytesIO(data))
+            stream.flush()
+            os.fsync(stream.fileno())
+        if os.path.getsize(temporary) > MAX_ARCHIVE:
+            raise Invalid("Bundle is too large")
+        validate_archive(Path(temporary))
+        try:
+            os.link(temporary, output)
+        except FileExistsError as exc:
+            raise Invalid("Bundle destination appeared") from exc
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def validate_archive(path):
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_ARCHIVE:
+        raise Invalid("unsafe or oversized Bundle")
+    raw = path.read_bytes()
+    offset = 0
+    raw_members = []
+    while offset + 512 <= len(raw):
+        header = raw[offset:offset + 512]
+        if header == bytes(512):
+            if any(raw[offset:]):
+                raise Invalid("unexpected archive trailer")
+            break
+        if header[156:157] not in (b"0", b"\0") or header[345:500].strip(b"\0"):
+            raise Invalid("unsupported archive entry")
+        try:
+            name = header[:100].split(b"\0", 1)[0].decode("ascii")
+            size = int(header[124:136].strip(b"\0 ") or b"0", 8)
+        except (UnicodeError, ValueError) as exc:
+            raise Invalid("invalid archive header") from exc
+        if size > MAX_MEMBER:
+            raise Invalid("oversized archive entry")
+        raw_members.append((name, size))
+        offset += 512 + ((size + 511) // 512) * 512
+    else:
+        raise Invalid("truncated archive")
+    files = {}
+    with tarfile.open(path, mode="r:") as tar:
+        members = tar.getmembers()
+        if len(members) > MAX_ENTRIES or raw_members != [(m.name, m.size) for m in members]:
+            raise Invalid("too many Bundle entries")
+        for member in members:
+            name = member.name
+            if (member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE) or
+                member.pax_headers or member.size > MAX_MEMBER or
+                name in files or name.startswith("/") or
+                any(part in ("", ".", "..") for part in name.split("/")) or
+                name not in {"manifest.json", "blueprint.conf", "secure.age",
+                             *("generated/" + item for item in (*ITEMS.values(), *CATEGORIES.values()))}):
+                raise Invalid("unexpected Bundle entry")
+            files[name] = tar.extractfile(member).read()
+    if "manifest.json" not in files or "blueprint.conf" not in files:
+        raise Invalid("incomplete Bundle")
+    try:
+        manifest = json.loads(files.pop("manifest.json"))
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise Invalid("invalid Bundle manifest") from exc
+    if not isinstance(manifest, dict) or manifest.get("format") != "mac-bootstrap-bundle" or manifest.get("version") != 1:
+        raise Invalid("unsupported Bundle version")
+    expected = required_paths(files["blueprint.conf"])
+    if "secure.age" in files:
+        if not files["secure.age"].startswith(b"age-encryption.org/v1\n"):
+            raise Invalid("invalid encrypted SSH package header")
+        expected.add("secure.age")
+    if (not isinstance(manifest.get("files"), dict) or set(files) != expected or
+        set(manifest["files"]) != expected):
+        raise Invalid("Bundle content does not match selection")
+    for name, data in files.items():
+        record = manifest["files"][name]
+        if record != {"size": len(data), "sha256": digest(data)}:
+            raise Invalid("Bundle integrity mismatch")
+    return files
+
+
+def unpack(bundle, stage, home):
+    files = validate_archive(bundle)
+    target_paths(files, home)
+    (stage / "generated").mkdir(mode=0o700, exist_ok=True)
+    for name, data in files.items():
+        write_file(stage / name, data)
+
+
+def narrow(stage, groups):
+    path = stage / "blueprint.conf"
+    original = checked_file(path, 65536).decode()
+    disabled = {item for group in groups for item in GROUPS[group]}
+    current = None
+    output = []
+    for line in original.splitlines(keepends=True):
+        if line.startswith("[") and line.rstrip().endswith("]"):
+            current = line.strip()[1:-1]
+        if current == "categories":
+            key = line.split("=", 1)[0]
+            if key in disabled:
+                line = key + '="false"\n'
+        elif current in disabled and current in ITEMS and not line.startswith("["):
+            if line.strip() and not line.startswith("#"):
+                continue
+        output.append(line)
+    replacement = path.with_name("blueprint.narrow")
+    write_file(replacement, "".join(output).encode())
+    os.replace(replacement, path)
+
+
+def summary(stage, secure_selected, disabled):
+    sections, categories = parse_blueprint(checked_file(stage / "blueprint.conf"))
+    def count(group, name):
+        return len(sections[name]) if group not in disabled else 0
+
+    def selected(group, name):
+        return group not in disabled and categories[name]
+
+    def row(label, value):
+        print(f"  {label:20} {value}")
+
+    print("Applications")
+    row("Homebrew casks", count("Applications", "homebrew-casks"))
+    row("App Store apps", count("Applications", "app-store"))
+    row("VS Code extensions", count("Applications", "vscode-extensions"))
+    print("Homebrew")
+    row("Formulae", count("Homebrew", "homebrew-packages"))
+    print("Settings")
+    row("macOS", sum(selected("macOS Settings", name) for name in GROUPS["macOS Settings"]))
+    row("Git", count("Git", "git-configuration") if selected("Git", "git-configuration") else 0)
+    for label, group, name in (
+        ("SSH Configuration", "SSH Configuration", "ssh-configuration"),
+        ("VS Code Settings", "VS Code Settings", "vscode-settings"),
+        ("Shell / Zsh", "Shell", "shell-zsh"),
+    ):
+        row(label, "Yes" if selected(group, name) else "No")
+    print("Workspace")
+    row("Folders", count("Workspace", "workspace-folders"))
+    row("Git repositories", count("Workspace", "git-repositories"))
+    print("Secure Credentials")
+    row("SSH identities", "Selected" if secure_selected and (stage / "secure.age").exists() else "No")
+
+
+def fingerprint(path):
+    if path.is_file() and not path.is_symlink():
+        return digest(path.read_bytes())
+    if not path.is_dir() or path.is_symlink():
+        raise Invalid("unsafe publication path")
+    value = hashlib.sha256()
+    for child in sorted(path.rglob("*")):
+        if child.is_symlink():
+            raise Invalid("link in publication state")
+        relative = child.relative_to(path).as_posix().encode()
+        value.update(relative + b"\0")
+        if child.is_file():
+            value.update(digest(child.read_bytes()).encode())
+        elif not child.is_dir():
+            raise Invalid("special publication entry")
+    return value.hexdigest()
+
+
+def recover():
+    if not RECOVERY.exists():
+        return
+    if RECOVERY.is_symlink() or not RECOVERY.is_dir():
+        raise Invalid("unsafe publication recovery path")
+    if (RECOVERY / "complete").is_file():
+        shutil.rmtree(RECOVERY)
+        return
+    marker = RECOVERY / "incomplete"
+    if not marker.is_file():
+        if set(item.name for item in RECOVERY.iterdir()) == {"marker.tmp"}:
+            shutil.rmtree(RECOVERY)
+            return
+        if any(RECOVERY.iterdir()):
+            raise Invalid("publication recovery marker missing; manual review required")
+        RECOVERY.rmdir()
+        return
+    old_generated = RECOVERY / "generated.old"
+    old_blueprint = RECOVERY / "blueprint.old"
+    try:
+        previous = json.loads(marker.read_text())
+        if set(previous) != {"generated", "blueprint"}:
+            raise ValueError()
+        for name, old in (("generated", old_generated), ("blueprint", old_blueprint)):
+            current = CONFIG / ("generated" if name == "generated" else "blueprint.conf")
+            record = previous[name]
+            if not isinstance(record, dict) or set(record) != {"present", "dev", "ino", "old", "new"}:
+                raise ValueError()
+            if current.exists() and old.exists() and fingerprint(current) != record["new"]:
+                raise Invalid("published state changed; manual recovery required")
+            if record["present"]:
+                if old.exists():
+                    if fingerprint(old) != record["old"]:
+                        raise Invalid("previous local state changed; manual recovery required")
+                    if current.is_dir():
+                        shutil.rmtree(current)
+                    elif current.exists():
+                        current.unlink()
+                    os.rename(old, current)
+                elif (not current.exists() or
+                      (current.stat().st_dev, current.stat().st_ino) !=
+                      (record["dev"], record["ino"]) or
+                      fingerprint(current) != record["old"]):
+                    raise Invalid("previous local state unavailable; manual recovery required")
+            elif current.exists():
+                if fingerprint(current) != record["new"]:
+                    raise Invalid("published state changed; manual recovery required")
+                if current.is_dir():
+                    shutil.rmtree(current)
+                else:
+                    current.unlink()
+        shutil.rmtree(RECOVERY)
+    except (OSError, ValueError) as exc:
+        raise Invalid("publication recovery failed; manual recovery required") from exc
+
+
+def publish(stage):
+    recover()
+    source_generated = stage / "generated"
+    source_blueprint = stage / "blueprint.conf"
+    if not source_generated.is_dir() or not source_blueprint.is_file():
+        raise Invalid("staged local state incomplete")
+    # Copy prepared state to the same filesystem before moving live paths.
+    new_generated = CONFIG / ".bundle-generated-new"
+    new_blueprint = CONFIG / ".bundle-blueprint-new"
+    if any(path.exists() or path.is_symlink() for path in (new_generated, new_blueprint)):
+        raise Invalid("stale prepared publication paths")
+    try:
+        shutil.copytree(source_generated, new_generated, symlinks=False)
+        shutil.copyfile(source_blueprint, new_blueprint)
+        os.chmod(new_generated, 0o700)
+        os.chmod(new_blueprint, 0o600)
+        for path in new_generated.rglob("*"):
+            os.chmod(path, 0o700 if path.is_dir() else 0o600)
+        current_generated = CONFIG / "generated"
+        current_blueprint = CONFIG / "blueprint.conf"
+        if any(path.is_symlink() for path in (current_generated, current_blueprint)):
+            raise Invalid("unsafe local state path")
+        if current_generated.exists() and not current_generated.is_dir():
+            raise Invalid("unsafe generated destination")
+        if current_blueprint.exists() and not current_blueprint.is_file():
+            raise Invalid("unsafe Blueprint destination")
+        def identity(path, prepared):
+            present = path.exists()
+            return {"present": present, "dev": path.stat().st_dev if present else None,
+                    "ino": path.stat().st_ino if present else None,
+                    "old": fingerprint(path) if present else None,
+                    "new": fingerprint(prepared)}
+        record = json.dumps({"generated": identity(current_generated, new_generated),
+                             "blueprint": identity(current_blueprint, new_blueprint)}).encode()
+        os.mkdir(RECOVERY, 0o700)
+        marker = RECOVERY / "incomplete"
+        write_file(RECOVERY / "marker.tmp", record)
+        os.replace(RECOVERY / "marker.tmp", marker)
+        if current_generated.exists():
+            os.rename(current_generated, RECOVERY / "generated.old")
+        if current_blueprint.exists():
+            os.rename(current_blueprint, RECOVERY / "blueprint.old")
+        os.rename(new_generated, current_generated)
+        os.rename(new_blueprint, current_blueprint)
+    except (OSError, Invalid) as exc:
+        if (RECOVERY / "incomplete").exists():
+            recover()
+        elif RECOVERY.exists():
+            shutil.rmtree(RECOVERY)
+        if new_generated.exists():
+            shutil.rmtree(new_generated)
+        if new_blueprint.exists():
+            new_blueprint.unlink()
+        raise Invalid("publication failed; previous local state restored") from exc
+    try:
+        os.rename(marker, RECOVERY / "complete")
+    except OSError as exc:
+        recover()
+        raise Invalid("publication failed; previous local state restored") from exc
+    shutil.rmtree(RECOVERY)
+
+
+def main():
+    command, *args = sys.argv[1:]
+    if command == "pack" and len(args) == 3:
+        pack(Path(args[0]), Path(args[1]), args[2])
+    elif command == "check-portability" and len(args) == 2:
+        blueprint = checked_file(Path(args[0]) / "blueprint.conf", 65536)
+        files = {path: checked_file(Path(args[0]) / path)
+                 for path in required_paths(blueprint)}
+        selected_payload(files, blueprint)
+        zsh = files.get("generated/shell/zshrc.snapshot")
+        if zsh is not None and not zsh.startswith(b"MBT-ZSHRC-1\nstatus=eligible\n"):
+            raise Invalid("selected Zsh snapshot is not eligible")
+        portable_paths(files, args[1])
+    elif command == "unpack" and len(args) == 3:
+        unpack(Path(args[0]), Path(args[1]), args[2])
+    elif command == "narrow" and len(args) >= 1 and set(args[1:]) <= set(GROUPS):
+        narrow(Path(args[0]), args[1:])
+    elif command == "summary" and len(args) >= 2 and args[1] in ("true", "false") and set(args[2:]) <= set(GROUPS):
+        summary(Path(args[0]), args[1] == "true", args[2:])
+    elif command == "publish" and len(args) == 1:
+        publish(Path(args[0]))
+    elif command == "recover" and not args:
+        recover()
+    else:
+        raise Invalid("invalid Bundle helper command")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (Invalid, OSError, ValueError, TypeError, KeyError, UnicodeError,
+            tarfile.TarError) as exc:
+        print("Bundle error: " + (str(exc) if isinstance(exc, Invalid) else "operation failed"),
+              file=sys.stderr)
+        sys.exit(2)

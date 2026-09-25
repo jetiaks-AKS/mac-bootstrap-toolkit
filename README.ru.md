@@ -14,7 +14,8 @@ Mac, сохраняет их как локальную конфигурацию,
 восстановления, предварительно показывает изменения и применяет их на целевом
 Mac.
 
-Проект воспроизводит рабочее окружение, а не копирует всю операционную систему.
+Проект восстанавливает поддерживаемые части рабочего окружения. Это не backup,
+Migration Assistant или общий перенос пользовательских данных.
 
 ```text
 Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
@@ -50,27 +51,26 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 
 ## Быстрый старт
 
-Запустите пошаговый сценарий из корня репозитория:
+Выберите сценарий:
 
 ```bash
-./bootstrap.sh --workflow
+bs workflow                         # Discovery, выбор, Preview и Bootstrap на этом Mac
+bs capture                          # Один приватный Bundle на исходном Mac
+bs restore /path/to/bundle.mbt       # Восстановление на новом Mac
 ```
 
-Или используйте отдельные режимы:
+При смене Mac запустите `bs capture` на старом Mac, приватно перенесите файл
+`.mbt` и выполните `bs restore /path/to/bundle.mbt` на новом. После Restore
+обычный `bs workflow` работает без Bundle. Репозиторий Toolkit нужно получить
+на каждом Mac; пока `bs` не установлен, используйте из корня репозитория
+`./bootstrap.sh --workflow`, `./bootstrap.sh --capture` или
+`./bootstrap.sh --restore /path/to/bundle.mbt`.
 
-```bash
-./bootstrap.sh --check
-./bootstrap.sh --discover
-./bootstrap.sh --blueprint
-./bootstrap.sh --dry-run
-./bootstrap.sh --bootstrap
-```
-
-Флаг `--verbose` включает дополнительную диагностику. Bootstrap может
-установить необязательную короткую команду `bs`. Полный порядок работы,
-переноса конфигурации и меры безопасности приведены в
-[«Быстром старте»](docs/getting-started/QUICKSTART.md), а режимы CLI, вывод,
-журналы, коды завершения и поведение `bs` — в [документации CLI](docs/toolkit/CLI.md).
+Приложения устанавливаются заново, репозитории клонируются из remotes;
+working trees и пользовательские файлы не копируются. Выбранные SSH identities
+могут переноситься в зашифрованном Secure Credentials payload. Практические
+шаги — в [«Быстром старте»](docs/getting-started/QUICKSTART.md), отдельные
+команды и их статусы — в [документации CLI](docs/toolkit/CLI.md).
 
 ## Документация
 
@@ -84,9 +84,9 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 
 ## Статус проекта
 
-Версия 3.2.0 стабильна. Preview реализован; сводная глобальная проверка после
-Bootstrap остаётся необязательной будущей возможностью и не требуется текущей
-архитектурой.
+Версия 3.2.0 — стабильный релиз; Capture/Restore сейчас находится в `develop`
+и ещё не выпущен. Сводная глобальная проверка остаётся необязательной будущей
+возможностью.
 
 Текущее направление развития описано в [ROADMAP.md](ROADMAP.md).
 

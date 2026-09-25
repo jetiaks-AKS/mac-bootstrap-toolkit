@@ -5,6 +5,8 @@ migration_main() {
         migration_run list
     elif [[ $# -eq 3 && "$1" == export && "$2" == --output && "$3" == /* ]]; then
         migration_run export "$3"
+    elif [[ $# -eq 3 && "$1" == capture-export && "$2" == --output && "$3" == /* ]]; then
+        migration_run capture-export "$3"
     elif [[ $# -eq 3 && "$1" == import && "$2" == --input && "$3" == /* ]]; then
         migration_run import "$3"
     else

@@ -17,7 +17,7 @@ serialize_windows_settings() {
 }
 
 export_windows_settings() {
-    local output_file="config/generated/macos/windows.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/windows.conf"
     WINDOWS_DISCOVERY_WARNING=false
 
     action "Exporting Window Management configuration..."

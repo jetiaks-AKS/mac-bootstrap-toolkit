@@ -9,8 +9,13 @@ The format is based on the principles of **Keep a Changelog**.
 
 ## Unreleased
 
+* Added private Bootstrap Bundle v1 Capture/Restore orchestration over staged
+  Discovery, Blueprint, Preview and Bootstrap, with optional encrypted SSH
+  identities, narrow HOME path normalization, and recoverable local publication.
 * Added Stage 12 v1 secure SSH identity list, encrypted export and validated
   no-clobber import as a separate CLI.
+* Accepted integer and float representations of supported Dock size preferences
+  in Discovery, Preview and Bootstrap after real Capture compatibility testing.
 
 ## [3.2.0] - 2026-09-24
 

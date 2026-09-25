@@ -92,7 +92,7 @@ validate_vscode_settings_source() {
 
 apply_vscode_settings() {
 
-    local source_file="config/generated/vscode/settings.json"
+    local source_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode/settings.json"
     local target_dir="$HOME/Library/Application Support/Code/User"
     local target_file="$target_dir/settings.json"
     local inspection_result
@@ -172,7 +172,7 @@ apply_vscode_settings() {
 
 preview_vscode_settings() {
 
-    local source_file="config/generated/vscode/settings.json"
+    local source_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode/settings.json"
     local target_dir="$HOME/Library/Application Support/Code/User"
     local target_file="$target_dir/settings.json"
     local source_result

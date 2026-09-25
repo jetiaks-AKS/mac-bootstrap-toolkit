@@ -10,9 +10,9 @@ serialize_dock_settings() {
 
     macos_collect_preference "$output_file" com.apple.dock autohide bool || return 2
     macos_collect_preference "$output_file" com.apple.dock show-recents bool || return 2
-    macos_collect_preference "$output_file" com.apple.dock tilesize int || return 2
+    macos_collect_preference "$output_file" com.apple.dock tilesize number || return 2
     macos_collect_preference "$output_file" com.apple.dock magnification bool || return 2
-    macos_collect_preference "$output_file" com.apple.dock largesize int || return 2
+    macos_collect_preference "$output_file" com.apple.dock largesize number || return 2
     macos_collect_preference "$output_file" com.apple.dock orientation string || return 2
     macos_collect_preference "$output_file" com.apple.dock mineffect string || return 2
     macos_collect_preference "$output_file" com.apple.dock minimize-to-application bool || return 2
@@ -26,7 +26,7 @@ serialize_dock_settings() {
 
 export_dock_settings() {
 
-    local output_file="config/generated/macos/dock.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/dock.conf"
     DOCK_DISCOVERY_WARNING=false
 
     action "Exporting Dock configuration..."

@@ -47,9 +47,9 @@ validate_defaults_config() {
             allowed["finder", "com.apple.finder", "FXEnableExtensionChangeWarning"] = "bool"
             allowed["dock", "com.apple.dock", "autohide"] = "bool"
             allowed["dock", "com.apple.dock", "show-recents"] = "bool"
-            allowed["dock", "com.apple.dock", "tilesize"] = "int"
+            allowed["dock", "com.apple.dock", "tilesize"] = "number"
             allowed["dock", "com.apple.dock", "magnification"] = "bool"
-            allowed["dock", "com.apple.dock", "largesize"] = "int"
+            allowed["dock", "com.apple.dock", "largesize"] = "number"
             allowed["dock", "com.apple.dock", "orientation"] = "string"
             allowed["dock", "com.apple.dock", "mineffect"] = "string"
             allowed["dock", "com.apple.dock", "minimize-to-application"] = "bool"
@@ -78,7 +78,8 @@ validate_defaults_config() {
         /^ *$/ { next }
         NF != 4 || $1 == "" || $2 == "" { exit 2 }
         { if (seen[$1, $2]++) exit 2 }
-        allowed[category, $1, $2] != $3 { exit 2 }
+        allowed[category, $1, $2] != $3 &&
+            !(allowed[category, $1, $2] == "number" && ($3 == "int" || $3 == "float")) { exit 2 }
         category == "finder" && $2 == "NewWindowTarget" && $4 !~ finder_target_pattern { exit 2 }
         category == "dock" && $2 == "orientation" && $4 !~ dock_orientation_pattern { exit 2 }
         category == "dock" && $2 == "mineffect" && $4 !~ dock_mineffect_pattern { exit 2 }
@@ -94,6 +95,7 @@ validate_defaults_config() {
             next
         }
         $3 == "int" { if ($4 !~ /^-?[0-9]+$/) exit 2; next }
+        $3 == "float" { if ($4 !~ /^-?[0-9]+(\.[0-9]+)?$/) exit 2; next }
         $3 == "string" { next }
         { exit 2 }
     ' "$config_file"; then

@@ -18,7 +18,7 @@ serialize_screenshots_settings() {
 
 export_screenshots_settings() {
 
-    local output_file="config/generated/macos/screenshots.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/screenshots.conf"
 
     action "Exporting Screenshots configuration..."
 

@@ -4,7 +4,7 @@
 # Keyboard Settings
 # ==========================================
 
-KEYBOARD_CONFIG="config/generated/macos/keyboard.conf"
+KEYBOARD_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/keyboard.conf"
 
 # ==========================================
 # Check Keyboard

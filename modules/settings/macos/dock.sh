@@ -4,7 +4,7 @@
 # Dock Settings
 # ==========================================
 
-DOCK_CONFIG="config/generated/macos/dock.conf"
+DOCK_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/dock.conf"
 
 # ==========================================
 # Check Dock

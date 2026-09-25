@@ -23,6 +23,65 @@ Selection — категории и компоненты, включённые �
 Bootstrap объединяет generated-значения с этим выбором и применяет выбранное
 поддерживаемое состояние.
 
+## Bootstrap Bundle v1
+
+Capture создаёт один приватный файл `bootstrap-*.mbt` (обычный tar) с
+`manifest.json`, `blueprint.conf`, только выбранными поддерживаемыми файлами
+`generated/` и необязательным `secure.age`. В `generated/` допускаются
+инвентаризации Homebrew, App Store и VS Code extensions; выбранные Git,
+Workspace folders/repositories, SSH configuration, Zsh, VS Code settings и
+macOS settings. `workspace.conf`, `vscode-workspaces.conf` и
+`inventory.conf` исключены: для них нет Bootstrap consumer. Не выбранные
+элементы внутри общего inventory также исключаются. Программы, Git working
+trees и пользовательские файлы не копируются.
+
+Capture направляет Discovery, Blueprint и Preview на приватные staged
+`generated/` и `blueprint.conf`; рабочий Blueprint исходного Mac при этом не
+переписывается. Source Blueprint задаёт максимум доступного состояния:
+Restore может отключить категории, но не добавить отсутствующие в Bundle
+категории или элементы. После Apply staged state публикуется в обычные
+локальные пути; Bundle остаётся только транспортным файлом.
+
+Manifest содержит версию формата `1`, список файлов, размеры и SHA-256.
+Проверка обнаруживает повреждение и неполноту, но не подтверждает подлинность
+источника. Bundle создаётся с режимом `0600`, staging — `0700`.
+Обычная часть Bundle не зашифрована и может раскрывать частную конфигурацию;
+только явно выбранные SSH identities находятся в `secure.age`. Содержимое
+`secure.age` проверяет и расшифровывает существующий Secure SSH Migration
+engine после нормального Bootstrap. До него проверяются только наличие,
+заголовок, размер и checksum зашифрованного файла; внутренняя проверка
+невозможна без `age` и passphrase.
+
+SSH Configuration — поддерживаемые Host profiles в обычном generated-снимке;
+их восстанавливает Bootstrap. SSH identities — отдельно выбранные private/public
+key pairs в `secure.age`. Для защищённого private key Capture запрашивает его
+существующий SSH-key passphrase при проверке. Новый Bundle passphrase шифрует
+`secure.age`, нужен при Restore и должен храниться отдельно от `.mbt`. Пустой
+prompt `age` создаёт passphrase автоматически и показывает его один раз.
+`age` требуется только для выбранного Secure Credentials export/import:
+Capture при отсутствии предлагает установку через Homebrew или продолжение без
+identities/отмену; Restore после normal Bootstrap при отсутствии вновь явно
+предлагает установку. Молчаливой установки нет.
+
+Пути Workspace repositories внутри HOME источника представлены в Bundle
+относительно HOME и при Restore проверенно строятся под HOME цели. Workspace
+folders создают структуру каталогов, repositories клонируются из remotes;
+содержимое working tree и `.git` не переносится. Screenshot
+destination внутри HOME использует `~/`; внешний абсолютный путь блокирует
+Capture выбранной категории. Git identity, SSH remote User и произвольные
+значения Zsh/VS Code не переписываются. Для последних двух категорий
+семантическая переносимость произвольного содержимого не гарантирована.
+
+Restore проверяет архив и запускает Preview по staged input до замены
+локального состояния. После подтверждения Apply готовые
+`config/generated/` и `config/blueprint.conf` публикуются с приватной
+recovery-копией и маркером незавершённой публикации. Два пути не образуют
+одну файловую транзакцию: сбой до фиксации новой пары возвращает прежнюю пару;
+после фиксации recovery удаляет служебный маркер. Следующий Restore после
+прерывания восстанавливает известное состояние либо останавливается при
+неоднозначном состоянии. Recovery запускается до выбора категорий и Preview.
+После публикации Bundle больше не требуется для обычного `bs workflow`.
+
 ## Модель состояния
 
 - **Observed State** — поддерживаемое состояние, обнаруженное на исходном Mac.
@@ -176,7 +235,7 @@ Bootstrap создаёт `$HOME/.zshrc` только при подтверждё
 | Finder | `NSGlobalDomain` | `AppleShowAllExtensions` / bool |
 | Finder | `com.apple.finder` | `ShowPathbar`, `ShowStatusBar`, `_FXSortFoldersFirst`, `FXRemoveOldTrashItems` / bool; `FXPreferredViewStyle`, `FXDefaultSearchScope` / string |
 | Finder | `com.apple.finder` | `AppleShowAllFiles`, `ShowHardDrivesOnDesktop`, `ShowExternalHardDrivesOnDesktop`, `ShowMountedServersOnDesktop`, `FXEnableExtensionChangeWarning` / bool; `NewWindowTarget` / string enum |
-| Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int |
+| Dock | `com.apple.dock` | `autohide`, `show-recents`, `magnification` / bool; `tilesize`, `largesize` / int или float согласно plist |
 | Dock | `com.apple.dock` | `orientation`, `mineffect` / string enum; `minimize-to-application`, `show-process-indicators` / bool |
 | Dock | `com.apple.dock` | `launchanim`, `mru-spaces` / bool |
 | Управление окнами | `NSGlobalDomain` | `AppleActionOnDoubleClick`, `AppleWindowTabbingMode` / string enum; `NSCloseAlwaysConfirmsChanges`, `NSQuitAlwaysKeepsWindows` / bool |

@@ -67,6 +67,7 @@ source modules/discovery/workspace.sh
 # ==========================================
 
 source modules/bootstrap/workspace/workspace.sh
+source modules/bundle/commands.sh
 
 # ==========================================
 # Toolkit Configuration
@@ -81,6 +82,11 @@ source config/toolkit.conf
 MODE=""
 EXECUTION_MODE_COUNT=0
 VERBOSE=false
+RESTORE_BUNDLE=""
+if [[ "${1:-}" == --restore && $# -eq 2 ]]; then
+    RESTORE_BUNDLE="$2"
+    set -- "$1"
+fi
 
 for arg in "$@"; do
 
@@ -113,6 +119,16 @@ for arg in "$@"; do
         --workflow)
 
             MODE="--workflow"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
+        --capture)
+            MODE="--capture"
+            ((EXECUTION_MODE_COUNT++))
+            ;;
+
+        --restore)
+            MODE="--restore"
             ((EXECUTION_MODE_COUNT++))
             ;;
 
@@ -162,6 +178,12 @@ Usage:
   ./bootstrap.sh --workflow
       Guide Discovery, Blueprint, Preview, and confirmed Bootstrap
 
+  ./bootstrap.sh --capture
+      Create a private Bootstrap Bundle from this Mac
+
+  ./bootstrap.sh --restore /absolute/path/bundle.mbt
+      Restore selected environment from a Bootstrap Bundle
+
 Options:
 
   -v, --verbose
@@ -201,6 +223,11 @@ if [[ $EXECUTION_MODE_COUNT -ne 1 ]]; then
     exit 1
 fi
 
+if [[ "$MODE" != --restore && -e config/.bundle-publication ]]; then
+    error "Incomplete Bundle publication requires bs restore recovery before another Toolkit mode"
+    exit 2
+fi
+
 MODE_NAME="Unknown"
 
 case "$MODE" in
@@ -223,6 +250,12 @@ case "$MODE" in
 
     --dry-run)
         MODE_NAME="Preview"
+        ;;
+    --capture)
+        MODE_NAME="Capture"
+        ;;
+    --restore)
+        MODE_NAME="Restore"
         ;;
 
 esac
@@ -276,7 +309,7 @@ bootstrap_validate_selected_inputs() {
     fi
 
     if blueprint_category_enabled vscode-settings; then
-        validate_vscode_settings_source "config/generated/vscode/settings.json"
+        validate_vscode_settings_source "${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode/settings.json"
         source_result=$?
         [[ $source_result -ne 2 ]] || return 2
     fi
@@ -547,6 +580,10 @@ fi
 
 if [[ "$MODE" == "--dry-run" ]]; then
     run_inspection "Homebrew" check_homebrew_read_only
+elif [[ "$MODE" == "--bootstrap" && "${BUNDLE_RESTORE_ACTIVE:-false}" == true &&
+        -z "$(blueprint_selected_items homebrew-packages)" &&
+        -z "$(blueprint_selected_items homebrew-casks)" ]]; then
+    run_module "Homebrew" check_homebrew_read_only
 else
     run_module "Homebrew" check_homebrew
 fi
@@ -648,7 +685,11 @@ exit "$result"
 
 )
 
-if [[ "$MODE" == "--workflow" ]]; then
+if [[ "$MODE" == "--capture" ]]; then
+    bundle_capture
+elif [[ "$MODE" == "--restore" ]]; then
+    bundle_restore "$RESTORE_BUNDLE"
+elif [[ "$MODE" == "--workflow" ]]; then
     run_workflow
 else
     run_mode "$MODE" "$MODE_NAME"

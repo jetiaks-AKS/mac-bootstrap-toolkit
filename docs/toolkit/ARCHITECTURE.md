@@ -4,6 +4,21 @@ English | [Русский](ARCHITECTURE.ru.md)
 
 ## Purpose
 
+Workflow uses Discovery → Blueprint → Preview → Bootstrap on the current Mac.
+Capture orchestrates those existing components in private staging on the source
+Mac and publishes a Bootstrap Bundle. Restore validates and previews staged
+input on the target Mac, then publishes the ordinary generated/Blueprint pair
+before normal Bootstrap. Publication recovery protects the previous local
+pair; failed Bootstrap does not trigger Secure Credentials import. The Bundle
+is transport only, so later Workflow runs from local state.
+
+The ordinary path reconstructs selected state supported by Bootstrap consumers.
+Applications are installed, repositories are cloned, and supported settings
+are configured; working trees and user data are not copied. SSH Configuration
+is a reconstructable set of Host profiles. Only explicitly selected SSH
+private/public identities cross the separate encrypted Secure Migration
+boundary in `secure.age`. This is not general machine or data migration.
+
 Mac Bootstrap Toolkit is a modular Bash system for discovering and
 reproducing supported parts of a macOS working environment. This document
 defines the current component responsibilities, state flow, boundaries, and

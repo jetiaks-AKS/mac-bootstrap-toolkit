@@ -6,6 +6,8 @@ Usage: bs <command>
 
 Commands:
   workflow    Run guided workflow
+  capture     Create a Bootstrap Bundle from this Mac
+  restore     Restore from a Bootstrap Bundle
   discover    Discover current Mac state
   blueprint   Configure restore selection
   preview     Preview planned changes
@@ -38,6 +40,8 @@ case "${1:-}" in
         exit 0
         ;;
     workflow) mode=--workflow ;;
+    capture) mode=--capture ;;
+    restore) mode=--restore ;;
     discover) mode=--discover ;;
     blueprint) mode=--blueprint ;;
     preview) mode=--dry-run ;;
@@ -50,8 +54,8 @@ case "${1:-}" in
         ;;
 esac
 
-if [[ $# -ne 1 ]]; then
-    printf 'Error: expected exactly one command\n\n' >&2
+if [[ ( "$mode" == --restore && $# -ne 2 ) || ( "$mode" != --restore && $# -ne 1 ) ]]; then
+    printf 'Error: expected %s\n\n' "$([[ "$mode" == --restore ]] && echo 'restore <bundle>' || echo 'one command')" >&2
     show_help >&2
     exit 1
 fi
@@ -70,5 +74,14 @@ if [[ ! -x "$toolkit_root/bootstrap.sh" ]]; then
     exit 1
 fi
 
+if [[ "$mode" == --restore ]]; then
+    case "$2" in
+        /*) bundle_path="$2" ;;
+        *) bundle_path="$PWD/$2" ;;
+    esac
+fi
 cd "$toolkit_root" || exit 1
+if [[ "$mode" == --restore ]]; then
+    exec ./bootstrap.sh "$mode" "$bundle_path"
+fi
 exec ./bootstrap.sh "$mode"

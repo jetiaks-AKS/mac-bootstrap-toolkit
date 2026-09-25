@@ -26,7 +26,7 @@ serialize_brew_inventory() {
 
 export_brew_packages() {
 
-    local output_file="config/generated/brew-packages.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/brew-packages.conf"
 
     action "Exporting Homebrew Formulae..."
 
@@ -61,7 +61,7 @@ export_brew_packages() {
 
 export_brew_casks() {
 
-    local output_file="config/generated/brew-casks.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/brew-casks.conf"
 
     action "Exporting Homebrew Casks..."
 

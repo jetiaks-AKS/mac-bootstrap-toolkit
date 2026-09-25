@@ -4,6 +4,21 @@
 
 ## Назначение
 
+Workflow использует Discovery → Blueprint → Preview → Bootstrap на текущем Mac.
+Capture оркестрирует эти компоненты в приватном staging исходного Mac и
+публикует Bootstrap Bundle. Restore проверяет Bundle, выполняет Preview по
+staged input и после подтверждения публикует обычную пару generated/Blueprint
+до normal Bootstrap. Recovery защищает прежнюю локальную пару; ошибка
+Bootstrap не запускает Secure Credentials import. Bundle остаётся транспортом:
+дальнейший Workflow работает с локальным состоянием без него.
+
+Обычный путь реконструирует выбранное состояние с поддерживаемыми Bootstrap
+consumers: программы устанавливаются, репозитории клонируются, настройки
+применяются; working trees и пользовательские данные не копируются. SSH
+Configuration — воспроизводимые Host profiles. Только явно выбранные SSH
+private/public identities проходят отдельную границу зашифрованного Secure
+Migration в `secure.age`. Это не общий перенос данных или состояния Mac.
+
 Mac Bootstrap Toolkit — модульная Bash-система для обнаружения и
 воспроизведения поддерживаемых частей рабочего окружения macOS. Этот документ
 определяет текущую ответственность компонентов, поток состояния, границы и

@@ -4,7 +4,7 @@
 # Screenshots Settings
 # ==========================================
 
-SCREENSHOTS_CONFIG="config/generated/macos/screenshots.conf"
+SCREENSHOTS_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/screenshots.conf"
 SCREENSHOTS_DESTINATION=""
 SCREENSHOTS_FIRST_MISSING=""
 SCREENSHOTS_DIRECTORY_MISSING=false
