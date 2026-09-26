@@ -1,20 +1,23 @@
-# Mac Bootstrap Toolkit
+# Macseed
+
+**Capture. Rebuild. Continue.**
 
 English | [Русский](README.ru.md)
 
 A modular Bash toolkit for reproducibly preparing and restoring a macOS
 working environment.
 
-**Current version: 3.2.0 Stable**
+**Current version: 3.3.0 Stable**
 
 ## Overview
 
-Mac Bootstrap Toolkit discovers supported parts of an existing Mac, stores
+Macseed discovers supported parts of an existing Mac, stores
 that state as local configuration, lets the user select a restoration scope,
 previews the resulting changes, and applies them on a target Mac.
 
-The project reconstructs supported parts of a working environment. It is not
-a backup, Migration Assistant, or general user-data transfer tool.
+It captures supported state, rebuilds it on another Mac, and maintains the
+supported working environment through later runs. It does not clone the source
+Mac or serve as a backup, Migration Assistant, or general data/system migration tool.
 
 ```text
 Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
@@ -80,18 +83,17 @@ use an encrypted Secure Credentials payload. See
 
 ## Project Status
 
-Version 3.2.0 is the stable release; Capture/Restore is currently on `develop`
-and remains unreleased. Aggregate Global Verification remains optional future
-work.
+Version 3.3.0 includes Stage 12 Bootstrap Bundle Capture & Restore and secure
+SSH identity migration. Aggregate Global Verification remains optional future work.
 
 See [ROADMAP.md](ROADMAP.md) for current development direction.
 
 ## Support
 
-Mac Bootstrap Toolkit is free and open source. If the project saves you time,
+Macseed is free and open source. If the project saves you time,
 you can support its continued development through a voluntary donation on
 [Boosty](https://boosty.to/jetiaks/donate).
 
 ## License
 
-Mac Bootstrap Toolkit is available under the [MIT License](LICENSE).
+Macseed is available under the [MIT License](LICENSE).

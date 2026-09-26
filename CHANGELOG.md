@@ -1,6 +1,6 @@
 # Changelog
 
-All significant changes to **Mac Bootstrap Toolkit** are documented
+All significant changes to **Macseed** are documented
 in this file.
 
 The format is based on the principles of **Keep a Changelog**.
@@ -8,6 +8,13 @@ The format is based on the principles of **Keep a Changelog**.
 ---
 
 ## Unreleased
+
+## [3.3.0] - 2026-09-26
+
+Macseed: Capture. Rebuild. Continue. Stage 12 / Bootstrap Bundle Capture &
+Restore and secure SSH identity migration are released in this version.
+
+### Added
 
 * Added private Bootstrap Bundle v1 Capture/Restore orchestration over staged
   Discovery, Blueprint, Preview and Bootstrap, with optional encrypted SSH

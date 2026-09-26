@@ -2,7 +2,7 @@
 
 ## Назначение
 
-Roadmap показывает основные этапы развития Mac Bootstrap Toolkit, их порядок и
+Roadmap показывает основные этапы развития Macseed, их порядок и
 текущее направление проекта. Архитектурные контракты описаны в
 `docs/toolkit/ARCHITECTURE.md`, ближайшие конкретные задачи — в `TODO.md`, а
 история отдельных изменений — в `CHANGELOG.md`.
@@ -138,7 +138,7 @@ iCloud, документированный экспорт/импорт или п
 
 ## Этап 12 — Secure Migration Engine
 
-**Статус: Completed v1 — SSH identities и Capture/Restore**
+**Статус: Completed v1 (Release 3.3.0) — SSH identities и Capture/Restore**
 
 SSH identity migration реализован отдельной командой и интегрирован в
 Capture/Restore через зашифрованный `secure.age` внутри приватного Bootstrap
@@ -251,6 +251,8 @@ Application Configuration Modules
 Release 3.2.0
   ↓
 Secure Migration Engine
+  ↓
+Release 3.3.0
   ↓
 Optional / Future Evolution
 ```

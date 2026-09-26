@@ -1,4 +1,4 @@
-# Mac Bootstrap Toolkit Architecture
+# Macseed Architecture
 
 English | [Русский](ARCHITECTURE.ru.md)
 
@@ -19,7 +19,7 @@ is a reconstructable set of Host profiles. Only explicitly selected SSH
 private/public identities cross the separate encrypted Secure Migration
 boundary in `secure.age`. This is not general machine or data migration.
 
-Mac Bootstrap Toolkit is a modular Bash system for discovering and
+Macseed is a modular Bash system for discovering and
 reproducing supported parts of a macOS working environment. This document
 defines the current component responsibilities, state flow, boundaries, and
 architectural invariants. Development sequencing belongs in the Roadmap;

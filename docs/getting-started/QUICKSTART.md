@@ -1,7 +1,7 @@
 # Quick Start
 
-This guide covers the current `develop` commands; 3.2.0 remains the stable
-release. Choose the path that matches your task:
+Macseed 3.3.0 captures and rebuilds a supported macOS working environment.
+Choose the path that matches your task:
 
 ```text
 This Mac:  bs workflow

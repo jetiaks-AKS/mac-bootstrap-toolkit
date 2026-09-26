@@ -1,4 +1,4 @@
-# Конфигурация Mac Bootstrap Toolkit
+# Конфигурация Macseed
 
 ## Назначение
 

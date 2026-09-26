@@ -155,7 +155,7 @@ for arg in "$@"; do
             cat << EOF
 
 ==========================================
- Mac Bootstrap Toolkit
+ Macseed — Capture. Rebuild. Continue.
 ==========================================
 
 Usage:
