@@ -34,8 +34,8 @@ Some optional components require their command-line tools:
 ## 1. Clone the repository
 
 ```bash
-git clone git@github.com:jetiaks-AKS/mac-bootstrap-toolkit.git
-cd mac-bootstrap-toolkit
+git clone git@github.com:jetiaks-AKS/macseed.git
+cd macseed
 ```
 
 Run Toolkit commands from the repository root.
