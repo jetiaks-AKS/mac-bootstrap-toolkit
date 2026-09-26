@@ -88,8 +88,8 @@ working trees и пользовательские файлы не копирую
 ## Статус проекта
 
 Версия 3.3.0 включает Stage 12 Bootstrap Bundle Capture & Restore и защищённый
-перенос SSH identities. Сводная проверка после Restore запланирована в рамках
-отчётности Discovery и Restore.
+перенос SSH identities. Global Verification выбранного окружения запланирована
+для Bootstrap/Workflow и Restore.
 
 Текущее направление развития описано в [ROADMAP.md](ROADMAP.md).
 

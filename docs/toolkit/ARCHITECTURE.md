@@ -195,20 +195,23 @@ of Workflow.
 
 ## Verification boundary
 
-Local Verify is part of current module lifecycles. Aggregate post-Restore
-verification is planned as reporting over the resulting selected state. It
-builds on local Verify rather than replacing module lifecycles or requiring a
-separate engine.
+Local Verify is part of current module lifecycles. Planned Global Verification
+will aggregate observable results for the selected desired environment after
+normal Bootstrap/Workflow and, where applicable, Restore. It builds on local
+Verify without replacing or duplicating it, and distinguishes verified state,
+mismatch, warnings or unsupported state, and observation or verification
+errors. Command success alone does not establish environment-level conformity.
 
 ## Planned Core/GUI boundary
 
 A native SwiftUI macOS application is planned as a presentation and
 orchestration layer. It will consume a stable machine-readable structured Core
-interface, planned for the preceding reporting stage, rather than parse human
-CLI output or logs. Core remains authoritative for validation, planning, and
-mutation; the GUI does not reimplement Discovery, Blueprint, Preview,
-Bootstrap, Capture, or Restore in Swift. The interface format and GUI UX remain
-to be designed.
+interface, planned alongside Global Verification in the preceding stage, rather
+than parse human CLI output or logs. The interface will expose Discovery,
+planning/Preview, verification, and operation results. Core remains
+authoritative for validation, planning, and mutation; the GUI does not
+reimplement Discovery, Blueprint, Preview, Bootstrap, Capture, or Restore in
+Swift. The interface format and GUI UX remain to be designed.
 
 ## Documentation ownership
 
