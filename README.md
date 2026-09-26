@@ -84,7 +84,8 @@ use an encrypted Secure Credentials payload. See
 ## Project Status
 
 Version 3.3.0 includes Stage 12 Bootstrap Bundle Capture & Restore and secure
-SSH identity migration. Aggregate Global Verification remains optional future work.
+SSH identity migration. Aggregate post-Restore verification is planned for
+Discovery and Restore reporting.
 
 See [ROADMAP.md](ROADMAP.md) for current development direction.
 

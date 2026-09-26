@@ -195,16 +195,10 @@ of Workflow.
 
 ## Verification boundary
 
-Local Verify is part of current module lifecycles. Global Verification is a
-separate optional future capability that could evaluate the resulting selected
-state and provide an aggregate post-Bootstrap report. It is not required by the
-current architecture and does not justify a separate engine in advance.
-
-## Optional future directions
-
-A Restore Engine, AI Assistant, and other large architectural extensions remain
-optional. They should be considered only when a clear responsibility appears
-that the established model cannot cover cleanly.
+Local Verify is part of current module lifecycles. Aggregate post-Restore
+verification is planned as reporting over the resulting selected state. It
+builds on local Verify rather than replacing module lifecycles or requiring a
+separate engine.
 
 ## Documentation ownership
 
