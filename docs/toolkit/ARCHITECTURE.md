@@ -200,6 +200,16 @@ verification is planned as reporting over the resulting selected state. It
 builds on local Verify rather than replacing module lifecycles or requiring a
 separate engine.
 
+## Planned Core/GUI boundary
+
+A native SwiftUI macOS application is planned as a presentation and
+orchestration layer. It will consume a stable machine-readable structured Core
+interface, planned for the preceding reporting stage, rather than parse human
+CLI output or logs. Core remains authoritative for validation, planning, and
+mutation; the GUI does not reimplement Discovery, Blueprint, Preview,
+Bootstrap, Capture, or Restore in Swift. The interface format and GUI UX remain
+to be designed.
+
 ## Documentation ownership
 
 This document owns stable architectural responsibilities and boundaries.
