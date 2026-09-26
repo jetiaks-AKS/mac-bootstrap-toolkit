@@ -26,6 +26,9 @@ config/generated/
 # User-specific Blueprint selection
 
 config/blueprint.conf
+config/.bundle-publication/
+config/.bundle-generated-new/
+config/.bundle-blueprint-new
 
 # Archived old documentation versions
 

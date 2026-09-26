@@ -22,7 +22,7 @@ VERBOSE=false
 
 warning() { echo "[WARN] $1"; }
 error() { echo "[ERROR] $1"; }
-info() { :; }
+info() { echo "[INFO] $1"; }
 success() { echo "[ OK ] $1"; }
 
 source "$PROJECT_ROOT/modules/core/logger/logger.sh"
@@ -344,6 +344,19 @@ mkdir -p "$(dirname "$BLUEPRINT_FILE")"
 wizard_defaults=$'\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
 reset_selector_log
 summary_output="$(blueprint_selector_run <<< "$wizard_defaults")"
+if grep -q 'For SSH identity migration, export separately' <<< "$summary_output"; then
+    pass "standalone Blueprint retains SSH migration hint"
+else
+    fail "standalone Blueprint SSH migration hint missing"
+fi
+BUNDLE_CAPTURE_ACTIVE=true
+staged_output="$(blueprint_selector_run <<< "$wizard_defaults")"
+unset BUNDLE_CAPTURE_ACTIVE
+if ! grep -q 'For SSH identity migration, export separately' <<< "$staged_output"; then
+    pass "Capture Blueprint suppresses legacy SSH migration hint"
+else
+    fail "Capture Blueprint printed legacy SSH migration hint"
+fi
 if [[ -f "$BLUEPRINT_FILE" ]] && blueprint_validate "$BLUEPRINT_FILE" &&
    grep -q 'Homebrew packages.*12 / 12' <<< "$summary_output" &&
    grep -q 'Workspace folders.*4 / 4' <<< "$summary_output" &&

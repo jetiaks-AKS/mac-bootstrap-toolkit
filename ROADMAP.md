@@ -2,7 +2,7 @@
 
 ## Назначение
 
-Roadmap показывает основные этапы развития Mac Bootstrap Toolkit, их порядок и
+Roadmap показывает основные этапы развития Macseed, их порядок и
 текущее направление проекта. Архитектурные контракты описаны в
 `docs/toolkit/ARCHITECTURE.md`, ближайшие конкретные задачи — в `TODO.md`, а
 история отдельных изменений — в `CHANGELOG.md`.
@@ -138,10 +138,15 @@ iCloud, документированный экспорт/импорт или п
 
 ## Этап 12 — Secure Migration Engine
 
-**Статус: Planned / Future**
+**Статус: Completed v1 (Release 3.3.0) — SSH identities и Capture/Restore**
 
-Планируется отдельный защищённый механизм переноса состояния, которое не должно
-проходить через обычную цепочку:
+SSH identity migration реализован отдельной командой и интегрирован в
+Capture/Restore через зашифрованный `secure.age` внутри приватного Bootstrap
+Bundle v1. Другие категории защищённого переноса остаются возможными будущими
+направлениями.
+
+Для выбранных SSH identities действует отдельный защищённый механизм переноса
+состояния, которое не должно проходить через обычную цепочку:
 
 ```text
 Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
@@ -168,8 +173,8 @@ Generated Configuration                Protected Transfer
 других поддерживаемых областей.
 
 Secret и credential material не должен сериализоваться в `config/generated/`.
-Для такого состояния Secure Migration Engine должен предоставлять отдельный
-защищённый канал переноса с явным выбором пользователя.
+Для такого состояния Secure Migration Engine предоставляет отдельный
+защищённый канал переноса с явным выбором пользователя в реализованном SSH scope.
 
 Потенциальная область Secure Migration Engine:
 
@@ -180,11 +185,10 @@ Secret и credential material не должен сериализоваться �
 - опциональная миграция `known_hosts` только как явно выбранного learned trust
   state, а не как обычной SSH-конфигурации.
 
-Private SSH keys поэтому исключены из обычного Stage 10 SSH Bootstrap, но их
-перенос не отвергается как продуктовая возможность: он переносится в Secure
-Migration Engine.
+Private SSH keys исключены из обычного Stage 10 SSH Bootstrap; выбранные
+поддерживаемые пары переносятся через Secure Migration Engine.
 
-Будущий механизм должен исходить как минимум из следующих принципов:
+Для реализованного SSH scope и будущих категорий действуют принципы:
 
 - явный выбор и согласие пользователя;
 - защищённый и зашифрованный migration package или канал;
@@ -195,9 +199,9 @@ Migration Engine.
 - строгие ownership и permissions на целевой машине;
 - безопасное разрешение конфликтов без молчаливой замены credentials.
 
-Конкретные криптографические алгоритмы, формат migration package, управление
-ключами шифрования и CLI-контракт должны определяться отдельным аудитом и
-проектированием перед реализацией.
+Текущий формат и CLI-контракт описаны в
+[SSH Identity Migration](docs/toolkit/SSH-IDENTITY-MIGRATION.md); для будущих
+категорий они определяются отдельно перед реализацией.
 
 ## Этап 13 — Optional / Future Evolution
 
@@ -247,6 +251,8 @@ Application Configuration Modules
 Release 3.2.0
   ↓
 Secure Migration Engine
+  ↓
+Release 3.3.0
   ↓
 Optional / Future Evolution
 ```

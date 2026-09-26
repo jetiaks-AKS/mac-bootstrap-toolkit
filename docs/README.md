@@ -1,6 +1,6 @@
 # Documentation
 
-Documentation for Mac Bootstrap Toolkit.
+Documentation for Macseed.
 
 The documentation is intentionally kept compact. Detailed behavior should be
 documented only where it has a clear and stable responsibility.

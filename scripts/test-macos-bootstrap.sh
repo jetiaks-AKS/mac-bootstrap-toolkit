@@ -249,6 +249,35 @@ assert_no_mutation 'NUL record performs no write'
 
 # All existing category identities and empty files remain valid.
 reset_case
+record "$DOCK_CONFIG" 'com.apple.dock|tilesize|float|65.000000'
+state_set com.apple.dock tilesize float 65
+run preview_defaults_config "$DOCK_CONFIG" dock
+expect_status 0 "$status" 'Dock float numeric equivalent is unchanged in Preview'
+[[ "$DEFAULTS_PREVIEW_CHANGED" == false ]] && pass 'Dock float Preview preserves numeric semantics' || fail 'Dock float Preview numeric comparison'
+run check_defaults_config "$DOCK_CONFIG" dock
+expect_status 0 "$status" 'Dock float numeric equivalent validates and checks'
+reset_case
+record "$DOCK_CONFIG" 'com.apple.dock|tilesize|float|65.5'
+state_set com.apple.dock tilesize int 65
+run preview_defaults_config "$DOCK_CONFIG" dock
+expect_status 0 "$status" 'Dock fractional float Preview succeeds'
+[[ "$output" == *'65 -> 65.5'* ]] && pass 'Dock fractional Preview displays numeric values' || fail 'Dock fractional Preview values'
+run apply_defaults_config "$DOCK_CONFIG" dock
+expect_status 0 "$status" 'Dock fractional float applies and verifies'
+grep -Fq 'write:com.apple.dock:tilesize:-float:65.5' "$MUTATION_LOG" && pass 'Dock fractional value written as float' || fail 'Dock float write type/value'
+reset_case
+record "$DOCK_CONFIG" 'com.apple.dock|tilesize|float|65.5'
+state_set com.apple.dock tilesize string 65.5
+run apply_defaults_config "$DOCK_CONFIG" dock
+expect_status 2 "$status" 'Incompatible Dock plist type blocks Apply'
+assert_no_mutation 'Incompatible Dock plist type causes no write'
+reset_case
+record "$DOCK_CONFIG" 'com.apple.dock|tilesize|float|invalid'
+run apply_defaults_config "$DOCK_CONFIG" dock
+expect_status 2 "$status" 'Invalid Dock float record blocks Apply'
+assert_no_mutation 'Invalid Dock float record causes no write'
+
+reset_case
 for pair in finder dock keyboard trackpad screenshots; do
     run validate_defaults_config "$TEST_ROOT/generated/macos/$pair.conf" "$pair"
     expect_status 0 "$status" "empty $pair remains valid"

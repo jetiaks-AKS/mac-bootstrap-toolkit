@@ -1,20 +1,24 @@
-# Mac Bootstrap Toolkit
+# Macseed
+
+**Capture. Rebuild. Continue.**
 
 [English](README.md) | Русский
 
 Модульный Bash-инструмент для воспроизводимой подготовки и восстановления
 рабочего окружения macOS.
 
-**Текущая версия: 3.2.0 Stable**
+**Текущая версия: 3.3.0 Stable**
 
 ## Назначение
 
-Mac Bootstrap Toolkit обнаруживает поддерживаемые части окружения исходного
+Macseed обнаруживает поддерживаемые части окружения исходного
 Mac, сохраняет их как локальную конфигурацию, позволяет выбрать область
 восстановления, предварительно показывает изменения и применяет их на целевом
 Mac.
 
-Проект воспроизводит рабочее окружение, а не копирует всю операционную систему.
+Проект фиксирует поддерживаемое состояние, воспроизводит его на другом Mac и
+поддерживает рабочее окружение при последующих запусках. Он не клонирует исходный
+Mac и не заменяет backup, Migration Assistant или общий перенос данных и системы.
 
 ```text
 Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
@@ -50,27 +54,26 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 
 ## Быстрый старт
 
-Запустите пошаговый сценарий из корня репозитория:
+Выберите сценарий:
 
 ```bash
-./bootstrap.sh --workflow
+bs workflow                         # Discovery, выбор, Preview и Bootstrap на этом Mac
+bs capture                          # Один приватный Bundle на исходном Mac
+bs restore /path/to/bundle.mbt       # Восстановление на новом Mac
 ```
 
-Или используйте отдельные режимы:
+При смене Mac запустите `bs capture` на старом Mac, приватно перенесите файл
+`.mbt` и выполните `bs restore /path/to/bundle.mbt` на новом. После Restore
+обычный `bs workflow` работает без Bundle. Репозиторий Toolkit нужно получить
+на каждом Mac; пока `bs` не установлен, используйте из корня репозитория
+`./bootstrap.sh --workflow`, `./bootstrap.sh --capture` или
+`./bootstrap.sh --restore /path/to/bundle.mbt`.
 
-```bash
-./bootstrap.sh --check
-./bootstrap.sh --discover
-./bootstrap.sh --blueprint
-./bootstrap.sh --dry-run
-./bootstrap.sh --bootstrap
-```
-
-Флаг `--verbose` включает дополнительную диагностику. Bootstrap может
-установить необязательную короткую команду `bs`. Полный порядок работы,
-переноса конфигурации и меры безопасности приведены в
-[«Быстром старте»](docs/getting-started/QUICKSTART.md), а режимы CLI, вывод,
-журналы, коды завершения и поведение `bs` — в [документации CLI](docs/toolkit/CLI.md).
+Приложения устанавливаются заново, репозитории клонируются из remotes;
+working trees и пользовательские файлы не копируются. Выбранные SSH identities
+могут переноситься в зашифрованном Secure Credentials payload. Практические
+шаги — в [«Быстром старте»](docs/getting-started/QUICKSTART.md), отдельные
+команды и их статусы — в [документации CLI](docs/toolkit/CLI.md).
 
 ## Документация
 
@@ -84,18 +87,18 @@ Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
 
 ## Статус проекта
 
-Версия 3.2.0 стабильна. Preview реализован; сводная глобальная проверка после
-Bootstrap остаётся необязательной будущей возможностью и не требуется текущей
-архитектурой.
+Версия 3.3.0 включает Stage 12 Bootstrap Bundle Capture & Restore и защищённый
+перенос SSH identities. Сводная глобальная проверка остаётся необязательной
+будущей возможностью.
 
 Текущее направление развития описано в [ROADMAP.md](ROADMAP.md).
 
 ## Поддержка
 
-Mac Bootstrap Toolkit распространяется бесплатно и с открытым исходным кодом.
+Macseed распространяется бесплатно и с открытым исходным кодом.
 Поддержать дальнейшую разработку можно добровольным пожертвованием через
 [Boosty](https://boosty.to/jetiaks/donate).
 
 ## Лицензия
 
-Mac Bootstrap Toolkit распространяется по лицензии [MIT](LICENSE).
+Macseed распространяется по лицензии [MIT](LICENSE).

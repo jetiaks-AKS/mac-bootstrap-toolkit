@@ -4,7 +4,7 @@
 # Trackpad Settings
 # ==========================================
 
-TRACKPAD_CONFIG="config/generated/macos/trackpad.conf"
+TRACKPAD_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/trackpad.conf"
 
 # ==========================================
 # Check Trackpad

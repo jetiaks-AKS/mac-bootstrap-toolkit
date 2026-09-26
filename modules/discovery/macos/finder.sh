@@ -28,7 +28,7 @@ serialize_finder_settings() {
 
 export_finder_settings() {
 
-    local output_file="config/generated/macos/finder.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/finder.conf"
     FINDER_DISCOVERY_WARNING=false
 
     action "Exporting Finder configuration..."

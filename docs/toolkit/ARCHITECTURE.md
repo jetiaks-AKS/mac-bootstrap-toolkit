@@ -1,10 +1,28 @@
-# Mac Bootstrap Toolkit Architecture
+# Macseed Architecture
 
 English | [Русский](ARCHITECTURE.ru.md)
 
 ## Purpose
 
-Mac Bootstrap Toolkit is a modular Bash system for discovering and
+Workflow uses Discovery → Blueprint → Preview → Bootstrap on the current Mac.
+Capture orchestrates those existing components in private staging on the source
+Mac and publishes a Bootstrap Bundle. Restore validates and previews staged
+input on the target Mac, then publishes the ordinary generated/Blueprint pair
+before Bootstrap. Publication recovery protects the previous local pair.
+Restore Bootstrap validates all selected input, prepares prerequisites, then
+uses the existing SSH configuration consumer and explicitly confirmed Secure
+Credentials importer before Workspace cloning. A prerequisite failure stops
+dependent restoration; later failures do not roll back imported identities. The Bundle
+is transport only, so later Workflow runs from local state.
+
+The ordinary path reconstructs selected state supported by Bootstrap consumers.
+Applications are installed, repositories are cloned, and supported settings
+are configured; working trees and user data are not copied. SSH Configuration
+is a reconstructable set of Host profiles. Only explicitly selected SSH
+private/public identities cross the separate encrypted Secure Migration
+boundary in `secure.age`. This is not general machine or data migration.
+
+Macseed is a modular Bash system for discovering and
 reproducing supported parts of a macOS working environment. This document
 defines the current component responsibilities, state flow, boundaries, and
 architectural invariants. Development sequencing belongs in the Roadmap;

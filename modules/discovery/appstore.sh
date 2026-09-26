@@ -34,7 +34,7 @@ discover_appstore() {
 
     fi
 
-    local output_file="config/generated/appstore.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/appstore.conf"
 
     action "Exporting App Store applications..."
 

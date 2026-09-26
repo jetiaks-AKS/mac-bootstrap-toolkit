@@ -41,7 +41,7 @@ export_vscode_extensions() {
 
     fi
 
-    local output_file="config/generated/vscode-extensions.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode-extensions.conf"
 
     action "Exporting VS Code Extensions..."
 
@@ -78,7 +78,7 @@ export_vscode_extensions() {
 export_vscode_settings() {
 
     local source_file="$HOME/Library/Application Support/Code/User/settings.json"
-    local output_file="config/generated/vscode/settings.json"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode/settings.json"
 
     if [[ ! -e "$source_file" ]]; then
 

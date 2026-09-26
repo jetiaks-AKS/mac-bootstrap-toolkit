@@ -4,7 +4,7 @@
 # Window Management Settings
 # ==========================================
 
-WINDOWS_CONFIG="config/generated/macos/windows.conf"
+WINDOWS_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/windows.conf"
 
 check_windows() {
     check_defaults_config "$WINDOWS_CONFIG" windows

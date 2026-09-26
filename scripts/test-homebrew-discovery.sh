@@ -18,6 +18,7 @@ SUCCESS_MESSAGES=""
 ERROR_MESSAGES=""
 
 source "$PROJECT_ROOT/modules/core/common/common.sh"
+source "$PROJECT_ROOT/modules/core/homebrew/homebrew.sh"
 source "$PROJECT_ROOT/modules/discovery/discovery.sh"
 
 log() { :; }
@@ -83,6 +84,30 @@ helper_temporary_files() {
 }
 
 cd "$TEST_ROOT" || exit 1
+
+reset_fixture
+homebrew_availability() { return 1; }
+discover_homebrew >/dev/null
+absence_status=$?
+if [[ $absence_status -eq 2 && "$ERROR_MESSAGES" == *'Homebrew is not installed'* &&
+      ! -e config/generated/brew-packages.conf && ! -e config/generated/brew-casks.conf &&
+      ! -s "$BREW_CALLS" ]]; then
+    pass "confirmed Homebrew absence has no fabricated inventory"
+else
+    fail "confirmed absence was not preserved as a Discovery prerequisite error"
+fi
+
+reset_fixture
+homebrew_availability() { return 2; }
+discover_homebrew >/dev/null
+observation_status=$?
+if [[ $observation_status -eq 2 && "$ERROR_MESSAGES" == *'Failed to inspect Homebrew availability'* &&
+      "$ERROR_MESSAGES" != *'Homebrew is not installed'* && ! -s "$BREW_CALLS" ]]; then
+    pass "Homebrew observation failure remains distinct from absence"
+else
+    fail "Homebrew observation failure was mistaken for absence"
+fi
+source "$PROJECT_ROOT/modules/core/homebrew/homebrew.sh"
 
 reset_fixture
 FORMULA_MODE=normal

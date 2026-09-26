@@ -4,7 +4,7 @@
 # Finder Settings
 # ==========================================
 
-FINDER_CONFIG="config/generated/macos/finder.conf"
+FINDER_CONFIG="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/finder.conf"
 
 # ==========================================
 # Check Finder

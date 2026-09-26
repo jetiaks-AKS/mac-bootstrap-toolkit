@@ -26,7 +26,7 @@ serialize_keyboard_settings() {
 
 export_keyboard_settings() {
 
-    local output_file="config/generated/macos/keyboard.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/keyboard.conf"
 
     action "Exporting Keyboard configuration..."
 

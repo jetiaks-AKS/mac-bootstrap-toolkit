@@ -200,7 +200,7 @@ export_workspace_snapshot() {
 
 workspace_export_snapshot_private() {
 
-    local output_dir="config/generated/workspace"
+    local output_dir="${BLUEPRINT_GENERATED_DIR:-config/generated}/workspace"
     local staging_dir
     local folder_count
     local repository_count

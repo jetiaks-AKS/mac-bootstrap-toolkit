@@ -1,11 +1,36 @@
 # Changelog
 
-All significant changes to **Mac Bootstrap Toolkit** are documented
+All significant changes to **Macseed** are documented
 in this file.
 
 The format is based on the principles of **Keep a Changelog**.
 
 ---
+
+## Unreleased
+
+### Fixed
+
+* Accept a clean Mac without an SSH directory, and prepare selected SSH
+  configuration and explicitly confirmed identities before Restore clones
+  Workspace repositories, after full Preview and input validation.
+* Activate newly installed Homebrew in the running process and defer the
+  optional launcher with a warning during Homebrew-free Restore.
+
+## [3.3.0] - 2026-09-26
+
+Macseed: Capture. Rebuild. Continue. Stage 12 / Bootstrap Bundle Capture &
+Restore and secure SSH identity migration are released in this version.
+
+### Added
+
+* Added private Bootstrap Bundle v1 Capture/Restore orchestration over staged
+  Discovery, Blueprint, Preview and Bootstrap, with optional encrypted SSH
+  identities, narrow HOME path normalization, and recoverable local publication.
+* Added Stage 12 v1 secure SSH identity list, encrypted export and validated
+  no-clobber import as a separate CLI.
+* Accepted integer and float representations of supported Dock size preferences
+  in Discovery, Preview and Bootstrap after real Capture compatibility testing.
 
 ## [3.2.0] - 2026-09-24
 

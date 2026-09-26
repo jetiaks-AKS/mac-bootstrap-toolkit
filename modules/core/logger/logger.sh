@@ -52,7 +52,7 @@ init_logger() {
     START_TIME=$(date +%s)
 
     log "=========================================="
-    log " Mac Bootstrap Toolkit"
+    log " Macseed — Capture. Rebuild. Continue."
     log "=========================================="
     log ""
     log "Version  : $TOOLKIT_VERSION"

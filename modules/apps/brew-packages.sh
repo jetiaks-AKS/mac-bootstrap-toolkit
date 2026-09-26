@@ -64,11 +64,6 @@ preview_brew_packages() {
         return 0
     fi
 
-    if ! command -v brew >/dev/null 2>&1; then
-        error "Homebrew is not installed"
-        return 2
-    fi
-
     local config_file
     config_file="$(blueprint_generated_file homebrew-packages)"
 
@@ -76,6 +71,24 @@ preview_brew_packages() {
     if ! packages="$(read_brew_packages_configuration "$config_file")"; then
         error "Formula configuration missing, unreadable, or malformed: $config_file"
         return 2
+    fi
+
+    if ! command -v brew >/dev/null 2>&1; then
+        if [[ "${BUNDLE_RESTORE_PREVIEW:-false}" != true ]]; then
+            error "Homebrew is not installed"
+            return 2
+        fi
+        if [[ "${RESTORE_PREVIEW_HOMEBREW_PLANNED:-false}" != true ]]; then
+            preview_action "Would offer to install Homebrew during Restore"
+            RESTORE_PREVIEW_HOMEBREW_PLANNED=true
+        fi
+        local package
+        while IFS= read -r package || [[ -n "$package" ]]; do
+            [[ -n "$package" && "$package" != \#* ]] || continue
+            blueprint_item_selected homebrew-packages "$package" || continue
+            preview_action "Would install Homebrew formula after setup: $package"
+        done <<< "$packages"
+        return 0
     fi
 
     local package

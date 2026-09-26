@@ -99,8 +99,21 @@ preview_brew_casks() {
     fi
 
     if ! command -v brew >/dev/null 2>&1; then
-        error "Homebrew is not installed"
-        return 2
+        if [[ "${BUNDLE_RESTORE_PREVIEW:-false}" != true ]]; then
+            error "Homebrew is not installed"
+            return 2
+        fi
+        if [[ "${RESTORE_PREVIEW_HOMEBREW_PLANNED:-false}" != true ]]; then
+            preview_action "Would offer to install Homebrew during Restore"
+            RESTORE_PREVIEW_HOMEBREW_PLANNED=true
+        fi
+        local cask
+        while IFS= read -r cask || [[ -n "$cask" ]]; do
+            [[ -n "$cask" && "$cask" != \#* ]] || continue
+            blueprint_item_selected homebrew-casks "$cask" || continue
+            preview_action "Would install Homebrew cask after setup: $cask"
+        done <<< "$casks"
+        return 0
     fi
 
     local cask

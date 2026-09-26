@@ -19,7 +19,7 @@ serialize_trackpad_settings() {
 
 export_trackpad_settings() {
 
-    local output_file="config/generated/macos/trackpad.conf"
+    local output_file="${BLUEPRINT_GENERATED_DIR:-config/generated}/macos/trackpad.conf"
 
     action "Exporting Trackpad configuration..."
 

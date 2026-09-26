@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # A single data artifact contains a fixed header and an optional opaque payload.
-ZSH_SNAPSHOT_FILE="${ZSH_SNAPSHOT_FILE:-config/generated/shell/zshrc.snapshot}"
+ZSH_SNAPSHOT_FILE="${ZSH_SNAPSHOT_FILE:-${BLUEPRINT_GENERATED_DIR:-config/generated}/shell/zshrc.snapshot}"
 ZSH_SNAPSHOT_STATUS=""
 ZSH_SNAPSHOT_REASON=""
 ZSH_SNAPSHOT_LENGTH=0

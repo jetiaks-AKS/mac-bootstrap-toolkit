@@ -27,7 +27,9 @@ macos_collect_preference() {
     local native_type
     local value
 
-    expected_native_type="$(macos_defaults_type_name "$generated_type")" || return 2
+    if [[ "$generated_type" != number ]]; then
+        expected_native_type="$(macos_defaults_type_name "$generated_type")" || return 2
+    fi
 
     native_type="$(defaults read-type "$domain" "$key" 2>&1)"
     local type_result=$?
@@ -41,7 +43,13 @@ macos_collect_preference() {
         return 2
     fi
 
-    if [[ "$native_type" != "$expected_native_type" ]]; then
+    if [[ "$generated_type" == number ]]; then
+        case "$native_type" in
+            'Type is integer') generated_type=int ;;
+            'Type is float') generated_type=float ;;
+            *) error "Incompatible macOS preference type: $domain $key"; return 2 ;;
+        esac
+    elif [[ "$native_type" != "$expected_native_type" ]]; then
         error "Incompatible macOS preference type: $domain $key"
         return 2
     fi
@@ -66,6 +74,12 @@ macos_collect_preference() {
         int)
             if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
                 error "Invalid macOS integer value: $domain $key"
+                return 2
+            fi
+            ;;
+        float)
+            if [[ ! "$value" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
+                error "Invalid macOS numeric value: $domain $key"
                 return 2
             fi
             ;;

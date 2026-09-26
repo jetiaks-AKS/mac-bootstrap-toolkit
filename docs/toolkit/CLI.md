@@ -3,7 +3,7 @@
 ## Назначение
 
 Этот документ определяет единый контракт пользовательского CLI-вывода и
-диагностического логирования Mac Bootstrap Toolkit.
+диагностического логирования Macseed.
 
 Обе части используют общий Logger, но имеют разные задачи:
 
@@ -206,6 +206,10 @@ preflight число обработанных модулей равно нулю
 в Discovery Summary не выводятся. `Duration` сохраняется при наличии времени
 начала запуска. Терминал и лог содержат одинаковые поля и значения.
 
+Проверка Homebrew в Discovery не предлагает установку: при подтверждённом
+отсутствии Homebrew inventory не публикуется, а запуск сообщает ошибку
+prerequisite. Ошибка самой проверки доступности сообщается отдельно.
+
 Во всех режимах headline определяется lifecycle-счётчиками с приоритетом:
 
 ```text
@@ -373,7 +377,8 @@ Status   : Interrupted
 
 `--dry-run` является отдельным execution mode. Одновременно можно выбрать
 ровно один из `--check`, `--bootstrap`, `--discover`, `--blueprint`,
-`--dry-run` и `--workflow`; отсутствие mode или конфликтующие mode-флаги
+`--dry-run`, `--workflow`, `--capture` и `--restore <bundle>`; отсутствие mode
+или конфликтующие mode-флаги
 возвращают `1`.
 
 Preview выполняет последовательность:
@@ -467,6 +472,8 @@ Blueprint
 Bootstrap
 Preview (`--dry-run`)
 Guided Workflow (`--workflow`)
+Capture (`--capture`)
+Restore (`--restore <bundle>`)
 ```
 
 Global Verification относится к Future / Optional.
@@ -510,6 +517,8 @@ repository-owned launcher `bin/bs` только сопоставляет кор�
 
 ```text
 bs workflow   → bootstrap.sh --workflow
+bs capture    → bootstrap.sh --capture
+bs restore <bundle> → bootstrap.sh --restore <bundle>
 bs discover   → bootstrap.sh --discover
 bs blueprint  → bootstrap.sh --blueprint
 bs preview    → bootstrap.sh --dry-run
@@ -528,6 +537,8 @@ repository-relative paths и exit status `bootstrap.sh` сохраняются.
 setup с lifecycle `Check → Apply → Verify`. Корректный `bs` остаётся unchanged;
 отсутствующий устанавливается существующим installer и проверяется повторно.
 Ошибка installer или Verify возвращает Bootstrap error без ложного success.
+Исключение для Restore без Homebrew: отсутствующий launcher откладывается с
+предупреждением `1`; используйте `./bootstrap.sh` из корня репозитория.
 
 Discovery, Blueprint и Preview не запускают installer. Workflow, завершившийся
 после zero-change Preview, также не устанавливает `bs`. Ручная установка и
@@ -545,3 +556,71 @@ Installer выбирает `$(brew --prefix)/bin`, если Homebrew досту�
 Bootstrap error `2`; sudo автоматически не вызывается. Перемещение репозитория
 нарушает PATH symlink, поэтому старую ссылку нужно удалить и запустить installer
 из нового расположения.
+
+# Capture и Restore
+
+Рекомендуемые entry points: `bs workflow` для этого Mac; `bs capture` на
+исходном Mac → приватный перенос одного `.mbt` → `bs restore <bundle>` на
+новом Mac. Если launcher ещё не установлен, из корня репозитория доступны
+`./bootstrap.sh --workflow`, `./bootstrap.sh --capture` и
+`./bootstrap.sh --restore /absolute/path/bundle.mbt`. Отдельные `--discover`,
+`--blueprint`, `--dry-run`, `--bootstrap` и standalone Secure SSH Migration
+CLI — ручные/advanced команды, не обязательные этапы этого сценария.
+
+`bs capture` запускает Discovery и подробный Blueprint selector в приватном
+staging, не меняя рабочий `config/blueprint.conf`. Затем предлагает отдельно
+выбрать SSH identities и создаёт один приватный `exports/bootstrap-*.mbt`
+Bundle. При выборе identities отсутствие `age` приводит к явному предложению
+установки через Homebrew; без согласия можно продолжить без них или отменить
+Capture. Capture показывает кандидатов без повторного unlock, затем полностью
+проверяет выбранный SSH key из приватного staging перед шифрованием. `age`
+запрашивает новый passphrase для `secure.age`, отличный от SSH-key passphrase;
+он нужен при Restore на новом Mac и должен храниться отдельно от Bundle.
+Если оставить prompt пустым, `age` показывает автоматически созданный
+passphrase один раз — его также нужно сохранить. Путь к готовому Bundle
+выводится после полной публикации.
+
+Здесь два независимых секрета: **SSH-key passphrase** уже принадлежит
+конкретному private key и нужен для его unlock/validation; **Bundle passphrase**
+создаётся заново для шифрования `secure.age` и
+требуется на целевом Mac. Введённый passphrase не выводится и не пишется в
+Bundle или лог. Автоматически созданный `age` passphrase показывается один раз.
+
+`bs restore <bundle>` требует один путь к Bundle; launcher разрешает
+относительный путь до перехода в корень репозитория. Restore проверяет Bundle,
+показывает выбранные категории (`Enter` — продолжить, `C` — отключить
+категории, `Q` — отменить). Выбор источника задаёт верхнюю границу: Restore
+не добавляет отсутствующие категории и элементы. Затем Restore запускает
+обычный Preview по staged input и запрашивает подтверждение Apply. После этого
+публикует normal state в `config/generated/` и `config/blueprint.conf`,
+запускает Bootstrap с подготовкой выбранной SSH configuration и выбранным
+SSH import до Workspace. Полная повторная валидация ввода и preflight
+предшествуют этим операциям; импорт требует отдельного подтверждения `import`.
+На чистом Mac Restore Preview показывает необходимость Homebrew для выбранных
+formulae/casks; Bootstrap отдельно спрашивает разрешение на его установку.
+Если `age` всё ещё отсутствует, Restore явно предлагает установку через
+Homebrew. Перед расшифровкой Restore поясняет, что требуется passphrase от
+Secure Credentials в Bundle. Конфликт SSH configuration, отказ или ошибка SSH
+import останавливают дальнейшее восстановление до Workspace. Уже выполненные
+изменения сохраняются для повторного Restore.
+Отмена Blueprint в Capture оставляет рабочий Blueprint без изменений и не
+публикует Bundle. Отмена Restore до Apply не публикует staged state; перед
+выбором может выполняться recovery прежней прерванной публикации. Ошибка до
+завершения публикации восстанавливает прежнюю пару generated/Blueprint или
+останавливает запуск для ручной проверки. Bootstrap запускается только
+после успешной публикации; ошибка до SSH prerequisites блокирует их при
+валидации или preflight, а позднейшая ошибка не откатывает импорт. Обычный
+контракт статусов `0` / `1` / `2` сохраняется.
+
+Bundle v1 и безопасная публикация локального состояния описаны в
+[Configuration](CONFIGURATION.md). Bundle переносится выбранным пользователем
+способом; Toolkit не реализует транспорт. Повторный Restore использует
+идемпотентность существующего Bootstrap и отдельно повторяет ожидающий SSH
+import.
+
+# Secure SSH Identity Migration
+
+Отдельная команда `scripts/ssh-identity-migrate.sh` поддерживает `list`,
+`export --output /absolute/path/package.age` и
+`import --input /absolute/path/package.age`. Контракт и ограничения описаны в
+[Secure SSH Identity Migration](SSH-IDENTITY-MIGRATION.md).

@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for contributing to Mac Bootstrap Toolkit.
+Thank you for contributing to Macseed.
 
 ## Workflow
 

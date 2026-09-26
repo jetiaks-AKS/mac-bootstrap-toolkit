@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SSH_SNAPSHOT_FILE="${SSH_SNAPSHOT_FILE:-config/generated/ssh/config.snapshot}"
+SSH_SNAPSHOT_FILE="${SSH_SNAPSHOT_FILE:-${BLUEPRINT_GENERATED_DIR:-config/generated}/ssh/config.snapshot}"
 SSH_SNAPSHOT_STATUS=""
 SSH_SNAPSHOT_COUNT=0
 SSH_SNAPSHOT_EXCLUDED=0

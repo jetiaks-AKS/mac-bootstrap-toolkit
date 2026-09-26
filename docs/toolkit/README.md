@@ -1,6 +1,6 @@
 # Toolkit Documentation
 
-Техническая документация Mac Bootstrap Toolkit.
+Техническая документация Macseed.
 
 ## Основные документы
 

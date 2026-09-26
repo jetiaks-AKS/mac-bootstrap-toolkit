@@ -1,7 +1,7 @@
 # Release Process
 
 Procedure for preparing and publishing a new stable version of
-**Mac Bootstrap Toolkit**.
+**Macseed**.
 
 The release process publishes an already completed and validated state of the
 project. It must not introduce new functionality during release preparation.
@@ -206,7 +206,7 @@ git push origin main
 Create an annotated tag on the published release state:
 
 ```bash
-git tag -a v<version> -m "Mac Bootstrap Toolkit <version>"
+git tag -a v<version> -m "Macseed <version>"
 ```
 
 For example:

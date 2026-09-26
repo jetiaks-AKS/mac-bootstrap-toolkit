@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GIT_CONFIGURATION_FILE="config/generated/git.conf"
+GIT_CONFIGURATION_FILE="${BLUEPRINT_GENERATED_DIR:-config/generated}/git.conf"
 GIT_CONFIGURATION_KEYS=(user.name user.email init.defaultBranch pull.rebase core.editor user.useConfigOnly pull.ff)
 GIT_CONFIGURATION_SET=(false false false false false false false)
 GIT_CONFIGURATION_VALUES=("" "" "" "" "" "" "")

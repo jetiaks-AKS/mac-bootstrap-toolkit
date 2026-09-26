@@ -1,20 +1,23 @@
-# Mac Bootstrap Toolkit
+# Macseed
+
+**Capture. Rebuild. Continue.**
 
 English | [Русский](README.ru.md)
 
 A modular Bash toolkit for reproducibly preparing and restoring a macOS
 working environment.
 
-**Current version: 3.2.0 Stable**
+**Current version: 3.3.0 Stable**
 
 ## Overview
 
-Mac Bootstrap Toolkit discovers supported parts of an existing Mac, stores
+Macseed discovers supported parts of an existing Mac, stores
 that state as local configuration, lets the user select a restoration scope,
 previews the resulting changes, and applies them on a target Mac.
 
-The project reproduces a working environment rather than cloning an entire
-operating system.
+It captures supported state, rebuilds it on another Mac, and maintains the
+supported working environment through later runs. It does not clone the source
+Mac or serve as a backup, Migration Assistant, or general data/system migration tool.
 
 ```text
 Discovery → Generated Configuration → Blueprint → Preview → Bootstrap
@@ -47,27 +50,26 @@ rules, and restoration limits are documented in
 
 ## Quick Start
 
-Run the guided workflow from the repository root:
+Choose the path that matches your task:
 
 ```bash
-./bootstrap.sh --workflow
+bs workflow                         # Discover, select, preview and apply on this Mac
+bs capture                          # Create one private Bundle on the source Mac
+bs restore /path/to/bundle.mbt       # Reconstruct on the new Mac
 ```
 
-Or run individual modes:
+For a move between Macs, run `bs capture` on the old Mac, privately transfer
+the resulting `.mbt` file, then run `bs restore /path/to/bundle.mbt` on the new
+Mac. Afterwards, use `bs workflow` normally on the new Mac. Clone the Toolkit
+repository on each Mac; before `bs` is installed, use `./bootstrap.sh --workflow`,
+`./bootstrap.sh --capture`, or `./bootstrap.sh --restore /path/to/bundle.mbt`
+from its root.
 
-```bash
-./bootstrap.sh --check
-./bootstrap.sh --discover
-./bootstrap.sh --blueprint
-./bootstrap.sh --dry-run
-./bootstrap.sh --bootstrap
-```
-
-Use `--verbose` for additional diagnostics. Bootstrap can install the optional
-`bs` launcher; complete operating instructions, transfer guidance, and safety
-notes are in [Quick Start](docs/getting-started/QUICKSTART.md). CLI modes,
-output, logging, exit statuses, and launcher behavior are described in
-[CLI](docs/toolkit/CLI.md).
+Applications are installed and Git repositories are cloned from remotes;
+working trees and user files are not copied. Optional selected SSH identities
+use an encrypted Secure Credentials payload. See
+[Quick Start](docs/getting-started/QUICKSTART.md) for the steps and
+[CLI](docs/toolkit/CLI.md) for advanced individual commands.
 
 ## Documentation
 
@@ -81,18 +83,17 @@ output, logging, exit statuses, and launcher behavior are described in
 
 ## Project Status
 
-Version 3.2.0 is stable. Preview is implemented; aggregate Global Verification
-remains an optional future capability and is not required by the current
-architecture.
+Version 3.3.0 includes Stage 12 Bootstrap Bundle Capture & Restore and secure
+SSH identity migration. Aggregate Global Verification remains optional future work.
 
 See [ROADMAP.md](ROADMAP.md) for current development direction.
 
 ## Support
 
-Mac Bootstrap Toolkit is free and open source. If the project saves you time,
+Macseed is free and open source. If the project saves you time,
 you can support its continued development through a voluntary donation on
 [Boosty](https://boosty.to/jetiaks/donate).
 
 ## License
 
-Mac Bootstrap Toolkit is available under the [MIT License](LICENSE).
+Macseed is available under the [MIT License](LICENSE).

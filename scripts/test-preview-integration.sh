@@ -213,6 +213,22 @@ write_blueprint() {
     } > "$FIXTURE/config/blueprint.conf"
 }
 
+write_partial_blueprint() {
+    {
+        echo '[categories]'
+        local category
+        for category in git-configuration ssh-configuration vscode-settings shell-zsh \
+            macos-finder macos-dock macos-windows macos-keyboard macos-trackpad macos-screenshots; do
+            printf '%s="false"\n' "$category"
+        done
+        for category in homebrew-packages homebrew-casks app-store vscode-extensions \
+            workspace-folders git-repositories git-configuration; do
+            printf '\n[%s]\n' "$category"
+            [[ "$category" != workspace-folders ]] || printf 'Projects\n'
+        done
+    } > "$FIXTURE/config/blueprint.conf"
+}
+
 run_case() {
     local scenario="$1" expected="$2"
     : > "$TEST_ROOT/mutations"
@@ -361,6 +377,10 @@ assert_contains "$TEST_ROOT/output" 'Warnings          : 1'
 assert_contains "$TEST_ROOT/output" 'Errors            : 1'
 reset_fixture
 rm -rf "$TEST_ROOT/home/.ssh"
+run_case clean-ssh-home 1
+assert_contains "$TEST_ROOT/output" 'SSH directory is absent'
+assert_contains "$TEST_ROOT/output" 'Errors            : 0'
+printf 'not a directory\n' > "$TEST_ROOT/home/.ssh"
 run_case core-error 2
 assert_contains "$TEST_ROOT/output" 'Would restart process: SystemUIServer'
 reset_fixture
@@ -480,7 +500,33 @@ reset_fixture
 rm "$FIXTURE/config/generated/brew-packages.conf"
 TEST_MODE=--workflow run_case workflow-missing-decline 0 <<< n
 assert_contains "$TEST_ROOT/output" 'Generated configuration is unavailable'
-# An empty selection has no plans; optional settings can still warn.
+reset_fixture
+write_partial_blueprint
+find "$FIXTURE/config/generated" -type f ! -path '*/workspace/folders.conf' -delete
+TEST_MODE=--workflow run_case workflow-partial-restored 0 <<< $'n\nq'
+assert_contains "$TEST_ROOT/output" 'Refresh generated configuration'
+if grep -Fq 'Discovery is required' "$TEST_ROOT/output"; then
+    echo 'FAIL: valid partial restored inventory forced Discovery'; ((TEST_FAILURES++))
+fi
+TEST_MODE=--workflow run_case workflow-partial-selector 0 <<< $'n\n\ny\nn'
+if ! grep -Fq 'vscode-settings="false"' "$FIXTURE/config/blueprint.conf" ||
+   ! grep -Fq 'macos-finder="false"' "$FIXTURE/config/blueprint.conf" ||
+   [[ -e "$FIXTURE/config/generated/vscode/settings.json" ]]; then
+    echo 'FAIL: omitted partial scopes were enabled or created'; ((TEST_FAILURES++))
+fi
+rm "$FIXTURE/config/generated/workspace/folders.conf"
+TEST_MODE=--workflow run_case workflow-partial-missing-selected 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Discovery is required'
+printf 'malformed folder record\n' > "$FIXTURE/config/generated/workspace/folders.conf"
+TEST_MODE=--workflow run_case workflow-partial-malformed-selected 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Discovery is required'
+reset_fixture
+TEST_MODE=--workflow run_case workflow-complete-no-blueprint 0 <<< $'n\nq'
+assert_contains "$TEST_ROOT/output" 'Refresh generated configuration'
+rm "$FIXTURE/config/generated/brew-packages.conf"
+TEST_MODE=--workflow run_case workflow-incomplete-no-blueprint 0 <<< n
+assert_contains "$TEST_ROOT/output" 'Discovery is required'
+# An empty selection has no plans; a selected missing settings source is not workflow-ready.
 for preview_status in 0 1; do
     reset_fixture
     {
@@ -495,6 +541,11 @@ for preview_status in 0 1; do
         done
     } > "$FIXTURE/config/blueprint.conf"
     rm "$FIXTURE/config/generated/vscode/settings.json"
+    if [[ "$preview_status" == 1 ]]; then
+        TEST_MODE=--workflow run_case workflow-selected-settings-missing 0 <<< n
+        assert_contains "$TEST_ROOT/output" 'Discovery is required'
+        continue
+    fi
     workflow_input=$'n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ny\ny'
     TEST_MODE=--workflow run_case "workflow-zero-plans-$preview_status" "$preview_status" <<< "$workflow_input"
     assert_contains "$TEST_ROOT/output" 'No changes to apply'
