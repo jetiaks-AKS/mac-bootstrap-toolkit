@@ -8,8 +8,11 @@ Workflow uses Discovery → Blueprint → Preview → Bootstrap on the current M
 Capture orchestrates those existing components in private staging on the source
 Mac and publishes a Bootstrap Bundle. Restore validates and previews staged
 input on the target Mac, then publishes the ordinary generated/Blueprint pair
-before normal Bootstrap. Publication recovery protects the previous local
-pair; failed Bootstrap does not trigger Secure Credentials import. The Bundle
+before Bootstrap. Publication recovery protects the previous local pair.
+Restore Bootstrap validates all selected input, prepares prerequisites, then
+uses the existing SSH configuration consumer and explicitly confirmed Secure
+Credentials importer before Workspace cloning. A prerequisite failure stops
+dependent restoration; later failures do not roll back imported identities. The Bundle
 is transport only, so later Workflow runs from local state.
 
 The ordinary path reconstructs selected state supported by Bootstrap consumers.

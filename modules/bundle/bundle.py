@@ -37,6 +37,7 @@ CATEGORIES = {
 CATEGORY_FLAGS = set(CATEGORIES) | {"git-configuration"}
 GROUPS = {
     "Applications": ("homebrew-casks", "app-store", "vscode-extensions"),
+    "VS Code Settings": ("vscode-settings",),
     "Homebrew": ("homebrew-packages",),
     "macOS Settings": tuple(k for k in CATEGORIES if k.startswith("macos-")),
     "Shell": ("shell-zsh",),
@@ -302,13 +303,21 @@ def validate_archive(path):
             raise Invalid("unsupported archive entry")
         try:
             name = header[:100].split(b"\0", 1)[0].decode("ascii")
-            size = int(header[124:136].strip(b"\0 ") or b"0", 8)
+            size_field = header[124:136].strip(b"\0 ")
+            if not size_field or any(byte not in b"01234567" for byte in size_field):
+                raise ValueError()
+            size = int(size_field, 8)
         except (UnicodeError, ValueError) as exc:
             raise Invalid("invalid archive header") from exc
         if size > MAX_MEMBER:
             raise Invalid("oversized archive entry")
+        if len(raw_members) >= MAX_ENTRIES:
+            raise Invalid("too many Bundle entries")
+        next_offset = offset + 512 + ((size + 511) // 512) * 512
+        if next_offset <= offset or next_offset > len(raw):
+            raise Invalid("invalid archive entry size")
         raw_members.append((name, size))
-        offset += 512 + ((size + 511) // 512) * 512
+        offset = next_offset
     else:
         raise Invalid("truncated archive")
     files = {}
@@ -435,46 +444,123 @@ def recover():
         return
     if RECOVERY.is_symlink() or not RECOVERY.is_dir():
         raise Invalid("unsafe publication recovery path")
+    if any((RECOVERY / name).is_symlink() for name in
+           ("complete", "incomplete", "preparing", "generated.old", "blueprint.old")):
+        raise Invalid("link in publication recovery state")
     if (RECOVERY / "complete").is_file():
+        completed = json.loads((RECOVERY / "complete").read_text())
+        if (not isinstance(completed, dict) or
+            set(completed) not in ({"generated", "blueprint"},
+                                   {"generated", "blueprint", "prepared"}) or
+            ("prepared" in completed and completed["prepared"] != "internal") or
+            {item.name for item in RECOVERY.iterdir()} -
+                {"complete", "generated.old", "blueprint.old"}):
+            raise Invalid("unexpected completed publication state; manual review required")
+        for name in ("generated", "blueprint"):
+            old = RECOVERY / (name + ".old")
+            if old.exists() or old.is_symlink():
+                if old.is_symlink() or fingerprint(old) != completed[name]["old"]:
+                    raise Invalid("previous local state changed; manual review required")
         shutil.rmtree(RECOVERY)
         return
     marker = RECOVERY / "incomplete"
-    if not marker.is_file():
-        if set(item.name for item in RECOVERY.iterdir()) == {"marker.tmp"}:
+    preparing = RECOVERY / "preparing"
+    if not marker.is_file() and not preparing.is_file():
+        legacy = RECOVERY / "marker.tmp"
+        if {item.name for item in RECOVERY.iterdir()} == {"marker.tmp"} and legacy.is_file():
+            previous = json.loads(legacy.read_text())
+            if not isinstance(previous, dict) or set(previous) != {"generated", "blueprint"}:
+                raise Invalid("invalid legacy publication marker")
+            for name in ("generated", "blueprint"):
+                current = CONFIG / ("generated" if name == "generated" else "blueprint.conf")
+                record = previous[name]
+                if (not isinstance(record, dict) or
+                    set(record) != {"present", "dev", "ino", "old", "new"}):
+                    raise Invalid("invalid legacy publication marker")
+                if record["present"]:
+                    if (not current.exists() or current.is_symlink() or
+                        (current.stat().st_dev, current.stat().st_ino) !=
+                        (record["dev"], record["ino"]) or
+                        fingerprint(current) != record["old"]):
+                        raise Invalid("local state changed; manual recovery required")
+                elif current.exists() or current.is_symlink():
+                    raise Invalid("local state appeared; manual recovery required")
             shutil.rmtree(RECOVERY)
             return
-        if any(RECOVERY.iterdir()):
-            raise Invalid("publication recovery marker missing; manual review required")
-        RECOVERY.rmdir()
-        return
+        raise Invalid("publication recovery marker missing; manual review required")
+    if marker.is_file() and preparing.is_file():
+        raise Invalid("conflicting publication recovery markers")
     old_generated = RECOVERY / "generated.old"
     old_blueprint = RECOVERY / "blueprint.old"
     try:
-        previous = json.loads(marker.read_text())
-        if set(previous) != {"generated", "blueprint"}:
+        previous = json.loads((marker if marker.is_file() else preparing).read_text())
+        if not isinstance(previous, dict):
             raise ValueError()
+        internal = previous.get("prepared") == "internal"
+        if set(previous) != ({"generated", "blueprint", "prepared"} if internal
+                            else {"generated", "blueprint"}):
+            raise ValueError()
+        for name in ("generated", "blueprint"):
+            if (not isinstance(previous[name], dict) or
+                set(previous[name]) != {"present", "dev", "ino", "old", "new"}):
+                raise ValueError()
+        prepared = (RECOVERY / "generated.new", RECOVERY / "blueprint.new")
+        allowed = {"incomplete" if marker.is_file() else "preparing"}
+        if internal:
+            allowed.update(("generated.new", "blueprint.new"))
+        if marker.is_file():
+            allowed.update(("generated.old", "blueprint.old"))
+        if {item.name for item in RECOVERY.iterdir()} - allowed:
+            raise Invalid("unexpected publication recovery entry")
+        if preparing.is_file() and not internal:
+            raise Invalid("invalid preparing publication marker")
+        for name, path in (("generated", prepared[0]), ("blueprint", prepared[1])):
+            if internal and (path.exists() or path.is_symlink()):
+                if path.is_symlink() or (name == "generated" and not path.is_dir()) or (
+                    name == "blueprint" and not path.is_file()):
+                    raise Invalid("unsafe prepared publication path")
+                if marker.is_file() and fingerprint(path) != previous[name]["new"]:
+                    raise Invalid("prepared publication state changed; manual review required")
+        if preparing.is_file():
+            for name in ("generated", "blueprint"):
+                current = CONFIG / ("generated" if name == "generated" else "blueprint.conf")
+                record = previous[name]
+                if (not isinstance(record, dict) or
+                    set(record) != {"present", "dev", "ino", "old", "new"}):
+                    raise ValueError()
+                if record["present"]:
+                    if (not current.exists() or current.is_symlink() or
+                        (current.stat().st_dev, current.stat().st_ino) !=
+                        (record["dev"], record["ino"]) or
+                        fingerprint(current) != record["old"]):
+                        raise Invalid("local state changed during preparation; manual review required")
+                elif current.exists() or current.is_symlink():
+                    raise Invalid("local state appeared during preparation; manual review required")
+            shutil.rmtree(RECOVERY)
+            return
         for name, old in (("generated", old_generated), ("blueprint", old_blueprint)):
             current = CONFIG / ("generated" if name == "generated" else "blueprint.conf")
+            visible = current.exists() or current.is_symlink()
             record = previous[name]
             if not isinstance(record, dict) or set(record) != {"present", "dev", "ino", "old", "new"}:
                 raise ValueError()
-            if current.exists() and old.exists() and fingerprint(current) != record["new"]:
+            if visible and old.exists() and fingerprint(current) != record["new"]:
                 raise Invalid("published state changed; manual recovery required")
             if record["present"]:
                 if old.exists():
                     if fingerprint(old) != record["old"]:
                         raise Invalid("previous local state changed; manual recovery required")
-                    if current.is_dir():
+                    if current.is_dir() and not current.is_symlink():
                         shutil.rmtree(current)
-                    elif current.exists():
+                    elif visible:
                         current.unlink()
                     os.rename(old, current)
-                elif (not current.exists() or
+                elif (not visible or
                       (current.stat().st_dev, current.stat().st_ino) !=
                       (record["dev"], record["ino"]) or
                       fingerprint(current) != record["old"]):
                     raise Invalid("previous local state unavailable; manual recovery required")
-            elif current.exists():
+            elif visible:
                 if fingerprint(current) != record["new"]:
                     raise Invalid("published state changed; manual recovery required")
                 if current.is_dir():
@@ -492,18 +578,11 @@ def publish(stage):
     source_blueprint = stage / "blueprint.conf"
     if not source_generated.is_dir() or not source_blueprint.is_file():
         raise Invalid("staged local state incomplete")
-    # Copy prepared state to the same filesystem before moving live paths.
-    new_generated = CONFIG / ".bundle-generated-new"
-    new_blueprint = CONFIG / ".bundle-blueprint-new"
-    if any(path.exists() or path.is_symlink() for path in (new_generated, new_blueprint)):
-        raise Invalid("stale prepared publication paths")
+    # The recovery directory owns preparation from its first written marker.
+    new_generated = RECOVERY / "generated.new"
+    new_blueprint = RECOVERY / "blueprint.new"
+    claimed = False
     try:
-        shutil.copytree(source_generated, new_generated, symlinks=False)
-        shutil.copyfile(source_blueprint, new_blueprint)
-        os.chmod(new_generated, 0o700)
-        os.chmod(new_blueprint, 0o600)
-        for path in new_generated.rglob("*"):
-            os.chmod(path, 0o700 if path.is_dir() else 0o600)
         current_generated = CONFIG / "generated"
         current_blueprint = CONFIG / "blueprint.conf"
         if any(path.is_symlink() for path in (current_generated, current_blueprint)):
@@ -512,34 +591,44 @@ def publish(stage):
             raise Invalid("unsafe generated destination")
         if current_blueprint.exists() and not current_blueprint.is_file():
             raise Invalid("unsafe Blueprint destination")
-        def identity(path, prepared):
+        def identity(path, source):
             present = path.exists()
             return {"present": present, "dev": path.stat().st_dev if present else None,
                     "ino": path.stat().st_ino if present else None,
                     "old": fingerprint(path) if present else None,
-                    "new": fingerprint(prepared)}
-        record = json.dumps({"generated": identity(current_generated, new_generated),
-                             "blueprint": identity(current_blueprint, new_blueprint)}).encode()
+                    "new": fingerprint(source)}
+        record = json.dumps({"generated": identity(current_generated, source_generated),
+                             "blueprint": identity(current_blueprint, source_blueprint),
+                             "prepared": "internal"}).encode()
         os.mkdir(RECOVERY, 0o700)
+        claimed = True
         marker = RECOVERY / "incomplete"
-        write_file(RECOVERY / "marker.tmp", record)
-        os.replace(RECOVERY / "marker.tmp", marker)
+        write_file(RECOVERY / "preparing", record)
+        shutil.copytree(source_generated, new_generated, symlinks=False)
+        write_file(new_blueprint, checked_file(source_blueprint, 65536))
+        os.chmod(new_generated, 0o700)
+        os.chmod(new_blueprint, 0o600)
+        for path in new_generated.rglob("*"):
+            os.chmod(path, 0o700 if path.is_dir() else 0o600)
+        if (fingerprint(new_generated) != json.loads(record)["generated"]["new"] or
+            fingerprint(new_blueprint) != json.loads(record)["blueprint"]["new"]):
+            raise Invalid("prepared publication state changed")
+        os.replace(RECOVERY / "preparing", marker)
         if current_generated.exists():
             os.rename(current_generated, RECOVERY / "generated.old")
         if current_blueprint.exists():
             os.rename(current_blueprint, RECOVERY / "blueprint.old")
         os.rename(new_generated, current_generated)
         os.rename(new_blueprint, current_blueprint)
-    except (OSError, Invalid) as exc:
-        if (RECOVERY / "incomplete").exists():
-            recover()
-        elif RECOVERY.exists():
-            shutil.rmtree(RECOVERY)
-        if new_generated.exists():
-            shutil.rmtree(new_generated)
-        if new_blueprint.exists():
-            new_blueprint.unlink()
-        raise Invalid("publication failed; previous local state restored") from exc
+    except BaseException as exc:
+        if claimed:
+            if (RECOVERY / "incomplete").is_file() or (RECOVERY / "preparing").is_file():
+                recover()
+            elif RECOVERY.is_dir() and not any(RECOVERY.iterdir()):
+                RECOVERY.rmdir()
+        if isinstance(exc, (OSError, Invalid)):
+            raise Invalid("publication failed; previous local state restored") from exc
+        raise
     try:
         os.rename(marker, RECOVERY / "complete")
     except OSError as exc:

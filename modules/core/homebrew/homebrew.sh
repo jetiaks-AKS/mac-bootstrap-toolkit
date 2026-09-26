@@ -22,6 +22,21 @@ is_homebrew_installed() {
 
 }
 
+# The installer runs in a child shell; activate its prefix in this process.
+homebrew_activate_installed() {
+    local prefix observed
+    case "$(uname -m)" in
+        arm64) prefix=/opt/homebrew ;;
+        x86_64) prefix=/usr/local ;;
+        *) return 2 ;;
+    esac
+    [[ -f "$prefix/bin/brew" && -x "$prefix/bin/brew" ]] || return 2
+    observed="$("$prefix/bin/brew" --prefix)" || return 2
+    [[ "$observed" == "$prefix" ]] || return 2
+    export PATH="$prefix/bin:$prefix/sbin:$PATH"
+    hash -r
+}
+
 check_homebrew_read_only() {
 
     homebrew_availability
@@ -52,7 +67,9 @@ install_homebrew() {
 
     info "Installing Homebrew..."
 
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    local installer
+    installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return 2
+    /bin/bash -c "$installer"
 
 }
 
@@ -84,10 +101,23 @@ check_homebrew() {
         return 1
     fi
 
-    install_homebrew
+    if ! install_homebrew; then
+        error "Homebrew installer failed"
+        return 2
+    fi
+    MODULE_CHANGED=true
 
     homebrew_availability
     availability_result=$?
+
+    if [[ $availability_result -eq 1 ]]; then
+        homebrew_activate_installed || {
+            error "Failed to activate installed Homebrew"
+            return 2
+        }
+        homebrew_availability
+        availability_result=$?
+    fi
 
     if [[ $availability_result -eq 0 ]]; then
         success "Homebrew installed successfully"

@@ -8,8 +8,11 @@ Workflow использует Discovery → Blueprint → Preview → Bootstrap 
 Capture оркестрирует эти компоненты в приватном staging исходного Mac и
 публикует Bootstrap Bundle. Restore проверяет Bundle, выполняет Preview по
 staged input и после подтверждения публикует обычную пару generated/Blueprint
-до normal Bootstrap. Recovery защищает прежнюю локальную пару; ошибка
-Bootstrap не запускает Secure Credentials import. Bundle остаётся транспортом:
+до Bootstrap. Recovery защищает прежнюю локальную пару. Restore Bootstrap
+валидирует весь выбранный ввод, подготавливает зависимости и вызывает существующий
+consumer SSH configuration и отдельно подтверждённый Secure Credentials import
+до клонирования Workspace. Сбой зависимости останавливает дальнейшее восстановление;
+позднейшие ошибки не откатывают импортированные identities. Bundle остаётся транспортом:
 дальнейший Workflow работает с локальным состоянием без него.
 
 Обычный путь реконструирует выбранное состояние с поддерживаемыми Bootstrap

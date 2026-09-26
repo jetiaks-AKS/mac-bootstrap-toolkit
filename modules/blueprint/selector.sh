@@ -22,6 +22,9 @@ blueprint_selector_generated_ready() {
 
     for section in homebrew-packages homebrew-casks app-store \
         vscode-extensions workspace-folders git-repositories; do
+        if blueprint_exists && [[ -z "$(blueprint_selected_items "$section")" ]]; then
+            continue
+        fi
         file="$(blueprint_generated_file "$section")" || return 2
         [[ -f "$file" && -r "$file" ]] || {
             error "Generated configuration is unavailable."
@@ -43,6 +46,10 @@ blueprint_selector_load_items() {
     BLUEPRINT_SELECTOR_LABELS=()
     BLUEPRINT_SELECTOR_SELECTED=()
     file="$(blueprint_generated_file "$section")" || return 2
+    if [[ ! -f "$file" ]] && blueprint_exists &&
+       [[ -z "$(blueprint_selected_items "$section")" ]]; then
+        return 0
+    fi
 
     case "$section" in
         homebrew-packages|homebrew-casks|vscode-extensions)
@@ -284,6 +291,21 @@ blueprint_selector_prompt_category() {
     local current=true
     local input
     local prompt
+    local source_file=""
+
+    case "$category" in
+        git-configuration) source_file="$BLUEPRINT_GENERATED_DIR/git.conf" ;;
+        ssh-configuration) source_file="$BLUEPRINT_GENERATED_DIR/ssh/config.snapshot" ;;
+        vscode-settings) source_file="$BLUEPRINT_GENERATED_DIR/vscode/settings.json" ;;
+        shell-zsh) source_file="$BLUEPRINT_GENERATED_DIR/shell/zshrc.snapshot" ;;
+        macos-*) source_file="$BLUEPRINT_GENERATED_DIR/macos/${category#macos-}.conf" ;;
+    esac
+    if blueprint_exists && ! blueprint_category_enabled "$category" &&
+       [[ -n "$source_file" && ! -f "$source_file" ]]; then
+        printf -v "$variable" '%s' false
+        info "$title: unavailable"
+        return 0
+    fi
 
     if blueprint_exists && ! blueprint_category_enabled "$category"; then
         current=false
@@ -371,6 +393,9 @@ blueprint_selector_edit() {
     BLUEPRINT_SELECTOR_SAVED=false
     log "[BLUEPRINT] START"
 
+    if blueprint_exists; then
+        blueprint_validate_syntax || return 2
+    fi
     blueprint_selector_generated_ready || return 2
     log "[BLUEPRINT] Generated configuration: Ready"
 
@@ -477,14 +502,14 @@ blueprint_selector_edit() {
     echo "=========================================="
     echo
     echo "Applications"
-    printf '  Homebrew packages     %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_HOME_BREW_PACKAGES") / $(wc -l < "$(blueprint_generated_file homebrew-packages)" | tr -d ' ')"
-    printf '  Homebrew casks        %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_HOME_BREW_CASKS") / $(wc -l < "$(blueprint_generated_file homebrew-casks)" | tr -d ' ')"
-    printf '  App Store             %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_APP_STORE") / $(wc -l < "$(blueprint_generated_file app-store)" | tr -d ' ')"
-    printf '  VS Code extensions    %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_VSCODE_EXTENSIONS") / $(wc -l < "$(blueprint_generated_file vscode-extensions)" | tr -d ' ')"
+    printf '  Homebrew packages     %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_HOME_BREW_PACKAGES") / $(blueprint_generated_item_count homebrew-packages)"
+    printf '  Homebrew casks        %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_HOME_BREW_CASKS") / $(blueprint_generated_item_count homebrew-casks)"
+    printf '  App Store             %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_APP_STORE") / $(blueprint_generated_item_count app-store)"
+    printf '  VS Code extensions    %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_VSCODE_EXTENSIONS") / $(blueprint_generated_item_count vscode-extensions)"
     echo
     echo "Workspace"
     printf '  Workspace folders     %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_WORKSPACE_FOLDERS") / $(blueprint_generated_item_count workspace-folders)"
-    printf '  Git repositories      %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_GIT_REPOSITORIES") / $(config_sections "$(blueprint_generated_file git-repositories)" | wc -l | tr -d ' ')"
+    printf '  Git repositories      %s\n' "$(blueprint_selector_count_lines "$BLUEPRINT_GIT_REPOSITORIES") / $(blueprint_generated_item_count git-repositories)"
     echo
     echo "Settings"
     printf '  Git Configuration      %s\n' "$(blueprint_selector_yes_no "$BLUEPRINT_GIT_CONFIGURATION")"

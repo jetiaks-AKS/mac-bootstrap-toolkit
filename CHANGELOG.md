@@ -9,6 +9,14 @@ The format is based on the principles of **Keep a Changelog**.
 
 ## Unreleased
 
+### Fixed
+
+* Accept a clean Mac without an SSH directory, and prepare selected SSH
+  configuration and explicitly confirmed identities before Restore clones
+  Workspace repositories, after full Preview and input validation.
+* Activate newly installed Homebrew in the running process and defer the
+  optional launcher with a warning during Homebrew-free Restore.
+
 ## [3.3.0] - 2026-09-26
 
 Macseed: Capture. Rebuild. Continue. Stage 12 / Bootstrap Bundle Capture &

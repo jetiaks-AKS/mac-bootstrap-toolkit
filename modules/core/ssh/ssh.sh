@@ -6,8 +6,16 @@
 
 check_ssh() {
 
-    if [[ ! -d "$HOME/.ssh" ]]; then
-        error "~/.ssh directory not found"
+    if [[ ! -d "$HOME" || ! -r "$HOME" || ! -x "$HOME" ]]; then
+        error "Failed to inspect SSH HOME"
+        return 2
+    fi
+    if [[ ! -e "$HOME/.ssh" && ! -L "$HOME/.ssh" ]]; then
+        warning "SSH directory is absent; selected SSH state can be restored"
+        return 1
+    fi
+    if [[ ! -d "$HOME/.ssh" || ! -r "$HOME/.ssh" || ! -x "$HOME/.ssh" ]]; then
+        error "Failed to inspect SSH directory"
         return 2
     fi
 

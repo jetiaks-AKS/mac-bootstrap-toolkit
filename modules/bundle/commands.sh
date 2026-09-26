@@ -91,7 +91,7 @@ bundle_capture() (
 
 bundle_choose_categories() {
     local stage="$1" answer index state
-    local -a names=("Applications" "Homebrew" "macOS Settings" "Shell" "Git" "SSH Configuration" "Workspace")
+    local -a names=("Applications" "Homebrew" "macOS Settings" "Shell" "Git" "SSH Configuration" "Workspace" "VS Code Settings")
     local -a disabled=()
     local -a groups=()
     BUNDLE_SECURE_SELECTED=true
@@ -112,15 +112,15 @@ bundle_choose_categories() {
                     [[ " ${disabled[*]} " != *" $index "* ]] || state=" "
                     printf '  %d [%s] %s\n' "$((index+1))" "$state" "${names[$index]}"
                 done
-                printf '  8 [%s] Secure Credentials\n' "$([[ "$BUNDLE_SECURE_SELECTED" == true ]] && echo x || echo ' ')"
+                printf '  9 [%s] Secure Credentials\n' "$([[ "$BUNDLE_SECURE_SELECTED" == true ]] && echo x || echo ' ')"
                 printf 'Enter numbers to disable (comma separated), or Q: '
                 IFS= read -r answer || return 3
                 [[ "$answer" != [qQ] ]] || return 3
-                [[ "$answer" =~ ^[1-8](,[1-8])*$ ]] || { warning "Use numbers 1-8."; continue; }
+                [[ "$answer" =~ ^[1-9](,[1-9])*$ ]] || { warning "Use numbers 1-9."; continue; }
                 local token
                 IFS=, read -r -a tokens <<< "$answer"
                 for token in "${tokens[@]}"; do
-                    if [[ "$token" == 8 ]]; then
+                    if [[ "$token" == 9 ]]; then
                         BUNDLE_SECURE_SELECTED=false
                     else
                         disabled+=("$((token-1))")
@@ -133,6 +133,36 @@ bundle_choose_categories() {
     groups=()
     for index in "${disabled[@]}"; do groups+=("${names[$index]}"); done
     python3 "$BUNDLE_HELPER" narrow "$stage" "${groups[@]}" || return 2
+}
+
+# Called only by Restore Bootstrap, after complete selected-input validation and
+# preflight. Reuse the normal SSH consumer and the separate no-clobber importer.
+bundle_restore_prerequisites() {
+    local result
+    if blueprint_category_enabled ssh-configuration && ssh_configuration_scope_selected; then
+        bootstrap_ssh_configuration
+        result=$?
+        # A partial source can still publish all selected eligible profiles.
+        # The normal later SSH pass retains that source warning in Summary.
+        if [[ $result -ne 0 ]] &&
+           ! [[ $result -eq 1 && "$SSH_TARGET_STATUS" == identical && "$SSH_SOURCE_PARTIAL" == true ]]; then
+            error "Selected SSH configuration is not ready; dependent restoration stopped"
+            return 2
+        fi
+    fi
+    if [[ -n "${BUNDLE_RESTORE_SECURE_FILE:-}" ]]; then
+        bundle_offer_age
+        result=$?
+        [[ $result -eq 0 ]] || return "$result"
+        info "Secure Credentials: enter the Bundle passphrase created during Capture, not an SSH-key passphrase."
+        ./scripts/ssh-identity-migrate.sh import --input "$BUNDLE_RESTORE_SECURE_FILE"
+        result=$?
+        if [[ $result -ne 0 ]]; then
+            warning "Secure SSH import did not complete; dependent restoration stopped"
+            return "$result"
+        fi
+    fi
+    return 0
 }
 
 bundle_restore() (
@@ -157,27 +187,19 @@ bundle_restore() (
         return 0
     }
     python3 "$BUNDLE_HELPER" publish "$stage" || return 2
+    local secure_file=""
+    [[ "$secure_selected" != true ]] || secure_file="$stage/secure.age"
     env -u BLUEPRINT_FILE -u BLUEPRINT_GENERATED_DIR -u SSH_SNAPSHOT_FILE \
-        -u ZSH_SNAPSHOT_FILE BUNDLE_RESTORE_ACTIVE=true ./bootstrap.sh --bootstrap
+        -u ZSH_SNAPSHOT_FILE BUNDLE_RESTORE_ACTIVE=true \
+        BUNDLE_RESTORE_SECURE_FILE="$secure_file" ./bootstrap.sh --bootstrap
     result=$?
     if [[ $result -gt 1 ]]; then
-        error "Normal Bootstrap did not complete; secure identities were not imported."
+        error "Restore Bootstrap did not complete; review applied changes before retrying."
         return "$result"
     fi
-    if [[ "$secure_selected" == true ]]; then
-        bundle_offer_age
-        local age_result=$?
-        if [[ $age_result -ne 0 ]]; then
-            warning "Normal Bootstrap completed; secure SSH import remains pending."
-            return "$age_result"
-        fi
-        info "Secure Credentials: enter the Bundle passphrase created during Capture, not an SSH-key passphrase."
-        ./scripts/ssh-identity-migrate.sh import --input "$stage/secure.age"
-        local import_result=$?
-        if [[ $import_result -ne 0 ]]; then
-            warning "Normal Bootstrap completed; secure SSH import remains pending."
-            return "$import_result"
-        fi
+    if [[ $result -ne 0 ]]; then
+        warning "Restore finished with warnings or a deferred prerequisite; review Bootstrap output before continuing."
+        return "$result"
     fi
     success "Restore completed. Future bs workflow runs from ordinary local state."
     return "$result"

@@ -206,6 +206,10 @@ preflight число обработанных модулей равно нулю
 в Discovery Summary не выводятся. `Duration` сохраняется при наличии времени
 начала запуска. Терминал и лог содержат одинаковые поля и значения.
 
+Проверка Homebrew в Discovery не предлагает установку: при подтверждённом
+отсутствии Homebrew inventory не публикуется, а запуск сообщает ошибку
+prerequisite. Ошибка самой проверки доступности сообщается отдельно.
+
 Во всех режимах headline определяется lifecycle-счётчиками с приоритетом:
 
 ```text
@@ -533,6 +537,8 @@ repository-relative paths и exit status `bootstrap.sh` сохраняются.
 setup с lifecycle `Check → Apply → Verify`. Корректный `bs` остаётся unchanged;
 отсутствующий устанавливается существующим installer и проверяется повторно.
 Ошибка installer или Verify возвращает Bootstrap error без ложного success.
+Исключение для Restore без Homebrew: отсутствующий launcher откладывается с
+предупреждением `1`; используйте `./bootstrap.sh` из корня репозитория.
 
 Discovery, Blueprint и Preview не запускают installer. Workflow, завершившийся
 после zero-change Preview, также не устанавливает `bs`. Ручная установка и
@@ -587,19 +593,23 @@ Bundle или лог. Автоматически созданный `age` passph
 не добавляет отсутствующие категории и элементы. Затем Restore запускает
 обычный Preview по staged input и запрашивает подтверждение Apply. После этого
 публикует normal state в `config/generated/` и `config/blueprint.conf`,
-запускает обычный Bootstrap и при успешном завершении — выбранный SSH import.
+запускает Bootstrap с подготовкой выбранной SSH configuration и выбранным
+SSH import до Workspace. Полная повторная валидация ввода и preflight
+предшествуют этим операциям; импорт требует отдельного подтверждения `import`.
 На чистом Mac Restore Preview показывает необходимость Homebrew для выбранных
 formulae/casks; Bootstrap отдельно спрашивает разрешение на его установку.
 Если `age` всё ещё отсутствует, Restore явно предлагает установку через
 Homebrew. Перед расшифровкой Restore поясняет, что требуется passphrase от
-Secure Credentials в Bundle. Отказ или ошибка SSH import оставляет normal
-Bootstrap завершённым, а импорт identities ожидающим повторного Restore.
+Secure Credentials в Bundle. Конфликт SSH configuration, отказ или ошибка SSH
+import останавливают дальнейшее восстановление до Workspace. Уже выполненные
+изменения сохраняются для повторного Restore.
 Отмена Blueprint в Capture оставляет рабочий Blueprint без изменений и не
 публикует Bundle. Отмена Restore до Apply не публикует staged state; перед
 выбором может выполняться recovery прежней прерванной публикации. Ошибка до
 завершения публикации восстанавливает прежнюю пару generated/Blueprint или
 останавливает запуск для ручной проверки. Bootstrap запускается только
-после успешной публикации; его error `2` исключает Secure import. Обычный
+после успешной публикации; ошибка до SSH prerequisites блокирует их при
+валидации или preflight, а позднейшая ошибка не откатывает импорт. Обычный
 контракт статусов `0` / `1` / `2` сохраняется.
 
 Bundle v1 и безопасная публикация локального состояния описаны в

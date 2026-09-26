@@ -96,12 +96,18 @@ export_brew_casks() {
 
 discover_homebrew() {
 
-    if ! command -v brew >/dev/null 2>&1; then
-
-        error "Homebrew is not installed"
-        return 2
-
-    fi
+    homebrew_availability
+    case $? in
+        0) ;;
+        1)
+            error "Homebrew is not installed"
+            return 2
+            ;;
+        *)
+            error "Failed to inspect Homebrew availability"
+            return 2
+            ;;
+    esac
 
     export_brew_packages || return 2
 

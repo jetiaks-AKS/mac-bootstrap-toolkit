@@ -31,6 +31,8 @@ cp "$PROJECT_ROOT/modules/core/homebrew/homebrew.sh" \
     "$FIXTURE_ROOT/modules/core/homebrew/homebrew.sh"
 cp "$PROJECT_ROOT/modules/core/preflight/preflight.sh" \
     "$FIXTURE_ROOT/modules/core/preflight/preflight.sh"
+cp "$PROJECT_ROOT/modules/discovery/homebrew.sh" \
+    "$FIXTURE_ROOT/modules/discovery/homebrew.sh"
 
 write_fixture_file() {
     local relative_path="$1"
@@ -82,7 +84,7 @@ write_fixture_file modules/core/launcher/launcher.sh \
 
 write_fixture_file modules/apps/brew-packages.sh \
     'read_brew_packages_configuration() { return "${TEST_INPUT_STATUS:-0}"; }' \
-    'preview_brew_packages() { if [[ "${TEST_HAS_PLANS:-true}" == true ]]; then preview_action "Would install fixture formula"; fi; printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; }' \
+    'preview_brew_packages() { if [[ "${TEST_HAS_PLANS:-true}" == true ]]; then preview_action "Would install fixture formula"; fi; printf "%s\n" formula-preview >> "$TEST_SPY_FILE"; [[ "${TEST_PREVIEW_ERROR:-false}" != true ]] || return 2; }' \
     'install_brew_packages() { printf "%s\n" brew-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/apps/brew-casks.sh \
@@ -101,7 +103,7 @@ write_fixture_file modules/vscode/extensions.sh \
     'install_vscode_extensions() { printf "%s\n" code-install >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/vscode/settings.sh \
-    'validate_vscode_settings_source() { return 1; }' \
+    'validate_vscode_settings_source() { return 0; }' \
     'preview_vscode_settings() { printf "%s\n" vscode-settings-preview >> "$TEST_SPY_FILE"; }' \
     'apply_vscode_settings() { printf "%s\n" vscode-write >> "$TEST_SPY_FILE"; }'
 
@@ -133,7 +135,7 @@ write_fixture_file modules/blueprint/selector.sh \
     'blueprint_selector_run() { printf "%s\n" blueprint-selector >> "$TEST_SPY_FILE"; }'
 
 write_fixture_file modules/discovery/discovery.sh \
-    'run_discovery() { printf "%s\n" discovery >> "$TEST_SPY_FILE"; }'
+    'run_discovery() { if [[ "${TEST_DISCOVERY_REAL_HOMEBREW:-false}" == true ]]; then run_module "Homebrew Discovery" discover_homebrew; else printf "%s\n" discovery >> "$TEST_SPY_FILE"; fi; }'
 
 write_mock() {
     local name="$1"
@@ -172,6 +174,7 @@ run_entrypoint() {
         TEST_HAS_PLANS="${TEST_HAS_PLANS:-true}" \
         TEST_GIT_ENABLED="${TEST_GIT_ENABLED:-true}" \
         TEST_VSCODE_SETTINGS_ENABLED="${TEST_VSCODE_SETTINGS_ENABLED:-true}" \
+        TEST_DISCOVERY_REAL_HOMEBREW="${TEST_DISCOVERY_REAL_HOMEBREW:-false}" \
             ./bootstrap.sh "$@"
     ) > "$TEST_ROOT/output" 2>&1
     ENTRYPOINT_STATUS=$?
@@ -234,6 +237,32 @@ assert_status 0 "a single existing mode still works"
 run_entrypoint --discover
 assert_status 0 "Discovery dispatch remains available"
 [[ "$ENTRYPOINT_SPY" == *discovery* ]] || fail "Discovery dispatch was skipped"
+
+mv "$MOCK_BIN/brew" "$TEST_ROOT/brew-present"
+TEST_DISCOVERY_REAL_HOMEBREW=true run_entrypoint --discover <<< y
+assert_status 2 "Discovery reports absent Homebrew without an inventory"
+[[ "$ENTRYPOINT_OUTPUT" == *'Homebrew is not installed'* &&
+   "$ENTRYPOINT_OUTPUT" != *'Install Homebrew?'* &&
+   "$ENTRYPOINT_SPY" != *homebrew-installer* ]] ||
+    fail "Discovery offered or ran the Homebrew installer: $ENTRYPOINT_OUTPUT / $ENTRYPOINT_SPY"
+
+: > "$SPY_FILE"
+(
+    cd "$FIXTURE_ROOT" || exit 2
+    PATH="$MOCK_BIN:/usr/bin:/bin" TEST_SPY_FILE="$SPY_FILE" \
+        TEST_DISCOVERY_REAL_HOMEBREW=true \
+        BUNDLE_COMMANDS_FILE="$PROJECT_ROOT/modules/bundle/commands.sh" \
+        /bin/bash -c 'log(){ :; }; source modules/core/common/common.sh; source "$BUNDLE_COMMANDS_FILE"; bundle_capture'
+) <<< y > "$TEST_ROOT/capture-output" 2>&1
+capture_status=$?
+if [[ $capture_status -eq 2 && "$(cat "$TEST_ROOT/capture-output")" == *'Homebrew is not installed'* &&
+      "$(cat "$TEST_ROOT/capture-output")" != *'Install Homebrew?'* &&
+      "$(cat "$SPY_FILE")" != *homebrew-installer* ]]; then
+    pass "Capture staged Discovery never offers or runs Homebrew installation"
+else
+    fail "Capture staged Discovery mutated or misreported absent Homebrew (status $capture_status): $(cat "$TEST_ROOT/capture-output") / $(cat "$SPY_FILE")"
+fi
+mv "$TEST_ROOT/brew-present" "$MOCK_BIN/brew"
 run_entrypoint --blueprint
 assert_status 0 "Blueprint selector dispatch remains available"
 [[ "$ENTRYPOINT_SPY" == blueprint-selector ]] || fail "Blueprint selector reached normal preflight"
@@ -361,7 +390,7 @@ TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<
 assert_status 1 "Preview warnings survive Apply decline"
 TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=1 run_entrypoint --workflow <<< $'n\ny'
 assert_status 1 "Preview warnings survive successful Bootstrap"
-TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+TEST_BLUEPRINT_PRESENT=true TEST_PREVIEW_ERROR=true run_entrypoint --workflow <<< $'n\ny'
 assert_status 2 "Preview error blocks Bootstrap"
 [[ "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* && "$ENTRYPOINT_SPY" != *sudo* ]] || fail "failed Preview offered Apply"
 
@@ -378,7 +407,7 @@ for warning_status in 0 1; do
        "$ENTRYPOINT_SPY" != *launcher-setup* &&
        "$ENTRYPOINT_SPY" != *mutation* ]] || fail "zero plans offered or executed Bootstrap"
 done
-TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_BLUEPRINT_STATUS=2 run_entrypoint --workflow <<< $'n\ny'
+TEST_HAS_PLANS=false TEST_BLUEPRINT_PRESENT=true TEST_PREVIEW_ERROR=true run_entrypoint --workflow <<< $'n\ny'
 assert_status 2 "zero plans never masks Preview errors"
 [[ "$ENTRYPOINT_OUTPUT" != *'No changes to apply'* && "$ENTRYPOINT_OUTPUT" != *'Apply these changes'* ]] || fail "Preview error treated as no changes"
 run_entrypoint --workflow <<< $'n\n'

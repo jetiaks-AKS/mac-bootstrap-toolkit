@@ -18,6 +18,11 @@ configure_bs_launcher() {
             return 0
             ;;
         1)
+            if [[ "${BUNDLE_RESTORE_ACTIVE:-false}" == true ]] &&
+               ! command -v brew >/dev/null 2>&1; then
+                warning "Optional bs launcher deferred: Homebrew is unavailable; use ./bootstrap.sh from the repository root"
+                return 1
+            fi
             ;;
         *)
             error "${check_output:-Failed to inspect bs launcher}"

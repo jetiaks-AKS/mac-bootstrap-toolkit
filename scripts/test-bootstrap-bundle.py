@@ -220,6 +220,38 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(sections["git-repositories"], [])
         self.assertFalse(categories["macos-screenshots"])
 
+    def test_restore_groups_cover_every_transferable_scope(self):
+        self.assertEqual(set(bundle.ITEMS) | set(bundle.CATEGORIES),
+                         {scope for scopes in bundle.GROUPS.values() for scope in scopes})
+
+    def test_vscode_settings_can_be_disabled_without_expanding_source_selection(self):
+        path = self.stage / "blueprint.conf"
+        path.write_bytes(path.read_bytes().replace(
+            b'vscode-settings="false"', b'vscode-settings="true"'))
+        with patch("sys.stdout", capture := io.StringIO()):
+            bundle.summary(self.stage, False, ["VS Code Settings"])
+        self.assertIn("VS Code Settings     No", capture.getvalue())
+        bundle.narrow(self.stage, ["VS Code Settings"])
+        sections, categories = bundle.parse_blueprint(path.read_bytes())
+        self.assertFalse(categories["vscode-settings"])
+        self.assertFalse(categories["ssh-configuration"])
+        self.assertEqual(sections["git-repositories"], ["demo"])
+        bundle.narrow(self.stage, ["Applications"])
+        self.assertFalse(bundle.parse_blueprint(path.read_bytes())[1]["vscode-settings"])
+
+    def test_restore_menu_disables_vscode_settings(self):
+        path = self.stage / "blueprint.conf"
+        path.write_bytes(path.read_bytes().replace(
+            b'vscode-settings="false"', b'vscode-settings="true"'))
+        result = subprocess.run(
+            ["bash", "-c", 'source modules/bundle/commands.sh; bundle_choose_categories "$1"', "_",
+             str(self.stage)], input="c\n8\n\n", text=True, capture_output=True,
+            cwd=MODULE.parents[2], check=False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("8 [x] VS Code Settings", result.stdout)
+        self.assertIn("VS Code Settings     No", result.stdout)
+        self.assertFalse(bundle.parse_blueprint(path.read_bytes())[1]["vscode-settings"])
+
     def test_summary_lists_selected_states_without_aggregation(self):
         path = self.stage / "blueprint.conf"
         path.write_bytes(path.read_bytes().replace(
@@ -257,7 +289,7 @@ class BundleTests(unittest.TestCase):
         with patch.object(bundle, "CONFIG", self.config), patch.object(bundle, "RECOVERY", self.config / ".bundle-publication"):
             real_rename = os.rename
             def fail_new_blueprint(source, destination):
-                if Path(source).name == ".bundle-blueprint-new":
+                if Path(source).name == "blueprint.new":
                     raise OSError("injected failure")
                 return real_rename(source, destination)
             with patch.object(bundle.os, "rename", side_effect=fail_new_blueprint):
@@ -472,7 +504,11 @@ class BundleTests(unittest.TestCase):
             'echo preview >> calls ;;\n'
             '  --bootstrap) [[ -z "${BLUEPRINT_FILE:-}" && -f config/blueprint.conf && '
             '-f config/generated/workspace/repositories.conf ]] || exit 2; '
-            'echo bootstrap >> calls; [[ -z "${BUNDLE_TEST_BOOTSTRAP_FAIL:-}" ]] || exit 2 ;;\n'
+            'echo bootstrap >> calls; [[ -z "${BUNDLE_TEST_BOOTSTRAP_FAIL:-}" ]] || exit 2; '
+            'source modules/bundle/commands.sh; '
+            'blueprint_category_enabled(){ return 1; }; '
+            'info(){ printf "%s\\n" "$1"; }; warning(){ :; }; '
+            'bundle_restore_prerequisites ;;\n'
             '  --workflow) [[ -f config/blueprint.conf && '
             '-f config/generated/workspace/repositories.conf ]] || exit 2; '
             'echo workflow >> calls ;;\n'

@@ -432,9 +432,18 @@ run_preview() {
 
 }
 
-# Validate the full inventory independently of an older Blueprint selection.
+# A restored Bundle carries only selected generated inputs. Without a Blueprint,
+# retain the all-inclusive Discovery inventory requirement.
 workflow_generated_ready() (
-    blueprint_exists() { return 1; }
+    if blueprint_exists; then
+        blueprint_validate
+        [[ $? -ne 2 ]] || return 2
+        if blueprint_category_enabled vscode-settings; then
+            validate_vscode_settings_source "${BLUEPRINT_GENERATED_DIR:-config/generated}/vscode/settings.json" || return 2
+        fi
+    else
+        blueprint_exists() { return 1; }
+    fi
     blueprint_selector_generated_ready || return 2
     bootstrap_validate_selected_inputs
 )
@@ -580,6 +589,8 @@ fi
 
 if [[ "$MODE" == "--dry-run" ]]; then
     run_inspection "Homebrew" check_homebrew_read_only
+elif [[ "$MODE" == "--discover" ]]; then
+    run_module "Homebrew" check_homebrew_read_only
 elif [[ "$MODE" == "--bootstrap" && "${BUNDLE_RESTORE_ACTIVE:-false}" == true &&
         -z "$(blueprint_selected_items homebrew-packages)" &&
         -z "$(blueprint_selected_items homebrew-casks)" ]]; then
@@ -609,6 +620,18 @@ case "$MODE" in
         ;;
 
     --bootstrap)
+
+        if [[ "${BUNDLE_RESTORE_ACTIVE:-false}" == true ]]; then
+            run_module "Restore SSH Prerequisites" bundle_restore_prerequisites
+            prerequisite_result=$?
+            if [[ $prerequisite_result -ne 0 ]]; then
+                show_summary
+                toolkit_exit_code
+                prerequisite_result=$?
+                close_logger
+                exit "$prerequisite_result"
+            fi
+        fi
 
         run_module "bs Launcher" configure_bs_launcher
 
